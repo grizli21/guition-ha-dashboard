@@ -32,7 +32,7 @@ Rendu réel du code, capturé par le simulateur (`make -C simu`) :
   <tr>
     <td><img src="docs/images/page-chauffage.png" width="234" alt="Page Chauffage"><br><b>Chauffage</b> — 16,4° mesurés, consigne 20° à l'anneau, lueur de chauffe, modes arrêt / hors-gel / éco / confort</td>
     <td><img src="docs/images/page-eau-chaude.png" width="234" alt="Page Eau chaude"><br><b>Eau chaude</b> — ballon, consigne à l'anneau, chauffe forcée, courbe 24 h</td>
-    <td><img src="docs/images/page-vmc.png" width="234" alt="Page VMC"><br><b>VMC</b> — petite / grande vitesse par zone, hygro en direct, hélices animées</td>
+    <td><img src="docs/images/helices-vmc.gif" width="234" alt="Page VMC, hélices animées"><br><b>VMC</b> — petite / grande vitesse par zone, hygro en direct, hélices animées (GIF : un tour complet de la grande vitesse, 900 ms)</td>
     <td><img src="docs/images/page-poele.png" width="234" alt="Page Poêle"><br><b>Poêle à bois</b> — régulation du tirage au PID sur la température des fumées, alerte recharge, courbes</td>
   </tr>
   <tr>
@@ -65,6 +65,22 @@ Rendu réel du code, capturé par le simulateur (`make -C simu`) :
 </table>
 
 </details>
+
+## Navigation
+
+Le rail de droite est un **carrousel d'icônes** défilable au doigt : 16 icônes de 64 px dans une
+colonne de 76 px, sans aimantation ni élastique — il s'arrête pile sur la première et la dernière.
+Ce GIF, fabriqué par le simulateur aux instants réels du geste (30 ms par pas du glissé, puis 50 ms
+pendant l'élan), montre le glissé, l'élan qui s'éteint, puis l'appui sur l'icône Imprimante 3D :
+la page change d'un coup, le rail ne bouge pas. La page épinglée (ici la batterie, à 12 %) reste
+fixe en bas, sous le carrousel.
+
+<img src="docs/images/rail-anime.gif" width="360" alt="Le rail d'icônes : glissé, élan, changement de page">
+
+Pendant que le rail bouge, le **flux caméra se met en pause** et ne repart que 300 ms après l'arrêt
+(`RAIL_REPRISE_MS`, [src/ui_lvgl/ui_shell.cpp](src/ui_lvgl/ui_shell.cpp)) : mesuré sur l'écran, une
+relance entre deux pas de l'élan espaçait les pas (47 → 135-300 ms) et étirait l'élan de 0,4-0,8 s
+à 1,4-3 s — la caméra hachait le geste.
 
 ## Matériel
 
@@ -108,6 +124,75 @@ flowchart LR
   `custom_sdkconfig` pour le Wi-Fi (fenêtre TCP 32 Ko, IRAM). Le fichier `include/version_git.h`
   (commit affiché page Infos) est écrit par `version_git.py` avant chaque compilation.
 - Codage en **C++ avec identifiants français** : c'est le choix du projet, assumé et homogène.
+
+## Sous le capot
+
+Tous les chiffres cités ci-dessous ont été mesurés, soit sur l'écran (banc PC ⇄ écran, séries A-B-A,
+captures comparées à l'octet), soit au simulateur. Seuls les mécanismes et la trace de leur mesure en
+commentaire sont publiés dans ce dépôt ; les journaux de campagne complets sont restés hors du dépôt
+public.
+
+- **Défilement « par bande », la LVGL patchée.** Quand un conteneur défile, LVGL repeint toute son
+  aire : mesuré en 9.6 brute, **175 336 px par pas de geste** (le conteneur 404 × 434 entier). Le
+  [scroll_bande_9.6.patch](docs/patches/scroll_bande_9.6.patch), appliqué à la librairie vendorisée
+  (marqueur `.bande-applique`), décale la mémoire d'image du déplacement réellement appliqué et ne
+  repeint que deux bandes, entrée et sortie : sur l'écran, **7 676 px et 61 → 9 ms** d'image médiane
+  (commande de banc `/defiler`, 30 pas, 180 mesures). Une image de réparation pleine aire part 150 ms
+  après le dernier pas. L'éligibilité se statue à la création du conteneur
+  ([src/ui_lvgl/ui_theme.cpp](src/ui_lvgl/ui_theme.cpp), `ui_defilement_rapide`) : une exclusion en
+  cours de geste ne défait pas les images déjà sautées — chiffrée un temps en 8.4 à 84 images /
+  3 712 609 px de pixels orphelins.
+- **Rotation 0, deux mémoires d'image en PSRAM.** Toute la production tourne en rotation 0 : le pilote
+  LovyanGFX alloue deux imagebuffers plein écran, LVGL dessine dans celui qui n'est pas montré, la
+  dalle bascule au VSYNC — plus de copie vers la dalle (mesuré : 51 ms, pire 81, page Informations)
+  et **77 ko de RAM interne rendus** ([src/ecran/ecran.cpp](src/ecran/ecran.cpp)). C'est la condition
+  du chemin rapide : sans mémoire à décaler, rien à décaler. Le mode direct à une seule mémoire a été
+  essayé et refusé à l'usage (clignotement et déchirure).
+- **L'anneau du thermostat : 75 → 24 ms par pas.** L'anneau est décrit élément par élément (135
+  segments de 2°, fondus, bouts arrondis, point de la pièce), chacun avec son rectangle d'impact ;
+  seule la zone qui change est invalidée (`anneau_invalider`). Mesuré sur l'écran en A-B-A pendant une
+  glisse de consigne par pas de 0,5° : **75,5 → 24,0 ms** médians par pas (−68 %),
+  **108 900 → ~32 500 px** repeints par pas. Le simulateur a validé l'identité des pixels avant/après.
+- **Le même patron sur les graphes.** La lecture au doigt du graphe 24 h repeignait **119 086 px en
+  103 ms** par pas de doigt (mesuré) ; ne repeindre que les deux colonnes du curseur et l'ancienne
+  place de la bulle l'a ramenée à ~45 ms. Idem sur les courbes : ballon **106 → 30 ms**, poêle
+  **51 → 24 ms** par image (écran, A/B).
+- **La lueur de chauffe est tramée et précalculée.** Le halo rouge sous l'anneau est une image de
+  232 × 232 px (**161 472 o**) calculée une fois, RGB565 + masque alpha planaire, en **trame ordonnée
+  (Bayer 4×4)** : le RGB565 n'offre qu'une vingtaine de niveaux de rouge, sans trame les marches sont
+  visibles. C'est un choix d'aspect, pas de vitesse.
+- **La caméra rend tout à la fermeture.** Les tampons d'image MJPEG (2 × 460 800 o), les tampons JPEG
+  (3 × 250 000 o), la bande de décodage, les calques de capture d'éléments et les piles des tâches de
+  fond sont rendus quand la caméra se ferme : **1,67 Mo de tampons** — mesuré sur l'écran, PSRAM libre
+  **4,07 → 5,88 Mo** et RAM interne **87 → 113 ko** dès la fermeture. Les tâches de fond se suppriment
+  elles-mêmes, jamais tuées de l'extérieur : on les surprendrait en plein `recv()`. Côté flux : la
+  fenêtre TCP portée de 5 760 o à **32 ko** a donné **15,3 à 15,9 images différentes par seconde** (4,5
+  au départ) ; un flux MJPEG jamais refermé saturait **22 des 32 tampons de réception Wi-Fi** et
+  rendait l'écran sourd (MQTT et banc muets) — l'ouverture/fermeture propre du flux est un correctif
+  visible dans [src/ui_lvgl/ui_camera.cpp](src/ui_lvgl/ui_camera.cpp).
+- **Migration LVGL 8.4 → 9.6 : trois patchs, des leçons consignées dans le code.** Première
+  compilation en 9.6 : **295 erreurs dans 40 sources**. La librairie vendorisée porte trois patchs
+  ([docs/patches/](docs/patches/)) : le chemin rapide de défilement (appliqué), la sonde
+  d'invalidation et la mesure de profondeur de pile (protégés par drapeaux de compilation, non
+  appliqués). Les pièges rencontrés, tous tracés en commentaire dans les sources : la 9.6 ne prend plus
+  son horloge dans la configuration — sans `lv_tick_set_cb`, plus rien ne se rafraîchit ; le boutisme —
+  sans `LV_COLOR_FORMAT_RGB565_SWAPPED` sur l'écran et les deux mémoires, rouge et bleu sont permutés
+  sur la dalle ; `lodepng_decode32` ne rend plus des pixels mais un descripteur — mal lu, il coûtait
+  **4,44 Mo de PSRAM** perdus, récupérés ; l'allocateur n'envoie en PSRAM que les blocs de plus de
+  **512 o** (`heap_caps_malloc_extmem_enable`), sinon le tas interne suffoque.
+- **Le simulateur PC ne ment pas, mais il ne chronomètre pas.** Il compile les VRAIES sources des
+  pages, avec la même configuration, et produit ~280 captures 480 × 480 : identité des pixels au comparatif
+  octet à octet entre deux binaires, appels de dessin et pixels invalidés comptés par primitive,
+  scénario complet sous AddressSanitizer/UBSan (zéro rapport). Mais ses microsecondes sont du temps PC,
+  **300 à 600 fois** plus rapide que l'écran : tous les chiffres de ce README qui parlent de temps sont
+  mesurés sur l'écran.
+- **Chien de garde, dump du plantage précédent, banc.** Le chien de garde de la boucle est à **10 s** :
+  un écran figé redémarre et dit où il était — l'étape en cours, ses repères et les dernières traces
+  (anneau de 3 072 o) survivent en mémoire RTC et s'affichent page Informations. Le banc PC ne répond
+  qu'à la machine désignée : HTTP **8080** (capture d'écran, appuis et glissés simulés), Telnet **23**
+  (journal, dump du dernier plantage, sans redémarrer). Verrou non négociable : tout appui synthétique
+  qui toucherait un objet cliquable est refusé (**403**) — d'où la route `/defiler`, qui défile sans
+  jamais simuler de doigt.
 
 ## Démarrage rapide
 
@@ -173,7 +258,8 @@ python3 simu/galerie.py galerie.html   # assemble les captures en une page HTML 
 ```
 
 Le simulateur rejoue les messages MQTT d'un relevé réel anonymisé ([simu/donnees/](simu/donnees/))
-et produit ~230 captures. C'est lui qui a fabriqué la galerie ci-dessus — le code affiché est
+et produit ~280 captures, dont les images des trois GIF de cette page. C'est lui qui a fabriqué la
+galerie ci-dessus — le code affiché est
 bit à bit celui de l'écran (mêmes sources, même `lv_conf.h`, couleurs 16 bits).
 
 ## Outillage
