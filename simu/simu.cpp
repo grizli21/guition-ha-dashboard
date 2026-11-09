@@ -830,6 +830,22 @@ int main()
     lacher();
     capture("11_vmc_sous_sol_arret");
 
+    // 09/11 : GIF « hélices » du README (docs/images/helices-vmc.gif). Le sous-sol vient de passer à
+    // l'arrêt : seule tourne la grande vitesse de la maison, TOUR_MS[2] = 900 ms par tour
+    // (src/ui_lvgl/page_vmc.cpp:12 ; animation à répétition infinie ui_helice_tourner,
+    // src/ui_lvgl/ui_theme.cpp:511-528). Une image toutes les 50 ms de temps virtuel pendant un tour
+    // exactement : la boucle du GIF retombe sur la première image au tour près.
+    {
+        char nom[48];
+        capture("anim_helice_000");
+        for (int t = 50; t <= 850; t += 50)
+        {
+            avancer(50);
+            snprintf(nom, sizeof nom, "anim_helice_%03d", t);
+            capture(nom);
+        }
+    }
+
     // --- Réglages : haut de la page, puis défilée jusqu'en bas ---
     strcpy(rg_reglages.ssid, "Maison");
     strcpy(rg_reglages.ip, "192.168.1.41");
@@ -2362,6 +2378,91 @@ int main()
     avancer(300);
     avancer(300);
     capture("146_batterie_faible_rail"); // la pile (12 %, rouge) épinglée en bas du rail
+
+    // 09/11 : GIF « rail animé » du README (docs/images/rail-anime.gif). Le carrousel tel qu'il bouge
+    // sous le doigt : le VRAI geste du scénario ci-dessous (appui à (440, 380), 12 pas de 30 ms vers
+    // (440, 40), cf. glisser()), image à chaque pas, puis images toutes les 50 ms pendant l'élan
+    // (inertie LVGL 9.6 : LV_INDEV_DEF_SCROLL_THROW = 10, l'anim de lancer s'éteint en moins de 1,024 s,
+    // lib/lvgl-9.6.0/src/indev/lv_indev.c:2029-2044), puis appui sur l'icône sous le pointeur du rail :
+    // la page change d'un seul coup (le shell n'anime pas les pages, src/ui_lvgl/ui_shell.cpp:68-111).
+    // L'état est reconstitué à la fin (rail en haut, page Informations) pour que la capture 147 reste
+    // identique, octet à octet.
+    {
+        char nom[48];
+        int t = 0;
+        snprintf(nom, sizeof nom, "anim_rail_%03d", t);
+        capture(nom);
+        doigt_x = 440; doigt_y = 380; doigt_pose = true;
+        avancer(80);
+        t += 80;
+        for (int i = 1; i <= 12; i++) // le geste de glisser(), pas à pas : 12 pas de 30 ms
+        {
+            doigt_y = 380 + (40 - 380) * i / 12;
+            avancer(30);
+            t += 30;
+            snprintf(nom, sizeof nom, "anim_rail_%03d", t);
+            capture(nom);
+        }
+        doigt_pose = false;
+        for (int i = 1; i <= 18; i++) // élan : images toutes les 50 ms (900 ms de fenêtre)
+        {
+            avancer(50);
+            t += 50;
+            snprintf(nom, sizeof nom, "anim_rail_%03d", t);
+            capture(nom);
+        }
+        // appui sur l'icône qui se trouve au centre du rail après l'arrêt : navigation réelle par le rail
+        lv_obj_t *rail = nullptr;
+        for (uint32_t i = 0; !rail && i < lv_obj_get_child_cnt(lv_scr_act()); i++)
+        {
+            lv_obj_t *c = lv_obj_get_child(lv_scr_act(), i);
+            if (lv_obj_get_x(c) == UI_ZONE_L && lv_obj_get_width(c) == UI_RAIL_L && lv_obj_get_y(c) == 0)
+                rail = c;
+        }
+        lv_obj_t *cible = nullptr;
+        int cy = 0;
+        for (int y : {240, 225, 255}) // au besoin, un cran au-dessus/en dessous si le doigt tombait dans un jour de 4 px
+        {
+            for (uint32_t i = 0; rail && i < lv_obj_get_child_cnt(rail); i++)
+            {
+                lv_obj_t *b = lv_obj_get_child(rail, i);
+                lv_area_t a;
+                lv_obj_get_coords(b, &a); // coordonnées ÉCRAN : le scroll_y des enfants ne bouge pas, pas leurs coords
+                if (a.x1 <= 442 && a.x2 >= 442 && a.y1 <= y && a.y2 >= y)
+                {
+                    cible = b;
+                    cy = y;
+                    break;
+                }
+            }
+            if (cible)
+                break;
+        }
+        const int page_avant = ui_shell_page();
+        if (cible)
+        {
+            toucher(442, cy);
+            lacher();
+            t += 180;
+            snprintf(nom, sizeof nom, "anim_rail_%03d", t);
+            capture(nom);
+            avancer(200);
+            t += 200;
+            snprintf(nom, sizeof nom, "anim_rail_%03d", t);
+            capture(nom);
+            printf("[anim-rail] clic au centre du rail : « %s » -> « %s »\n", ui_shell_nom(page_avant), ui_shell_nom(ui_shell_page()));
+        }
+        // état reconstitué : rail en haut (geste inverse, sans élastique il cale exactement en haut),
+        // page Informations comme avant ce bloc
+        glisser(440, 60, 440, 430);
+        lacher();
+        avancer(600);
+        if (rail)
+            printf("[anim-rail] remonté : scroll_y = %d\n", (int)lv_obj_get_scroll_y(rail));
+        aller("Informations");
+        avancer(300);
+    }
+
     glisser(440, 380, 440, 40); // le carrousel défile au-dessus d'elle
     lacher();
     avancer(300);
