@@ -127,72 +127,13 @@ flowchart LR
 
 ## Sous le capot
 
-Tous les chiffres cités ci-dessous ont été mesurés, soit sur l'écran (banc PC ⇄ écran, séries A-B-A,
-captures comparées à l'octet), soit au simulateur. Seuls les mécanismes et la trace de leur mesure en
-commentaire sont publiés dans ce dépôt ; les journaux de campagne complets sont restés hors du dépôt
-public.
+Tout ce qui suit a été mesuré sur l'écran ou au simulateur. La LVGL patchée ne repeint que deux
+bandes pendant le défilement : **61 → 9 ms** par pas de geste. L'anneau du thermostat n'invalide
+que sa zone changeante : **75 → 24 ms** par pas de consigne. À la fermeture, la caméra rend
+**1,67 Mo** de tampons. Le simulateur PC compile le vrai code des pages et le chien de garde
+relance un écran figé en disant où il était.
 
-- **Défilement « par bande », la LVGL patchée.** Quand un conteneur défile, LVGL repeint toute son
-  aire : mesuré en 9.6 brute, **175 336 px par pas de geste** (le conteneur 404 × 434 entier). Le
-  [scroll_bande_9.6.patch](docs/patches/scroll_bande_9.6.patch), appliqué à la librairie vendorisée
-  (marqueur `.bande-applique`), décale la mémoire d'image du déplacement réellement appliqué et ne
-  repeint que deux bandes, entrée et sortie : sur l'écran, **7 676 px et 61 → 9 ms** d'image médiane
-  (commande de banc `/defiler`, 30 pas, 180 mesures). Une image de réparation pleine aire part 150 ms
-  après le dernier pas. L'éligibilité se statue à la création du conteneur
-  ([src/ui_lvgl/ui_theme.cpp](src/ui_lvgl/ui_theme.cpp), `ui_defilement_rapide`) : une exclusion en
-  cours de geste ne défait pas les images déjà sautées — chiffrée un temps en 8.4 à 84 images /
-  3 712 609 px de pixels orphelins.
-- **Rotation 0, deux mémoires d'image en PSRAM.** Toute la production tourne en rotation 0 : le pilote
-  LovyanGFX alloue deux imagebuffers plein écran, LVGL dessine dans celui qui n'est pas montré, la
-  dalle bascule au VSYNC — plus de copie vers la dalle (mesuré : 51 ms, pire 81, page Informations)
-  et **77 ko de RAM interne rendus** ([src/ecran/ecran.cpp](src/ecran/ecran.cpp)). C'est la condition
-  du chemin rapide : sans mémoire à décaler, rien à décaler. Le mode direct à une seule mémoire a été
-  essayé et refusé à l'usage (clignotement et déchirure).
-- **L'anneau du thermostat : 75 → 24 ms par pas.** L'anneau est décrit élément par élément (135
-  segments de 2°, fondus, bouts arrondis, point de la pièce), chacun avec son rectangle d'impact ;
-  seule la zone qui change est invalidée (`anneau_invalider`). Mesuré sur l'écran en A-B-A pendant une
-  glisse de consigne par pas de 0,5° : **75,5 → 24,0 ms** médians par pas (−68 %),
-  **108 900 → ~32 500 px** repeints par pas. Le simulateur a validé l'identité des pixels avant/après.
-- **Le même patron sur les graphes.** La lecture au doigt du graphe 24 h repeignait **119 086 px en
-  103 ms** par pas de doigt (mesuré) ; ne repeindre que les deux colonnes du curseur et l'ancienne
-  place de la bulle l'a ramenée à ~45 ms. Idem sur les courbes : ballon **106 → 30 ms**, poêle
-  **51 → 24 ms** par image (écran, A/B).
-- **La lueur de chauffe est tramée et précalculée.** Le halo rouge sous l'anneau est une image de
-  232 × 232 px (**161 472 o**) calculée une fois, RGB565 + masque alpha planaire, en **trame ordonnée
-  (Bayer 4×4)** : le RGB565 n'offre qu'une vingtaine de niveaux de rouge, sans trame les marches sont
-  visibles. C'est un choix d'aspect, pas de vitesse.
-- **La caméra rend tout à la fermeture.** Les tampons d'image MJPEG (2 × 460 800 o), les tampons JPEG
-  (3 × 250 000 o), la bande de décodage, les calques de capture d'éléments et les piles des tâches de
-  fond sont rendus quand la caméra se ferme : **1,67 Mo de tampons** — mesuré sur l'écran, PSRAM libre
-  **4,07 → 5,88 Mo** et RAM interne **87 → 113 ko** dès la fermeture. Les tâches de fond se suppriment
-  elles-mêmes, jamais tuées de l'extérieur : on les surprendrait en plein `recv()`. Côté flux : la
-  fenêtre TCP portée de 5 760 o à **32 ko** a donné **15,3 à 15,9 images différentes par seconde** (4,5
-  au départ) ; un flux MJPEG jamais refermé saturait **22 des 32 tampons de réception Wi-Fi** et
-  rendait l'écran sourd (MQTT et banc muets) — l'ouverture/fermeture propre du flux est un correctif
-  visible dans [src/ui_lvgl/ui_camera.cpp](src/ui_lvgl/ui_camera.cpp).
-- **Migration LVGL 8.4 → 9.6 : trois patchs, des leçons consignées dans le code.** Première
-  compilation en 9.6 : **295 erreurs dans 40 sources**. La librairie vendorisée porte trois patchs
-  ([docs/patches/](docs/patches/)) : le chemin rapide de défilement (appliqué), la sonde
-  d'invalidation et la mesure de profondeur de pile (protégés par drapeaux de compilation, non
-  appliqués). Les pièges rencontrés, tous tracés en commentaire dans les sources : la 9.6 ne prend plus
-  son horloge dans la configuration — sans `lv_tick_set_cb`, plus rien ne se rafraîchit ; le boutisme —
-  sans `LV_COLOR_FORMAT_RGB565_SWAPPED` sur l'écran et les deux mémoires, rouge et bleu sont permutés
-  sur la dalle ; `lodepng_decode32` ne rend plus des pixels mais un descripteur — mal lu, il coûtait
-  **4,44 Mo de PSRAM** perdus, récupérés ; l'allocateur n'envoie en PSRAM que les blocs de plus de
-  **512 o** (`heap_caps_malloc_extmem_enable`), sinon le tas interne suffoque.
-- **Le simulateur PC ne ment pas, mais il ne chronomètre pas.** Il compile les VRAIES sources des
-  pages, avec la même configuration, et produit ~280 captures 480 × 480 : identité des pixels au comparatif
-  octet à octet entre deux binaires, appels de dessin et pixels invalidés comptés par primitive,
-  scénario complet sous AddressSanitizer/UBSan (zéro rapport). Mais ses microsecondes sont du temps PC,
-  **300 à 600 fois** plus rapide que l'écran : tous les chiffres de ce README qui parlent de temps sont
-  mesurés sur l'écran.
-- **Chien de garde, dump du plantage précédent, banc.** Le chien de garde de la boucle est à **10 s** :
-  un écran figé redémarre et dit où il était — l'étape en cours, ses repères et les dernières traces
-  (anneau de 3 072 o) survivent en mémoire RTC et s'affichent page Informations. Le banc PC ne répond
-  qu'à la machine désignée : HTTP **8080** (capture d'écran, appuis et glissés simulés), Telnet **23**
-  (journal, dump du dernier plantage, sans redémarrer). Verrou non négociable : tout appui synthétique
-  qui toucherait un objet cliquable est refusé (**403**) — d'où la route `/defiler`, qui défile sans
-  jamais simuler de doigt.
+→ [Lire la suite dans docs/SOUS_LE_CAPOT.md](docs/SOUS_LE_CAPOT.md)
 
 ## Démarrage rapide
 
@@ -257,44 +198,16 @@ make -C simu asan            # mêmes pages sous AddressSanitizer / UBSan
 python3 simu/galerie.py galerie.html   # assemble les captures en une page HTML consultable
 ```
 
-Le simulateur rejoue les messages MQTT d'un relevé réel anonymisé ([simu/donnees/](simu/donnees/))
-et produit ~280 captures, dont les images des trois GIF de cette page. C'est lui qui a fabriqué la
-galerie ci-dessus — le code affiché est
-bit à bit celui de l'écran (mêmes sources, même `lv_conf.h`, couleurs 16 bits).
+Il rejoue les messages MQTT d'un relevé réel anonymisé et produit ~280 captures, dont les images
+de cette page. Le détail est dans [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md#simulateur).
 
-## Outillage
+## Aller plus loin
 
-| Outil | Usage |
-|---|---|
-| [tools/banc.py](tools/banc.py) | piloter un écran réel depuis le PC : capture PNG, appuis/glissés simulés, journal Telnet, dump de plantage (HTTP :8080, réservé au PC `RESEAU_PC`) |
-| [tools/guetter_dumps.py](tools/guetter_dumps.py) | espionner les topics `dashboard_guition/` du broker (paho-mqtt 1.x) |
-| [tools/gen_conf_v9.py](tools/gen_conf_v9.py) | régénère `conf_v9/lv_conf.h` depuis le gabarit LVGL 9.6 |
-| [tools/polices_ui.sh](tools/polices_ui.sh) | régénère les polices Montserrat / K-Type 3x5 (`lv_font_conv`) |
-| [tools/icon2lvgl.py](tools/icon2lvgl.py) · [tools/creer_ico_mdi.py](tools/creer_ico_mdi.py) | convertir des icônes SVG/PNG en descripteurs LVGL (les sources Material Design Icons sont dans `tools/mdi/`) |
-| [tools/comparer_captures.py](tools/comparer_captures.py) | diff image à image entre deux jeux de captures |
+- [docs/SOUS_LE_CAPOT.md](docs/SOUS_LE_CAPOT.md) — les neuf points techniques complets, avec leurs mesures.
+- [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md) — outillage, ajouter une page, diagnostics, simulateur en détail, arborescence.
 
-## Ajouter une page
-
-1. Créer `src/ui_lvgl/page_x.cpp` sur le gabarit des autres : `page_x_creer(parent)` /
-   `page_x_quitter()`, à partir de n'importe quelle page existante.
-2. L'ajouter à la table `pages[]` de [src/ecran/ecran.cpp](src/ecran/ecran.cpp) (icône, titre,
-   fonctions) — le rail de droite se met à jour tout seul.
-3. Définir le contrat d'abord : ajouter la section dans [CONTRAT_MQTT.md](CONTRAT_MQTT.md)
-   (`etat` / `set`), puis l'automatisation côté HA sur le gabarit de `ha_propositions/`.
-4. Vérifier au simulateur : ajouter un état dans `simu/donnees/` et une capture au scénario
-   (`simu/simu.cpp`), `make -C simu`.
-
-## Diagnostics
-
-- **Journal série** : `pio device monitor` (115 200 bauds).
-- **Journal à distance** : Telnet sur le port 23 de l'écran, sans redémarrer —
-  `python3 tools/banc.py journal 60`.
-- **Banc PC** : HTTP sur le port 8080, réservé à la machine `RESEAU_PC` — capture d'écran,
-  appuis simulés, traces, dump du dernier plantage (`tools/banc.py dump`).
-- **Chien de garde** : redémarre la boucle figée ; la raison du redémarrage et le plantage
-  précédent s'affichent page Informations.
-- **Page Informations** : santé (RAM/PSRAM, température CPU, version git), liaison MQTT/Wi-Fi au
-  vert ou au rouge, journal des événements.
+<!-- Emplacement prévu pour la future page docs/… (batterie / matériel des écrans sur batterie) :
+     ajouter ici une puce de cette liste. -->
 
 ## Limites connues
 
@@ -307,22 +220,6 @@ bit à bit celui de l'écran (mêmes sources, même `lv_conf.h`, couleurs 16 bit
   logos) : remplacez `simu/donnees/cameras|pochettes|logos` par vos propres images pour vos essais.
 - L'automatisation « PC » suppose un petit agent publiant `dashboard_guition/pc/*` (contract
   documenté, agent non fourni).
-
-## Arborescence
-
-```
-board/           json de carte (esp32-s3-devkitc-1-n16r8v)
-conf_v9/         lv_conf.h LVGL 9.6 (généré par tools/gen_conf_v9.py)
-docs/images/     galerie (captures du simulateur) · docs/patches/ patchs LVGL
-ha_propositions/ 23 automatisations Home Assistant (YAML)
-include/         wrapper LovyanGFX de la dalle, en-têtes communs
-lib/             ressources (polices/images), icones, lvgl-9.6.0 patchée + bibliothèques amont
-simu/            simulateur PC (Makefile, scénario, données MQTT relevées et anonymisées)
-src/ecran/       firmware : Wi-Fi, table ECRANS[], OTA, banc distant, diagnostics
-src/ui_lvgl/     les 18 pages LVGL + shell, graphes, MQTT, caméra, musique…
-tools/           banc PC, convertisseurs d'icônes/polices, guetteur MQTT
-CONTRAT_MQTT.md  contrat MQTT complet (la référence)
-```
 
 ## Licence et crédits
 
