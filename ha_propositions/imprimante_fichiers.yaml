@@ -1,0 +1,78 @@
+# 23/10/2026 : PROPOSITION (pas encore dans HA) — liste des fichiers de l'imprimante pour les écrans (2e temps).
+# À insérer après relecture : 1) dans votre configuration.yaml, bloc rest_command: EXISTANT (à côté de imprimante_etat) ;
+# 2) l'automatisation à la fin de automations.yaml. Rechargement : rest_command + automation (pas de redémarrage).
+# Contrat : un sous-sujet par fichier (règle des listes), + un résumé. L'écran fabrique l'adresse des miniatures :
+# <base><nom du fichier sans .gcode>-48x48.png / -300x300.png (format de Moonraker, OrcaSlicer en fait 32 / 48 / 300 px).
+
+# ---- 1) configuration.yaml, rest_command: (après imprimante_etat)
+  # 23/10/2026 : fichiers de l'imprimante pour les écrans (automatisation 1792200000025) : liste, puis métadonnées
+  imprimante_fichiers:
+    url: "http://192.168.1.30/server/files/list?root=gcodes"
+    method: get
+    timeout: 5
+  imprimante_metadonnees:
+    url: "http://192.168.1.30/server/files/metadata?filename={{ fichier | urlencode }}"
+    method: get
+    timeout: 5
+
+# ---- 2) automations.yaml
+- id: '1792200000025'
+  alias: Écran · imprimante · fichiers
+  description: >-
+    Contrat dashboard_guition : les 12 fichiers les plus récents de l'imprimante, retenus :
+    dashboard_guition/imprimante/fichiers {"nb":12, "base":"http://…/.thumbs/"} et
+    dashboard_guition/imprimante/fichiers/<0-11> {"nom" (court), "fichier" (nom Moonraker), "matiere", "date", "minutes"}.
+    À la mise en ligne de Moonraker, à la fin d'une impression, au démarrage de HA et toutes les 15 min tant qu'elle
+    est allumée. Imprimante éteinte : rien (la dernière liste reste retenue).
+  mode: single
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id: sensor.ecran_etat_klipper
+      to: online
+    - trigger: template
+      value_template: "{{ (state_attr('sensor.ecran_etat_klipper', 'v') or {}).get('print_stats/state') == 'complete' }}"
+    - trigger: time_pattern
+      minutes: /15
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: state
+      entity_id: sensor.ecran_etat_klipper
+      state: online
+    - condition: state
+      entity_id: switch.relais_zigbee_1
+      state: "on"
+  actions:
+    - action: rest_command.imprimante_fichiers
+      response_variable: liste
+    - condition: template
+      value_template: "{{ liste.status == 200 and liste.content is mapping }}"
+    - variables:
+        recents: "{{ (liste.content.result | sort(attribute='modified', reverse=true) | map(attribute='path') | list)[:12] }}"
+    - repeat:
+        for_each: "{{ recents }}"
+        sequence:
+          - action: rest_command.imprimante_metadonnees
+            data: {fichier: "{{ repeat.item }}"}
+            response_variable: meta
+          - variables:
+              m: "{{ meta.content.result if meta.status == 200 and meta.content is mapping else {} }}"
+          - action: mqtt.publish
+            data:
+              topic: "dashboard_guition/imprimante/fichiers/{{ repeat.index - 1 }}"
+              retain: true
+              payload: >-
+                {% set f = repeat.item %}
+                {% set court = f | regex_replace('\\.gcode$', '') | regex_replace('_[0-9.]+mm_.*$', '') %}
+                {% set poids = m.get('filament_weight_total') | float(0) | round(0) | int %}
+                {{ {'nom': court[:40],
+                    'fichier': f,
+                    'matiere': (m.get('filament_type') or '?') ~ (' · %d g' % poids if poids else ''),
+                    'date': (m.get('modified') | float(0)) | timestamp_custom('%d/%m'),
+                    'minutes': ((m.get('estimated_time') | float(0)) / 60) | round(0) | int} | tojson }}
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/imprimante/fichiers
+        retain: true
+        payload: "{{ {'nb': recents | length, 'base': 'http://192.168.1.30/server/files/gcodes/.thumbs/'} | tojson }}"

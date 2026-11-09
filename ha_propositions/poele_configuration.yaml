@@ -1,0 +1,51 @@
+# 23/10/2026 : PROPOSITION (pas encore dans HA) — capteurs HA pour la page Poêle des écrans (contrat dashboard_guition).
+# À insérer dans votre configuration.yaml, dans les blocs EXISTANTS (sensor:, template:,
+# recorder: exclude: entities:). Puis rechargement « Statistiques » et « Entités modèles » ; le recorder exige un REDÉMARRAGE
+# de HA pour prendre l'exclusion (sans elle, ça marche aussi : la base grossit d'environ 0,6 Mo par jour).
+
+# ---- 1) sensor: (à côté des autres « statistics »)
+  # 23/10/2026 : variation des fumées du poêle sur 5 min, pour distinguer l'ALLUMAGE (fumées qui montent, PID pas
+  # encore en marche : il démarre au-dessus de 100 °C) d'un feu qui s'éteint (mêmes températures, en baisse).
+  - platform: statistics
+    name: "Poele fumees variation 5 min"
+    unique_id: poele_fumees_variation_5_min
+    entity_id: sensor.poele_fumees
+    state_characteristic: change
+    max_age:
+      minutes: 5
+    keep_last_sample: true
+    sampling_size: 600
+
+# ---- 2) template: (à la fin, après les historiques PM2,5)
+  # 23/10/2026 : historique 12 h du poêle pour les écrans : 144 points (un toutes les 5 min, le plus récent en
+  # dernier) de fumées, corps (°C) et tirage (%) ; -1 = pas de mesure (poêle hors ligne), demi-heures manquées
+  # pendant un arrêt de HA comblées par -1. État = horodatage du dernier point. Exclu du recorder (attributs lourds).
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/5"
+    sensor:
+      - name: Ecran historique poele
+        unique_id: ecran_historique_poele
+        state: "{{ now().timestamp() | int }}"
+        attributes:
+          fumees: >-
+            {% set prec = this.attributes.get('fumees', []) | list %}
+            {% set dernier = this.state | int(0) %}
+            {% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}
+            {% set v = states('sensor.poele_fumees') %}
+            {{ (prec + [-1] * ([[manques, 0] | max, 144] | min) + [v | float | round(0) | int if v | is_number else -1])[-144:] }}
+          corps: >-
+            {% set prec = this.attributes.get('corps', []) | list %}
+            {% set dernier = this.state | int(0) %}
+            {% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}
+            {% set v = states('sensor.poele_corps') %}
+            {{ (prec + [-1] * ([[manques, 0] | max, 144] | min) + [v | float | round(0) | int if v | is_number else -1])[-144:] }}
+          tirage: >-
+            {% set prec = this.attributes.get('tirage', []) | list %}
+            {% set dernier = this.state | int(0) %}
+            {% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}
+            {% set v = states('sensor.poele_tirage') %}
+            {{ (prec + [-1] * ([[manques, 0] | max, 144] | min) + [v | float | round(0) | int if v | is_number else -1])[-144:] }}
+
+# ---- 3) recorder: exclude: entities: (liste existante)
+      - sensor.ecran_historique_poele

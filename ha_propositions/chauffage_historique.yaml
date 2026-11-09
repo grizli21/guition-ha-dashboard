@@ -1,0 +1,49 @@
+# 24/10/2026 : publication des historiques 24 h du chauffage (capteurs de chauffage_historique_configuration.yaml).
+- id: '1792200000031'
+  alias: Écran · chauffage · historique 24 h
+  description: >-
+    Contrat dashboard_guition. À chaque nouveau point (toutes les 5 min), retenu, EN ENTIER (un message perdu ne décale
+    rien) : dashboard_guition/thermostats/<pièce>/historique {"fin": minute du jour du dernier point, "t": [288 dixièmes
+    de °C, -999 = pas de mesure], "c": [[rang, consigne x10], …] (seulement ses changements : un escalier), "h": [288 %,
+    0 = pas de mesure], "ch": "72 chiffres hexa" (1 bit par point : a chauffé)} ; dashboard_guition/maison/historique
+    {"fin", "ext": [288 dixièmes de °C]} (sonde nord, OpenWeatherMap en secours).
+  mode: queued
+  max: 8
+  triggers:
+    - trigger: state
+      entity_id:
+        - sensor.ecran_historique_chauffage_cuisine
+        - sensor.ecran_historique_chauffage_sejour
+        - sensor.ecran_historique_chauffage_chambre1
+        - sensor.ecran_historique_chauffage_chambre2
+        - sensor.ecran_historique_chauffage_sdb
+        - sensor.ecran_historique_exterieur
+      not_to: [unknown, unavailable]
+  variables:
+    e: "{{ trigger.entity_id }}"
+    fin: >-
+      {% set t = as_local(as_datetime(states(e) | int(0))) %}{{ t.hour * 60 + t.minute }}
+  actions:
+    - if: "{{ e == 'sensor.ecran_historique_exterieur' }}"
+      then:
+        - action: mqtt.publish
+          data:
+            topic: dashboard_guition/maison/historique
+            retain: true
+            payload: "{{ {'fin': fin | int, 'ext': state_attr(e, 't') | list} | to_json }}"
+      else:
+        - action: mqtt.publish
+          data:
+            topic: "dashboard_guition/thermostats/{{ e.split('_')[-1] }}/historique"
+            retain: true
+            payload: >-
+              {% set c = state_attr(e, 'c') | list %}
+              {% set ns = namespace(r=[], prec=none) %}
+              {% for v in c %}{% if v != ns.prec %}{% set ns.r = ns.r + [[loop.index0, v]] %}{% set ns.prec = v %}{% endif %}{% endfor %}
+              {% set ch = state_attr(e, 'ch') | list %}
+              {% set ch = [0] * (288 - ch | length) + ch %}
+              {% set hx = namespace(s='') %}
+              {% for k in range(36) %}{% set o = namespace(v=0) %}
+                {% for j in range(8) %}{% if ch[k * 8 + j] %}{% set o.v = o.v + 2 ** j %}{% endif %}{% endfor %}
+                {% set hx.s = hx.s ~ '%02x' % o.v %}{% endfor %}
+              {{ {'fin': fin | int, 't': state_attr(e, 't') | list, 'c': ns.r, 'h': state_attr(e, 'h') | list, 'ch': hx.s} | to_json }}

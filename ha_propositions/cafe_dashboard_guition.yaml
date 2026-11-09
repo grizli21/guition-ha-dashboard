@@ -1,0 +1,141 @@
+# 23/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour la page Café.
+# PRÉALABLE : les aides de cafe_configuration.yaml (configuration.yaml).
+# À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
+# puis automation.reload ; vérifier le message retenu en lecture seule). Aucune commande de test sur …/set.
+# Le café programmé reste lancé par 1791000000186 (à l'heure de input_datetime.cafe_programme) : on ne fait que le régler.
+
+- id: '1792200000015'
+  alias: Écran · café · état
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : dashboard_guition/cafe/etat, retenu,
+    {cafe {prog, h, allumee, marche, en_ligne}, bouilloire {prog, h, temp, chauffe, en_ligne}, recentes [minutes…]}.
+    h = heure programmée en minutes depuis minuit (la date n'est pas envoyée : c'est la prochaine occurrence).
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id:
+        - input_boolean.cafe_programme_actif
+        - input_datetime.cafe_programme
+        - input_boolean.bouilloire_programme_actif
+        - input_datetime.bouilloire_programme
+        - input_number.bouilloire_programme_temp
+        - input_text.cafe_recentes
+        - binary_sensor.cuisine_cafetiere_allumee
+        - binary_sensor.cuisine_cafetiere_en_fonctionnement
+        - binary_sensor.bouilloire_en_chauffe
+    - trigger: homeassistant
+      event: start
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/cafe/etat
+        retain: true
+        payload: >-
+          {% set dc = 'input_datetime.cafe_programme' %}
+          {% set db = 'input_datetime.bouilloire_programme' %}
+          {% set rec = states('input_text.cafe_recentes').split(',') | select('is_number') | map('int') | list %}
+          {{ {'cafe': {'prog': 1 if is_state('input_boolean.cafe_programme_actif', 'on') else 0,
+                       'h': (state_attr(dc, 'hour') | int(0)) * 60 + state_attr(dc, 'minute') | int(0),
+                       'allumee': 1 if is_state('binary_sensor.cuisine_cafetiere_allumee', 'on') else 0,
+                       'marche': 1 if is_state('binary_sensor.cuisine_cafetiere_en_fonctionnement', 'on') else 0,
+                       'en_ligne': 0 if states('binary_sensor.cuisine_cafetiere_allumee') in ['unavailable', 'unknown'] else 1},
+              'bouilloire': {'prog': 1 if is_state('input_boolean.bouilloire_programme_actif', 'on') else 0,
+                             'h': (state_attr(db, 'hour') | int(0)) * 60 + state_attr(db, 'minute') | int(0),
+                             'temp': states('input_number.bouilloire_programme_temp') | float(80) | int,
+                             'chauffe': 1 if is_state('binary_sensor.bouilloire_en_chauffe', 'on') else 0,
+                             'en_ligne': 0 if states('binary_sensor.bouilloire_en_chauffe') in ['unavailable', 'unknown'] else 1},
+              'recentes': rec[:2]} | tojson }}
+
+- id: '1792200000016'
+  alias: Écran · café · commandes
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/cafe/set.
+    {"action":"programmer","appareil":"cafe|bouilloire","h":0-1439,"on":0|1,"temp":50|70|80|90|100} : prochaine
+    occurrence de h (aujourd'hui si pas passée, sinon demain) ; café programmé -> h devient la plus récente des heures.
+    {"action":"maintenant","appareil":"cafe"} | {"action":"maintenant","appareil":"bouilloire","temp":80}
+    {"action":"arreter","appareil":"cafe|bouilloire"}.
+  mode: queued
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/cafe/set
+  conditions:
+    - condition: template
+      value_template: >-
+        {% set j = trigger.payload_json | default({}) %}
+        {{ j is mapping and j.get('appareil') in ['cafe', 'bouilloire']
+           and (j.get('action') in ['maintenant', 'arreter']
+                or (j.get('action') == 'programmer' and j.get('h') is number and 0 <= j.h < 1440 and j.get('on') in [0, 1]))
+           and (j.get('temp') is not defined or j.get('temp') in [50, 70, 80, 90, 100]) }}
+  actions:
+    - variables:
+        j: "{{ trigger.payload_json }}"
+        cafe: "{{ j.appareil == 'cafe' }}"
+        temp: "{{ j.get('temp', 80) | int }}"
+    - choose:
+        - conditions: "{{ j.action == 'programmer' }}"
+          sequence:
+            - variables:
+                quand: >-
+                  {% set t = today_at('%02d:%02d' % ((j.h | int) // 60, (j.h | int) % 60)) %}
+                  {{ (t if t > now() else t + timedelta(days=1)).timestamp() | int }}
+            - if: "{{ j.on == 1 }}"
+              then:
+                - action: input_datetime.set_datetime
+                  target: {entity_id: "{{ 'input_datetime.cafe_programme' if cafe else 'input_datetime.bouilloire_programme' }}"}
+                  data: {timestamp: "{{ quand }}"}
+                - if: "{{ not cafe }}"
+                  then:
+                    - action: input_number.set_value
+                      target: {entity_id: input_number.bouilloire_programme_temp}
+                      data: {value: "{{ temp }}"}
+                - if: "{{ cafe }}"
+                  then:
+                    - action: input_text.set_value
+                      target: {entity_id: input_text.cafe_recentes}
+                      data:
+                        value: >-
+                          {% set prec = states('input_text.cafe_recentes').split(',') | select('is_number') | map('int') | list %}
+                          {{ ([j.h | int] + (prec | reject('eq', j.h | int) | list))[:2] | join(',') }}
+            - action: "{{ 'input_boolean.turn_on' if j.on == 1 else 'input_boolean.turn_off' }}"
+              target: {entity_id: "{{ 'input_boolean.cafe_programme_actif' if cafe else 'input_boolean.bouilloire_programme_actif' }}"}
+        - conditions: "{{ j.action == 'maintenant' }}"
+          sequence:
+            - action: button.press
+              target:
+                entity_id: "{{ 'button.cafetiere_lancer_le_cafe' if cafe else 'button.bouilloire_chauffer_' ~ temp ~ '_degc' }}"
+      default:
+        - action: button.press
+          target: {entity_id: "{{ 'button.cuisine_cafetiere_arreter' if cafe else 'button.bouilloire_arreter' }}"}
+
+- id: '1792200000017'
+  alias: Bouilloire programmée (écrans)
+  description: >-
+    23/10/2026 : à l'heure de input_datetime.bouilloire_programme, si input_boolean.bouilloire_programme_actif :
+    chauffe à input_number.bouilloire_programme_temp (bouton de la bouilloire), une seule fois (remis à OFF).
+    Bouilloire injoignable -> notification au lieu de la chauffe (même principe que le café, 1791000000186).
+  mode: single
+  triggers:
+    - trigger: time
+      at: input_datetime.bouilloire_programme
+  conditions:
+    - condition: state
+      entity_id: input_boolean.bouilloire_programme_actif
+      state: "on"
+  actions:
+    - action: input_boolean.turn_off
+      target: {entity_id: input_boolean.bouilloire_programme_actif}
+    - variables:
+        bouton: "button.bouilloire_chauffer_{{ states('input_number.bouilloire_programme_temp') | float(80) | int }}_degc"
+    - if:
+        - condition: template
+          value_template: "{{ states(bouton) not in ['unavailable', 'unknown'] }}"
+      then:
+        - action: button.press
+          target: {entity_id: "{{ bouton }}"}
+      else:
+        - action: notify.mobile_app_poco
+          data:
+            title: Bouilloire programmée
+            message: "Bouilloire de {{ states('input_datetime.bouilloire_programme')[11:16] }} non lancée : elle est injoignable."

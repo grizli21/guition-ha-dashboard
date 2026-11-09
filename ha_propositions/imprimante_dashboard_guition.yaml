@@ -1,0 +1,123 @@
+# 23/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour l'imprimante 3D (1er temps :
+# état + commandes ; la liste des fichiers et les vignettes viendront ensuite).
+# PRÉALABLE : le capteur de imprimante_configuration.yaml (configuration.yaml).
+# À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
+# puis automation.reload ; vérifier le message retenu en lecture seule). Aucune commande de test sur …/set.
+# L'ancienne 1791000000189 (dashboard/imprimante/…) reste en place pour l'ancien firmware.
+# Klipper est commandé par l'API MQTT de Moonraker (CR10SPRO/moonraker/api/request, JSON-RPC), comme le faisait l'ancien
+# firmware ; la prise et la carte mère par HA (script.allumer_imprimante / script.eteindre_imprimante, prise IKEA).
+
+- id: '1792200000023'
+  alias: Écran · imprimante · état
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : dashboard_guition/imprimante/etat, retenu, {etat eteinte|prete|impression|pause,
+    progression, couche, couches, reste_min, fin (minutes depuis minuit), fichier, buse, buse_c, plateau, plateau_c, caisson,
+    caisson_c, lumiere, filtration, chauffage, carte_mere, vignette (URL du PNG 300×300 de Moonraker)}.
+    Les températures changent chaque seconde : délai d'1 s + queued max 2 = au plus 1 publication par seconde.
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id: sensor.ecran_etat_klipper
+    - trigger: state
+      entity_id: [switch.relais_zigbee_1, switch.prise_zigbee_1]
+    - trigger: homeassistant
+      event: start
+  actions:
+    - delay: 1
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/imprimante/etat
+        retain: true
+        payload: >-
+          {% set v = state_attr('sensor.ecran_etat_klipper', 'v') or {} %}
+          {% set allumee = is_state('switch.relais_zigbee_1', 'on') and is_state('sensor.ecran_etat_klipper', 'online') %}
+          {% set ps = v.get('print_stats/state', 'standby') %}
+          {% set etat = 'eteinte' if not allumee else {'printing': 'impression', 'paused': 'pause'}.get(ps, 'prete') %}
+          {% set p = v.get('display_status/progress', 0) | float(0) %}
+          {% set duree = v.get('print_stats/print_duration', 0) | float(0) %}
+          {% set reste = ((duree * (1 - p) / p) / 60) | round(0) | int if p > 0.01 else 0 %}
+          {% set fin = now() + timedelta(minutes=reste) %}
+          {% set info = v.get('print_stats/info') or {} %}
+          {% set f = v.get('print_stats/filename', '') or '' %}
+          {{ {'etat': etat,
+              'progression': (p * 100) | round(0) | int,
+              'couche': info.get('current_layer') | int(0),
+              'couches': info.get('total_layer') | int(0),
+              'reste_min': reste,
+              'fin': fin.hour * 60 + fin.minute,
+              'fichier': f | regex_replace('\\.gcode$', ''),
+              'buse': v.get('extruder/temperature', 0) | float(0) | round(0) | int,
+              'buse_c': v.get('extruder/target', 0) | float(0) | round(0) | int,
+              'plateau': v.get('heater_bed/temperature', 0) | float(0) | round(0) | int,
+              'plateau_c': v.get('heater_bed/target', 0) | float(0) | round(0) | int,
+              'caisson': v.get('heater_generic Chauffage/temperature', 0) | float(0) | round(0) | int,
+              'caisson_c': v.get('heater_generic Chauffage/target', 0) | float(0) | round(0) | int,
+              'lumiere': 1 if v.get('output_pin ENCLOSURE_LIGHT/value', 0) | float(0) > 0 else 0,
+              'filtration': 1 if v.get('controller_fan FILTRATION_CAISSON/speed', 0) | float(0) > 0 else 0,
+              'chauffage': 1 if v.get('output_pin ALIM_CHAUFFAGE/value', 0) | float(0) > 0 else 0,
+              'carte_mere': 1 if is_state('switch.prise_zigbee_1', 'on') else 0,
+              'vignette': ('http://192.168.1.30/server/files/gcodes/.thumbs/'
+                           ~ ((f | regex_replace('\\.gcode$', '')) ~ '-300x300.png') | urlencode) if f else ''} | tojson }}
+
+- id: '1792200000024'
+  alias: Écran · imprimante · commandes
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/imprimante/set.
+    {"action":"allumer|eteindre"} -> script.allumer_imprimante / script.eteindre_imprimante (arrêt propre, prise coupée après) ;
+    {"action":"pause_reprise|arreter|origine"} ; {"action":"lancer","fichier":"x.gcode"} ;
+    {"action":"consignes","buse":235,"plateau":70,"caisson":30} (M104 / M140 / M141) ;
+    {"action":"inter","nom":"lumiere|filtration|chauffage|carte_mere","on":0|1}.
+  mode: queued
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/imprimante/set
+  conditions:
+    - condition: template
+      value_template: >-
+        {% set j = trigger.payload_json | default({}) %}
+        {{ j is mapping and (j.get('action') in ['allumer', 'eteindre', 'pause_reprise', 'arreter', 'origine']
+           or (j.get('action') == 'lancer' and j.get('fichier') is string and j.fichier | length > 0)
+           or j.get('action') == 'consignes'
+           or (j.get('action') == 'inter' and j.get('nom') in ['lumiere', 'filtration', 'chauffage', 'carte_mere'] and j.get('on') in [0, 1])) }}
+  variables:
+    j: "{{ trigger.payload_json }}"
+    imprime: "{{ (state_attr('sensor.ecran_etat_klipper', 'v') or {}).get('print_stats/state') }}"
+  actions:
+    - choose:
+        - conditions: "{{ j.action in ['allumer', 'eteindre'] }}"
+          sequence:
+            - action: script.turn_on
+              target: {entity_id: "{{ 'script.allumer_imprimante' if j.action == 'allumer' else 'script.eteindre_imprimante' }}"}
+        - conditions: "{{ j.action == 'inter' and j.nom == 'carte_mere' }}"
+          sequence:
+            - action: "switch.turn_{{ 'on' if j.on == 1 else 'off' }}"
+              target: {entity_id: switch.prise_zigbee_1}
+      default:
+        # tout le reste va à Klipper par l'API MQTT de Moonraker
+        - variables:
+            requete: >-
+              {% set g = none %}{% set m = 'printer.gcode.script' %}{% set prm = {} %}
+              {% if j.action == 'pause_reprise' %}{% set m = 'printer.print.resume' if imprime == 'paused' else 'printer.print.pause' %}
+              {% elif j.action == 'arreter' %}{% set m = 'printer.print.cancel' %}
+              {% elif j.action == 'lancer' %}{% set m = 'printer.print.start' %}{% set prm = {'filename': j.fichier} %}
+              {% elif j.action == 'origine' %}{% set prm = {'script': 'G28'} %}
+              {% elif j.action == 'consignes' %}
+                {% set l = [] %}
+                {% if j.get('buse') is number %}{% set l = l + ['M104 S%d' % ([[j.buse, 0] | max, 300] | min)] %}{% endif %}
+                {% if j.get('plateau') is number %}{% set l = l + ['M140 S%d' % ([[j.plateau, 0] | max, 120] | min)] %}{% endif %}
+                {% if j.get('caisson') is number %}{% set l = l + ['M141 S%d' % ([[j.caisson, 0] | max, 60] | min)] %}{% endif %}
+                {% set prm = {'script': l | join('\n')} %}
+              {% elif j.action == 'inter' %}
+                {% set prm = {'script': {'lumiere': 'SET_PIN PIN=ENCLOSURE_LIGHT VALUE=%d',
+                                         'chauffage': 'SET_PIN PIN=ALIM_CHAUFFAGE VALUE=%d',
+                                         'filtration': 'SET_FAN_SPEED FAN=FILTRATION_CAISSON SPEED=%d'}[j.nom] % j.on} %}
+              {% endif %}
+              {{ {'jsonrpc': '2.0', 'method': m, 'params': prm, 'id': now().timestamp() | int} }}
+        - condition: template
+          value_template: "{{ requete.method != 'printer.gcode.script' or requete.params.get('script', '') != '' }}"
+        - action: mqtt.publish
+          data:
+            topic: CR10SPRO/moonraker/api/request
+            payload: "{{ requete | tojson }}"

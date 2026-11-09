@@ -1,0 +1,96 @@
+# 24/10/2026 : PROPOSITION (pas encore dans HA) — chaîne moOde et ampli pour la page Musique (contrat dashboard_guition).
+# À ajouter à la fin de votre automations.yaml (sauvegardez avant, rechargez les automatisations ;
+# vérifier le message retenu en lecture seule). La musique elle-même passe directement par l'API de Music Assistant.
+# Les automatisations 1791000000185 / 190 (dashboard/moode, dashboard/ampli) restent pour les écrans de production.
+
+- id: '1792200000026'
+  alias: Écran · musique · chaîne moOde et ampli
+  description: >-
+    Contrat dashboard_guition. État retenu dashboard_guition/musique/etat {"moode": "eteint|arret|demarrage|pret", "ampli": 0|1} :
+    eteint = prise coupée ; arret = script.moode_arret en cours (la prise reste allumée ~30 s) ; demarrage = prise allumée,
+    lecteur pas encore dans Music Assistant (65 à 90 s mesurés le 10/10) ; pret = lecteur disponible dans MA.
+    ampli = puissance de la prise moOde (qui alimente l'ampli) > 10 W (24/10).
+    Commandes dashboard_guition/musique/set : {"action":"moode","on":0|1} -> switch.chaine_moode (arrêt TOUJOURS par
+    script.moode_arret ; une mise en marche demandée pendant l'arrêt attend sa fin) ; {"action":"ampli","on":0|1} ->
+    script.ampli_onkyo_marche|arret ; {"action":"entree","n":1|2|3} -> script.ampli_onkyo_code.
+  mode: queued
+  max: 5
+  triggers:
+    - trigger: state
+      entity_id: [switch.prise_moode, script.moode_arret]
+      not_to: [unknown, unavailable]
+      id: etat
+    - trigger: state # disponible ou pas dans MA (lecture / pause ne changent pas l'état publié, mais coûtent un message de 40 o)
+      entity_id: media_player.moode
+      id: etat
+    - trigger: numeric_state
+      entity_id: sensor.prise_zigbee_2_power
+      above: 10
+      id: etat
+    - trigger: numeric_state
+      entity_id: sensor.prise_zigbee_2_power
+      below: 10
+      id: etat
+    - trigger: homeassistant
+      event: start
+      id: etat
+    - trigger: mqtt
+      topic: dashboard_guition/musique/set
+      id: commande
+  variables:
+    j: >-
+      {{ trigger.payload_json if trigger.id | default('') == 'commande' and trigger.payload_json is defined
+         and trigger.payload_json is mapping else {} }}
+  actions:
+    - choose:
+        - conditions: "{{ j.get('action') == 'moode' and j.get('on') in [0, 1] }}"
+          sequence:
+            - if: "{{ j.on == 1 }}"
+              then:
+                - wait_template: "{{ is_state('script.moode_arret', 'off') }}"
+                  timeout: "00:02:00"
+                - action: switch.turn_on
+                  target: {entity_id: switch.chaine_moode}
+              else:
+                - action: switch.turn_off
+                  target: {entity_id: switch.chaine_moode}
+        - conditions: "{{ j.get('action') == 'ampli' and j.get('on') in [0, 1] }}"
+          sequence:
+            - action: script.turn_on
+              target:
+                entity_id: "{{ 'script.ampli_onkyo_marche' if j.on == 1 else 'script.ampli_onkyo_arret' }}"
+        - conditions: "{{ j.get('action') == 'entree' and j.get('n') in [1, 2, 3] }}"
+          sequence:
+            - action: script.turn_on
+              target: {entity_id: script.ampli_onkyo_code}
+              data:
+                variables: {code: "entree{{ j.n }}"}
+        - conditions: "{{ trigger.id | default('etat') == 'etat' }}" # lancée à la main : publie l'état
+          sequence:
+            - action: mqtt.publish
+              data:
+                topic: dashboard_guition/musique/etat
+                retain: true
+                payload: >-
+                  {% set m = 'arret' if is_state('script.moode_arret', 'on')
+                     else 'eteint' if not is_state('switch.prise_moode', 'on')
+                     else 'pret' if states('media_player.moode') not in ['unavailable', 'unknown']
+                     else 'demarrage' %}
+                  {{ {'moode': m, 'ampli': 1 if states('sensor.prise_zigbee_2_power') | float(0) > 10 else 0} | to_json }}
+
+- id: '1792200000027'
+  alias: moOde · extinction après 1 h sans musique
+  description: >-
+    24/10/2026 (retour d'usage) : chaîne moOde allumée, rien ne joue depuis 1 h (dans Music Assistant) -> arrêt propre par
+    switch.chaine_moode (script.moode_arret : lecteur, puis ampli et prise). Compte aussi un moOde qui n'a jamais
+    démarré (lecteur absent de MA).
+  mode: single
+  triggers:
+    - trigger: template
+      value_template: >-
+        {{ is_state('switch.prise_moode', 'on') and not is_state('media_player.moode', 'playing')
+           and is_state('script.moode_arret', 'off') }}
+      for: "01:00:00"
+  actions:
+    - action: switch.turn_off
+      target: {entity_id: switch.chaine_moode}

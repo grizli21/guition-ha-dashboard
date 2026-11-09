@@ -1,0 +1,35 @@
+# 23/10/2026 : PROPOSITION (pas encore dans HA) — état de Klipper pour la page Imprimante des écrans (contrat dashboard_guition).
+# Moonraker publie déjà tout l'état de Klipper sur le broker (CR10SPRO/klipper/state/<objet>/<attribut>, retenus, une valeur
+# par sujet, {"eventtime":…, "value":…}) et son statut (CR10SPRO/moonraker/status {"server":"online|offline"}).
+# Un SEUL capteur modèle les écoute et garde les valeurs utiles dans un attribut (les températures changent chaque
+# seconde : exclu du recorder, exclusion active au prochain redémarrage de HA).
+# À insérer dans votre configuration.yaml, dans les blocs EXISTANTS (template:, recorder:).
+
+# ---- 1) template: (à la fin, après l'historique du poêle)
+  - trigger:
+      - trigger: mqtt
+        topic: "CR10SPRO/klipper/state/#"
+      - trigger: mqtt
+        topic: CR10SPRO/moonraker/status
+    sensor:
+      - name: Ecran etat Klipper
+        unique_id: ecran_etat_klipper
+        # état = statut de Moonraker (online / offline), attribut v = dernières valeurs de Klipper retenues
+        state: >-
+          {% if trigger.topic == 'CR10SPRO/moonraker/status' %}{{ (trigger.payload_json | default({})).get('server', 'offline') }}
+          {% else %}{{ this.state if this.state in ['online', 'offline'] else 'online' }}{% endif %}
+        attributes:
+          v: >-
+            {% set cles = ['print_stats/state', 'print_stats/filename', 'print_stats/print_duration', 'print_stats/info',
+                           'display_status/progress', 'extruder/temperature', 'extruder/target', 'heater_bed/temperature',
+                           'heater_bed/target', 'heater_generic Chauffage/temperature', 'heater_generic Chauffage/target',
+                           'output_pin ENCLOSURE_LIGHT/value', 'output_pin ALIM_CHAUFFAGE/value',
+                           'controller_fan FILTRATION_CAISSON/speed'] %}
+            {% set k = trigger.topic.replace('CR10SPRO/klipper/state/', '') %}
+            {% set prec = this.attributes.get('v', {}) %}
+            {% if k in cles and trigger.payload_json is defined and trigger.payload_json is mapping %}
+              {{ dict(prec, **{k: trigger.payload_json.get('value')}) }}
+            {% else %}{{ prec }}{% endif %}
+
+# ---- 2) recorder: exclude: entities: (liste existante)
+      - sensor.ecran_etat_klipper

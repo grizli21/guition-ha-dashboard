@@ -1,0 +1,122 @@
+# 23/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour les lumières.
+# À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
+# puis automation.reload ; vérifier les messages retenus en lecture seule). Aucune commande de test sur …/set.
+# Les anciennes 1791000000181 / 182 (dashboard/lumieres/…, 8 lampes) restent en place pour l'ancien firmware.
+# Nom et pièce : ici (renommer une lampe = changer cette liste, sans reflasher l'écran) ; « couleur » = modes de l'entité.
+
+- id: '1792200000021'
+  alias: Écran · lumières · état
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : dashboard_guition/lumieres/<id>/etat, retenu,
+    {nom, piece, couleur 0|1, on, en_ligne} + si allumée {lum %, mode couleur|blanc, teinte 0-359, sat 0-100, kelvin}.
+    Au changement d'une lampe :
+    elle seule ; au démarrage de HA : toutes.
+  mode: queued
+  max: 20
+  triggers:
+    - trigger: state
+      entity_id:
+        - light.yeelight_lampe_1
+        - light.yeelight_lampe_2
+        - light.yeelight_lampe_3
+        - light.lampe_fenetre
+        - light.globe_lunaire
+        - light.bandeau_atelier
+        - light.ampoule_couleur_livarno
+        - light.ampoule_couleur_ledvance
+        - light.bandeau_bureau
+        - light.degagement_lampe_de_bureau
+        - light.yeelight_bslamp1
+    - trigger: homeassistant
+      event: start
+  variables:
+    lampes:
+      lampadaire_1: {e: light.yeelight_lampe_1, nom: Lampadaire 1, piece: Séjour}
+      lampadaire_2: {e: light.yeelight_lampe_2, nom: Lampadaire 2, piece: Séjour}
+      lampadaire_3: {e: light.yeelight_lampe_3, nom: Lampadaire 3, piece: Séjour}
+      lampe_fenetre: {e: light.lampe_fenetre, nom: Lampe fenêtre, piece: Séjour}
+      globe_lunaire: {e: light.globe_lunaire, nom: Globe lunaire, piece: Séjour}
+      bandeau_wled: {e: light.bandeau_atelier, nom: Bandeau WLED, piece: Atelier}
+      bandeau_lidl: {e: light.ampoule_couleur_livarno, nom: Bandeau Lidl, piece: Atelier}
+      panneau_led: {e: light.ampoule_couleur_ledvance, nom: Panneau LED, piece: Atelier}
+      bandeau_bureau: {e: light.bandeau_bureau, nom: Bandeau bureau, piece: Bureau}
+      lampe_bureau: {e: light.degagement_lampe_de_bureau, nom: Lampe de bureau, piece: Bureau}
+      chevet: {e: light.yeelight_bslamp1, nom: Chevet, piece: Chambre}
+  actions:
+    - repeat:
+        for_each: >-
+          {% set ns = namespace(l=[]) %}
+          {% for k, v in lampes.items() if trigger.platform != 'state' or v.e == trigger.entity_id %}
+            {% set ns.l = ns.l + [{'key': k, 'value': v}] %}
+          {% endfor %}
+          {{ ns.l }}
+        sequence:
+          - action: mqtt.publish
+            data:
+              topic: "dashboard_guition/lumieres/{{ repeat.item.key }}/etat"
+              retain: true
+              payload: >-
+                {% set e = repeat.item.value.e %}
+                {% set etat = states(e) %}
+                {% set modes = state_attr(e, 'supported_color_modes') or [] %}
+                {% set d = {'nom': repeat.item.value.nom, 'piece': repeat.item.value.piece,
+                            'couleur': 1 if modes | select('in', ['hs', 'rgb', 'rgbw', 'rgbww', 'xy']) | list else 0,
+                            'on': 1 if etat == 'on' else 0, 'en_ligne': 0 if etat in ['unavailable', 'unknown'] else 1} %}
+                {% if etat == 'on' %}
+                  {% set hs = state_attr(e, 'hs_color') or [0, 0] %}
+                  {% set k = state_attr(e, 'color_temp_kelvin') %}
+                  {% set d = dict(d, lum=((state_attr(e, 'brightness') | int(255)) * 100 / 255) | round(0) | int,
+                                  mode='blanc' if state_attr(e, 'color_mode') == 'color_temp' else 'couleur',
+                                  teinte=hs[0] | round(0) | int, sat=hs[1] | round(0) | int) %}
+                  {% if k %}{% set d = dict(d, kelvin=k | int) %}{% endif %}
+                {% endif %}
+                {{ d | tojson }}
+
+- id: '1792200000022'
+  alias: Écran · lumières · commandes
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/lumieres/<id>/set {"action":"regler", ...} : "on":0 éteint ; sinon
+    allume avec "lum" (1-100), et "teinte"+"sat" (couleur) OU "kelvin" (blanc, borné aux limites de la lampe ; HA
+    le convertit en couleur pour un bandeau RGBW).
+  mode: queued
+  max: 20
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/lumieres/+/set
+  variables:
+    lampes:
+      lampadaire_1: {e: light.yeelight_lampe_1, nom: Lampadaire 1, piece: Séjour}
+      lampadaire_2: {e: light.yeelight_lampe_2, nom: Lampadaire 2, piece: Séjour}
+      lampadaire_3: {e: light.yeelight_lampe_3, nom: Lampadaire 3, piece: Séjour}
+      lampe_fenetre: {e: light.lampe_fenetre, nom: Lampe fenêtre, piece: Séjour}
+      globe_lunaire: {e: light.globe_lunaire, nom: Globe lunaire, piece: Séjour}
+      bandeau_wled: {e: light.bandeau_atelier, nom: Bandeau WLED, piece: Atelier}
+      bandeau_lidl: {e: light.ampoule_couleur_livarno, nom: Bandeau Lidl, piece: Atelier}
+      panneau_led: {e: light.ampoule_couleur_ledvance, nom: Panneau LED, piece: Atelier}
+      bandeau_bureau: {e: light.bandeau_bureau, nom: Bandeau bureau, piece: Bureau}
+      lampe_bureau: {e: light.degagement_lampe_de_bureau, nom: Lampe de bureau, piece: Bureau}
+      chevet: {e: light.yeelight_bslamp1, nom: Chevet, piece: Chambre}
+    e: "{{ lampes.get(trigger.topic.split('/')[2], {}).get('e', '') }}"
+    j: "{{ trigger.payload_json if trigger.payload_json is defined and trigger.payload_json is mapping else {} }}"
+  conditions:
+    - condition: template
+      value_template: "{{ e != '' and j.get('action') == 'regler' }}"
+  actions:
+    - if: "{{ j.get('on') == 0 }}"
+      then:
+        - action: light.turn_off
+          target: {entity_id: "{{ e }}"}
+      else:
+        - action: light.turn_on
+          target: {entity_id: "{{ e }}"}
+          data: >-
+            {% set d = {} %}
+            {% if j.get('lum') is number %}{% set d = dict(d, brightness_pct=[[j.lum | int, 1] | max, 100] | min) %}{% endif %}
+            {% if j.get('teinte') is number and j.get('sat') is number %}
+              {% set d = dict(d, hs_color=[[[j.teinte, 0] | max, 359] | min, [[j.sat, 0] | max, 100] | min]) %}
+            {% elif j.get('kelvin') is number %}
+              {% set lo = state_attr(e, 'min_color_temp_kelvin') | int(2000) %}
+              {% set hi = state_attr(e, 'max_color_temp_kelvin') | int(6500) %}
+              {% set d = dict(d, color_temp_kelvin=[[j.kelvin | int, lo] | max, hi] | min) %}
+            {% endif %}
+            {{ d }}

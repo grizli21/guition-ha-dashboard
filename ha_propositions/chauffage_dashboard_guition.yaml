@@ -1,0 +1,117 @@
+# 22/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour le chauffage.
+# À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
+# puis automation.reload ; vérifier les 6 messages retenus en lecture seule). Aucune commande de test sur …/set.
+
+- id: '1792200000001'
+  alias: Écran · thermostats · état
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : état retenu de chaque pièce sur
+    dashboard_guition/thermostats/<pièce>/etat {temp, hum, consigne, mode, chauffe, batterie, signal}.
+    mode : arret | horsgel | eco | confort | manuel (préréglage réel du thermostat).
+  mode: queued
+  max: 3
+  triggers:
+    - trigger: state
+      entity_id: [climate.cuisine, climate.sejour, climate.chambre_1, climate.chambre_2, climate.salle_de_bain]
+    - trigger: state
+      entity_id: [sensor.temperature_cuisine, sensor.temperature_sejour, sensor.temperature_chambre_1, sensor.temperature_chambre_2, sensor.temperature_salle_de_bain]
+    - trigger: homeassistant
+      event: start
+    - trigger: time_pattern
+      minutes: /5
+  actions:
+    - repeat:
+        for_each:
+          - {piece: cuisine,  clim: climate.cuisine,       sonde: sensor.temperature_cuisine,       humi: sensor.humidite_cuisine,       bat: sensor.sonde_cuisine}
+          - {piece: sejour,   clim: climate.sejour,        sonde: sensor.temperature_sejour,        humi: sensor.humidite_sejour,        bat: sensor.sonde_sejour}
+          - {piece: chambre1, clim: climate.chambre_1,     sonde: sensor.temperature_chambre_1,     humi: sensor.humidite_chambre_1,     bat: sensor.sonde_chambre_1}
+          - {piece: chambre2, clim: climate.chambre_2,     sonde: sensor.temperature_chambre_2,     humi: sensor.humidite_chambre_2,     bat: ""}
+          - {piece: sdb,      clim: climate.salle_de_bain, sonde: sensor.temperature_salle_de_bain, humi: sensor.humidite_salle_de_bain, bat: sensor.sonde_salle_de_bain}
+        sequence:
+          - variables:
+              c: "{{ repeat.item.clim }}"
+              temp: "{{ states(repeat.item.sonde) | float(0) | round(1) }}"
+          - condition: template            # sonde pas encore lue : on garde le dernier message retenu
+            value_template: "{{ temp | float(0) != 0 }}"
+          - action: mqtt.publish
+            data:
+              topic: "dashboard_guition/thermostats/{{ repeat.item.piece }}/etat"
+              retain: true
+              payload: >-
+                {{ {'temp': temp,
+                    'hum': states(repeat.item.humi) | float(0) | round(1),
+                    'consigne': state_attr(c, 'temperature') | float(0),
+                    'mode': 'arret' if is_state(c, 'off') else
+                            {'away': 'horsgel', 'eco': 'eco', 'comfort': 'confort'}.get(state_attr(c, 'preset_mode'), 'manuel'),
+                    'chauffe': 1 if is_state_attr(c, 'hvac_action', 'heating') else 0,
+                    'batterie': states(repeat.item.bat ~ '_batterie') | int(100),
+                    'signal': states(repeat.item.bat ~ '_signal') | int(255)} | tojson }}
+
+- id: '1792200000002'
+  alias: Écran · thermostats · commandes
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/thermostats/<pièce>/set.
+    mode arret -> chauffage coupé ; horsgel / eco / confort -> préréglage away / eco / comfort ;
+    consigne -> température libre bornée 7-24 °C (chauffage allumé).
+  mode: queued
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/thermostats/+/set
+  conditions:
+    - condition: template
+      value_template: >-
+        {% set j = trigger.payload_json | default({}) %}
+        {{ trigger.topic.split('/')[2] in ['cuisine', 'sejour', 'chambre1', 'chambre2', 'sdb']
+           and j.get('action') == 'regler'
+           and (j.get('mode') in ['arret', 'horsgel', 'eco', 'confort'] or j.get('consigne') is number) }}
+  actions:
+    - variables:
+        j: "{{ trigger.payload_json }}"
+        clim: >-
+          {{ {'cuisine': 'climate.cuisine', 'sejour': 'climate.sejour', 'chambre1': 'climate.chambre_1',
+              'chambre2': 'climate.chambre_2', 'sdb': 'climate.salle_de_bain'}[trigger.topic.split('/')[2]] }}
+    - choose:
+        - conditions: "{{ j.get('mode') == 'arret' }}"
+          sequence:
+            - action: climate.set_hvac_mode
+              target: {entity_id: "{{ clim }}"}
+              data: {hvac_mode: 'off'}
+        - conditions: "{{ j.get('mode') in ['horsgel', 'eco', 'confort'] }}"
+          sequence:
+            - action: climate.set_hvac_mode
+              target: {entity_id: "{{ clim }}"}
+              data: {hvac_mode: heat}
+            - action: climate.set_preset_mode
+              target: {entity_id: "{{ clim }}"}
+              data: {preset_mode: "{{ {'horsgel': 'away', 'eco': 'eco', 'confort': 'comfort'}[j.mode] }}"}
+      default:
+        - action: climate.set_temperature
+          target: {entity_id: "{{ clim }}"}
+          data: {temperature: "{{ [[j.consigne | float(19), 7] | max, 24] | min }}", hvac_mode: heat}
+
+- id: '1792200000003'
+  alias: Écran · maison · état
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/maison/etat {phase, presence, ext_temp, ext_hum, maj}.
+    Sans la consommation ni l'eau (plus affichées) : publié seulement aux vrais changements.
+  mode: single
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id: [sensor.openweathermap_temperature, sensor.openweathermap_humidite, person.exemple]
+    - trigger: state
+      entity_id: sun.sun
+      to: ~
+    - trigger: homeassistant
+      event: start
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/maison/etat
+        retain: true
+        payload: >-
+          {{ {'phase': 'jour' if is_state('sun.sun', 'above_horizon') else 'nuit',
+              'presence': 1 if is_state('person.exemple', 'home') else 0,
+              'ext_temp': states('sensor.openweathermap_temperature') | float(0) | round(1),
+              'ext_hum': states('sensor.openweathermap_humidite') | float(0) | round(0) | int,
+              'maj': as_timestamp(now()) | int} | tojson }}

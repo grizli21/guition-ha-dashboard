@@ -1,0 +1,129 @@
+  # 24/10/2026 : historique 24 h du CHAUFFAGE pour les écrans (contrat dashboard_guition, page Graphe) : 288 points
+  # (un toutes les 5 min, le plus récent en dernier) ; t / c = température / consigne en dixièmes de °C, -999 = pas de
+  # mesure (ou chauffage coupé pour la consigne) ; h = humidité en %, 0 = pas de mesure ; ch = 1 si le radiateur a chauffé
+  # À UN MOMENT des 5 min (vu à chaque changement de hvac_action, pas seulement au relevé). État = horodatage du dernier
+  # point (les relevés manqués pendant un arrêt de HA sont comblés par des trous). Exclus du recorder (attributs lourds).
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/5"
+        id: releve
+      - trigger: state
+        entity_id: climate.cuisine
+        attribute: hvac_action
+        id: chauffe
+    sensor:
+      - name: Ecran historique chauffage cuisine
+        unique_id: ecran_historique_chauffage_cuisine
+        state: "{{ now().timestamp() | int if trigger.id == 'releve' else this.state }}"
+        attributes:
+          t: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('t', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('t', []) | list %}{% set s = states('sensor.temperature_cuisine') %}{% set v = (s | float * 10) | round(0) | int if s | is_number else -999 %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          c: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('c', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('c', []) | list %}{% set k = state_attr('climate.cuisine', 'temperature') %}{% set v = -999 if is_state('climate.cuisine', 'off') or k is none else (k | float * 10) | round(0) | int %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          h: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('h', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('h', []) | list %}{% set s = states('sensor.humidite_cuisine') %}{% set v = s | float | round(0) | int if s | is_number else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          ch: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('ch', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('ch', []) | list %}{% set v = 1 if this.attributes.get('vue', false) or is_state_attr('climate.cuisine', 'hvac_action', 'heating') else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          vue: "{{ (this.attributes.get('vue', false) or is_state_attr('climate.cuisine', 'hvac_action', 'heating')) if trigger.id == 'chauffe' else is_state_attr('climate.cuisine', 'hvac_action', 'heating') }}"
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/5"
+        id: releve
+      - trigger: state
+        entity_id: climate.sejour
+        attribute: hvac_action
+        id: chauffe
+    sensor:
+      - name: Ecran historique chauffage sejour
+        unique_id: ecran_historique_chauffage_sejour
+        state: "{{ now().timestamp() | int if trigger.id == 'releve' else this.state }}"
+        attributes:
+          t: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('t', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('t', []) | list %}{% set s = states('sensor.temperature_sejour') %}{% set v = (s | float * 10) | round(0) | int if s | is_number else -999 %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          c: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('c', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('c', []) | list %}{% set k = state_attr('climate.sejour', 'temperature') %}{% set v = -999 if is_state('climate.sejour', 'off') or k is none else (k | float * 10) | round(0) | int %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          h: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('h', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('h', []) | list %}{% set s = states('sensor.humidite_sejour') %}{% set v = s | float | round(0) | int if s | is_number else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          ch: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('ch', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('ch', []) | list %}{% set v = 1 if this.attributes.get('vue', false) or is_state_attr('climate.sejour', 'hvac_action', 'heating') else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          vue: "{{ (this.attributes.get('vue', false) or is_state_attr('climate.sejour', 'hvac_action', 'heating')) if trigger.id == 'chauffe' else is_state_attr('climate.sejour', 'hvac_action', 'heating') }}"
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/5"
+        id: releve
+      - trigger: state
+        entity_id: climate.chambre_1
+        attribute: hvac_action
+        id: chauffe
+    sensor:
+      - name: Ecran historique chauffage chambre1
+        unique_id: ecran_historique_chauffage_chambre1
+        state: "{{ now().timestamp() | int if trigger.id == 'releve' else this.state }}"
+        attributes:
+          t: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('t', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('t', []) | list %}{% set s = states('sensor.temperature_chambre_1') %}{% set v = (s | float * 10) | round(0) | int if s | is_number else -999 %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          c: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('c', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('c', []) | list %}{% set k = state_attr('climate.chambre_1', 'temperature') %}{% set v = -999 if is_state('climate.chambre_1', 'off') or k is none else (k | float * 10) | round(0) | int %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          h: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('h', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('h', []) | list %}{% set s = states('sensor.humidite_chambre_1') %}{% set v = s | float | round(0) | int if s | is_number else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          ch: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('ch', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('ch', []) | list %}{% set v = 1 if this.attributes.get('vue', false) or is_state_attr('climate.chambre_1', 'hvac_action', 'heating') else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          vue: "{{ (this.attributes.get('vue', false) or is_state_attr('climate.chambre_1', 'hvac_action', 'heating')) if trigger.id == 'chauffe' else is_state_attr('climate.chambre_1', 'hvac_action', 'heating') }}"
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/5"
+        id: releve
+      - trigger: state
+        entity_id: climate.chambre_2
+        attribute: hvac_action
+        id: chauffe
+    sensor:
+      - name: Ecran historique chauffage chambre2
+        unique_id: ecran_historique_chauffage_chambre2
+        state: "{{ now().timestamp() | int if trigger.id == 'releve' else this.state }}"
+        attributes:
+          t: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('t', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('t', []) | list %}{% set s = states('sensor.temperature_chambre_2') %}{% set v = (s | float * 10) | round(0) | int if s | is_number else -999 %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          c: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('c', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('c', []) | list %}{% set k = state_attr('climate.chambre_2', 'temperature') %}{% set v = -999 if is_state('climate.chambre_2', 'off') or k is none else (k | float * 10) | round(0) | int %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          h: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('h', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('h', []) | list %}{% set s = states('sensor.humidite_chambre_2') %}{% set v = s | float | round(0) | int if s | is_number else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          ch: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('ch', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('ch', []) | list %}{% set v = 1 if this.attributes.get('vue', false) or is_state_attr('climate.chambre_2', 'hvac_action', 'heating') else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          vue: "{{ (this.attributes.get('vue', false) or is_state_attr('climate.chambre_2', 'hvac_action', 'heating')) if trigger.id == 'chauffe' else is_state_attr('climate.chambre_2', 'hvac_action', 'heating') }}"
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/5"
+        id: releve
+      - trigger: state
+        entity_id: climate.salle_de_bain
+        attribute: hvac_action
+        id: chauffe
+    sensor:
+      - name: Ecran historique chauffage sdb
+        unique_id: ecran_historique_chauffage_sdb
+        state: "{{ now().timestamp() | int if trigger.id == 'releve' else this.state }}"
+        attributes:
+          t: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('t', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('t', []) | list %}{% set s = states('sensor.temperature_salle_de_bain') %}{% set v = (s | float * 10) | round(0) | int if s | is_number else -999 %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          c: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('c', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('c', []) | list %}{% set k = state_attr('climate.salle_de_bain', 'temperature') %}{% set v = -999 if is_state('climate.salle_de_bain', 'off') or k is none else (k | float * 10) | round(0) | int %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          h: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('h', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('h', []) | list %}{% set s = states('sensor.humidite_salle_de_bain') %}{% set v = s | float | round(0) | int if s | is_number else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          ch: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('ch', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('ch', []) | list %}{% set v = 1 if this.attributes.get('vue', false) or is_state_attr('climate.salle_de_bain', 'hvac_action', 'heating') else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          vue: "{{ (this.attributes.get('vue', false) or is_state_attr('climate.salle_de_bain', 'hvac_action', 'heating')) if trigger.id == 'chauffe' else is_state_attr('climate.salle_de_bain', 'hvac_action', 'heating') }}"
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/5"
+    sensor:
+      - name: Ecran historique exterieur
+        unique_id: ecran_historique_exterieur
+        state: "{{ now().timestamp() | int }}"
+        attributes:
+          # sonde nord (locale) ; OpenWeatherMap en secours ; dixièmes de °C, -999 = pas de mesure
+          t: >-
+            {% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('t', []) | list %}
+            {% set n = states('sensor.temperature_nord') %}{% set o = states('sensor.openweathermap_temperature') %}
+            {% set v = (n | float * 10) | round(0) | int if n | is_number else ((o | float * 10) | round(0) | int if o | is_number else -999) %}
+            {{ (prec + [-999] * manques + [v])[-288:] }}

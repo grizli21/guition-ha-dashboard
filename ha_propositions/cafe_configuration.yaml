@@ -1,0 +1,35 @@
+# 23/10/2026 : PROPOSITION (pas encore dans HA) — aides HA pour la page Café des écrans (contrat dashboard_guition).
+# À insérer dans votre configuration.yaml, dans les blocs EXISTANTS
+# (input_boolean:, input_datetime:, input_number:, input_text: ; pas de 2e clé du même nom). Puis rechargement de ces 4
+# domaines (pas de redémarrage). Le café programmé existe déjà (cafe_programme / cafe_programme_actif, auto 1791000000186).
+
+# ---- input_boolean: (après cafe_programme_actif)
+  # 23/10/2026 : bouilloire programmée depuis les écrans (ON = chauffe à input_datetime.bouilloire_programme,
+  # à la température input_number.bouilloire_programme_temp ; automatisation 1792200000017). Une seule fois : remis à OFF.
+  bouilloire_programme_actif:
+    name: Bouilloire programmée
+    icon: mdi:kettle-outline
+
+# ---- input_datetime: (après cafe_programme)
+  bouilloire_programme:
+    name: Heure de la bouilloire programmée
+    has_date: true
+    has_time: true
+    icon: mdi:kettle
+
+# ---- input_number: (n'importe où dans le bloc)
+  # 23/10/2026 : température de la bouilloire programmée (boutons de la bouilloire : 50 / 70 / 80 / 90 / 100 °C)
+  bouilloire_programme_temp:
+    name: Bouilloire programmée - température
+    min: 50
+    max: 100
+    step: 10
+    unit_of_measurement: "°C"
+    icon: mdi:thermometer
+
+# ---- input_text: (n'importe où dans le bloc)
+  # 23/10/2026 : 2 dernières heures de café programmées depuis un écran (minutes depuis minuit, « 405,435 ») :
+  # raccourcis de la page Café, les mêmes sur tous les écrans.
+  cafe_recentes:
+    name: Café - heures récentes
+    max: 32

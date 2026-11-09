@@ -1,0 +1,94 @@
+# 24/10/2026 : réglages de la maison et liste des appareils pour les pages Réglages / Infos (contrat dashboard_guition).
+# Ajoutées à automations.yaml le 24/10. Étiquette HA « Écran : ignorer » (ecran_ignorer) créée le 24/10 :
+# On la pose sur les appareils qui s'éteignent normalement (prise coupée…).
+
+- id: '1792200000029'
+  alias: Écran · maison · réglages (carillon, éclairage terrasse)
+  description: >-
+    Contrat dashboard_guition. État retenu dashboard_guition/maison/reglages {"melodie":"Mario", "melodies":[…] (liste de
+    input_select.melodie_sonnette), "volume":40 (number.carillon_volume), "terrasse_porte":1, "terrasse_mouvement":1 (les deux
+    automatisations d'allumage temporisé, actives ou non)}. Commandes dashboard_guition/maison/reglages/set :
+    {"action":"melodie","nom":"Simpsons"}, {"action":"volume","volume":60}, {"action":"terrasse_porte|terrasse_mouvement","on":0|1}.
+  mode: queued
+  max: 5
+  triggers:
+    - trigger: state
+      entity_id:
+        - input_select.melodie_sonnette
+        - number.carillon_volume
+        - automation.terrasse_allumage_temporise_a_l_ouverture_de_la_porte_nuit
+        - automation.terrasse_allumage_temporise_sur_mouvement_nuit
+      not_to: [unknown, unavailable]
+      id: etat
+    - trigger: homeassistant
+      event: start
+      id: etat
+    - trigger: mqtt
+      topic: dashboard_guition/maison/reglages/set
+      id: commande
+  variables:
+    j: >-
+      {{ trigger.payload_json if trigger.id | default('') == 'commande' and trigger.payload_json is defined
+         and trigger.payload_json is mapping else {} }}
+    auto_porte: automation.terrasse_allumage_temporise_a_l_ouverture_de_la_porte_nuit
+    auto_mouvement: automation.terrasse_allumage_temporise_sur_mouvement_nuit
+  actions:
+    - choose:
+        - conditions: "{{ j.get('action') == 'melodie' and j.get('nom') in state_attr('input_select.melodie_sonnette', 'options') }}"
+          sequence:
+            - action: input_select.select_option
+              target: {entity_id: input_select.melodie_sonnette}
+              data: {option: "{{ j.nom }}"}
+        - conditions: "{{ j.get('action') == 'volume' and j.get('volume') is number and 0 <= j.volume <= 100 }}"
+          sequence:
+            - action: number.set_value
+              target: {entity_id: number.carillon_volume}
+              data: {value: "{{ j.volume | int }}"}
+        - conditions: "{{ j.get('action') in ['terrasse_porte', 'terrasse_mouvement'] and j.get('on') in [0, 1] }}"
+          sequence:
+            - action: "automation.turn_{{ 'on' if j.on == 1 else 'off' }}"
+              target:
+                entity_id: "{{ auto_porte if j.action == 'terrasse_porte' else auto_mouvement }}"
+        - conditions: "{{ trigger.id | default('etat') == 'etat' }}" # lancée à la main : publie l'état
+          sequence:
+            - action: mqtt.publish
+              data:
+                topic: dashboard_guition/maison/reglages
+                retain: true
+                payload: >-
+                  {{ {'melodie': states('input_select.melodie_sonnette'),
+                      'melodies': state_attr('input_select.melodie_sonnette', 'options'),
+                      'volume': states('number.carillon_volume') | float(0) | round(0) | int,
+                      'terrasse_porte': 1 if is_state(auto_porte, 'on') else 0,
+                      'terrasse_mouvement': 1 if is_state(auto_mouvement, 'on') else 0} | to_json }}
+
+- id: '1792200000030'
+  alias: Écran · maison · liste des appareils
+  description: >-
+    Contrat dashboard_guition. Retenu dashboard_guition/maison/appareils, chaque minute et au démarrage de HA :
+    {"liste":[["Bouilloire","Cuisine",0],…]} = [nom, pièce, en ligne] pour chaque appareil ESPHome / MQTT (Zigbee) de HA,
+    SAUF ceux qui portent l'étiquette « Écran : ignorer » (ecran_ignorer) ; hors ligne = toutes ses entités indisponibles.
+    Hors ligne en tête, puis par pièce. Tableaux plutôt qu'objets : 59 appareils ≈ 2 Ko (tampon de l'écran : 4 Ko).
+  mode: single
+  triggers:
+    - trigger: time_pattern
+      minutes: /1
+    - trigger: homeassistant
+      event: start
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/maison/appareils
+        retain: true
+        payload: >-
+          {% set ignores = label_devices('ecran_ignorer') %}
+          {% set ns = namespace(d=[], l=[]) %}
+          {% for dom in ['esphome', 'mqtt'] %}{% for e in integration_entities(dom) %}{% set d = device_id(e) %}
+            {% if d and d not in ns.d and d not in ignores %}{% set ns.d = ns.d + [d] %}{% endif %}
+          {% endfor %}{% endfor %}
+          {% for d in ns.d %}
+            {% set ents = device_entities(d) %}
+            {% set ok = 1 if ents | select('is_state', 'unavailable') | list | count < ents | count else 0 %}
+            {% set ns.l = ns.l + [[(device_attr(d, 'name_by_user') or device_attr(d, 'name'))[:30], area_name(d) or '', ok]] %}
+          {% endfor %}
+          {{ {'liste': ns.l | sort(attribute='1') | sort(attribute='2')} | to_json }}

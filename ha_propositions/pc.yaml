@@ -1,0 +1,20 @@
+# 24/10/2026 : page PC (contrat dashboard_guition). L'état vient de l'agent du PC lui-même (btop_agent.py, MQTT, compte « pc »),
+# pas de HA ; HA ne fait que réveiller / mettre en veille. Ajoutée à automations.yaml le 24/10.
+
+- id: '1792200000028'
+  alias: Écran · PC · réveil et veille
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/pc/set {"action":"reveiller"} -> switch.eveille_ordi_cachy on (Wake-on-LAN) ;
+    {"action":"veille"} -> switch.eveille_ordi_cachy off (veille habituelle, avec le tour système de l'assistant).
+  mode: single
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/pc/set
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ trigger.payload_json is defined and trigger.payload_json is mapping
+           and trigger.payload_json.get('action') in ['reveiller', 'veille'] }}
+  actions:
+    - action: "switch.turn_{{ 'on' if trigger.payload_json.action == 'reveiller' else 'off' }}"
+      target: {entity_id: switch.eveille_ordi_cachy}

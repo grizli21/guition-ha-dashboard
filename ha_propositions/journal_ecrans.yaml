@@ -1,0 +1,19 @@
+# 24/10/2026 : journal des écrans Guition dans le journal de bord de HA (contrat dashboard_guition §5).
+- id: '1792200000032'
+  alias: Écran · journal dans le journal de bord
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/appareil/<nom>/journal {"texte": "Démarrage (mise sous tension) ·
+    données en 4,2 s", "alerte": 0|1} -> logbook.log au nom « Écran <nom> » (HA horodate). Alerte : préfixe ⚠️.
+  mode: queued
+  max: 20
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/appareil/+/journal
+  conditions:
+    - condition: template
+      value_template: "{{ trigger.payload_json is defined and trigger.payload_json is mapping and (trigger.payload_json.get('texte') or '') | length > 0 }}"
+  actions:
+    - action: logbook.log
+      data:
+        name: "Écran {{ trigger.topic.split('/')[2] }}"
+        message: "{{ '⚠️ ' if trigger.payload_json.get('alerte') else '' }}{{ trigger.payload_json.texte }}"

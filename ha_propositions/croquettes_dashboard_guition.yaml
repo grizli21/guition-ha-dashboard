@@ -1,0 +1,107 @@
+# 22/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour les croquettes de l'animal.
+# À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
+# puis automation.reload ; vérifier le message retenu en lecture seule). Aucune commande de test sur …/set.
+# Les anciennes 1791000000160 / 161 (dashboard/croquettes/etat, /commande) restent en place pour l'ancien firmware.
+
+- id: '1792200000013'
+  alias: Écran · croquettes · état
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : dashboard_guition/croquettes/etat, retenu,
+    {bol, stock, autonomie, vide, repas[4] {h minutes, q g, a 0|1}, jours[7] {g, n} ([0] = aujourd'hui), jour_semaine 0 = lundi}.
+    jours vient de sensor.distributeur_croquettes_historique_7_jours (« g;n|g;n|… », calculé par le distributeur).
+    queued max 2 : toujours une publication APRÈS le dernier changement ; 00:00:30 pour le changement de jour.
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id:
+        - sensor.distributeur_croquettes_bol
+        - sensor.distributeur_croquettes_reservoir
+        - sensor.distributeur_croquettes_autonomie
+        - sensor.distributeur_croquettes_historique_7_jours
+        - binary_sensor.distributeur_croquettes_plus_de_croquettes
+        - number.distributeur_croquettes_repas_1_heure
+        - number.distributeur_croquettes_repas_1_minute
+        - number.distributeur_croquettes_repas_1_quantite
+        - switch.distributeur_croquettes_repas_1_actif
+        - number.distributeur_croquettes_repas_2_heure
+        - number.distributeur_croquettes_repas_2_minute
+        - number.distributeur_croquettes_repas_2_quantite
+        - switch.distributeur_croquettes_repas_2_actif
+        - number.distributeur_croquettes_repas_3_heure
+        - number.distributeur_croquettes_repas_3_minute
+        - number.distributeur_croquettes_repas_3_quantite
+        - switch.distributeur_croquettes_repas_3_actif
+        - number.distributeur_croquettes_repas_4_heure
+        - number.distributeur_croquettes_repas_4_minute
+        - number.distributeur_croquettes_repas_4_quantite
+        - switch.distributeur_croquettes_repas_4_actif
+    - trigger: time
+      at: "00:00:30"
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: template            # distributeur hors ligne : on garde le dernier message retenu
+      value_template: "{{ states('sensor.distributeur_croquettes_bol') | is_number }}"
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/croquettes/etat
+        retain: true
+        payload: >-
+          {% set p = 'distributeur_croquettes_' %}
+          {% set ns = namespace(repas=[], jours=[]) %}
+          {% for i in range(1, 5) %}
+            {% set ns.repas = ns.repas + [{
+              'h': (states('number.' ~ p ~ 'repas_' ~ i ~ '_heure') | int(0)) * 60 + states('number.' ~ p ~ 'repas_' ~ i ~ '_minute') | int(0),
+              'q': states('number.' ~ p ~ 'repas_' ~ i ~ '_quantite') | int(0),
+              'a': 1 if is_state('switch.' ~ p ~ 'repas_' ~ i ~ '_actif', 'on') else 0}] %}
+          {% endfor %}
+          {% for j in states('sensor.' ~ p ~ 'historique_7_jours').split('|') if ';' in j %}
+            {% set ns.jours = ns.jours + [{'g': j.split(';')[0] | float(0) | round(0) | int, 'n': j.split(';')[1] | int(0)}] %}
+          {% endfor %}
+          {{ {'bol': states('sensor.' ~ p ~ 'bol') | float(0) | round(1),
+              'stock': [states('sensor.' ~ p ~ 'reservoir') | float(0) | round(0) | int, 0] | max,
+              'autonomie': [states('sensor.' ~ p ~ 'autonomie') | float(0) | round(0) | int, 0] | max,
+              'vide': 1 if is_state('binary_sensor.' ~ p ~ 'plus_de_croquettes', 'on') else 0,
+              'repas': ns.repas,
+              'jours': ns.jours[:7],
+              'jour_semaine': now().weekday()} | tojson }}
+
+- id: '1792200000014'
+  alias: Écran · croquettes · commandes
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/croquettes/set
+    {"action":"repas","numero":1-4,"h":minutes,"q":g,"a":0|1} | {"action":"servir"} | {"action":"tare"}.
+  mode: queued
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/croquettes/set
+  conditions:
+    - condition: template
+      value_template: >-
+        {% set j = trigger.payload_json | default({}) %}
+        {{ j is mapping and (j.get('action') in ['servir', 'tare']
+           or (j.get('action') == 'repas' and j.get('numero') in [1, 2, 3, 4]
+               and j.get('h') is number and 0 <= j.h < 1440
+               and j.get('q') is number and 0 < j.q <= 100 and j.get('a') in [0, 1])) }}
+  actions:
+    - variables:
+        j: "{{ trigger.payload_json }}"
+    - choose:
+        - conditions: "{{ j.action == 'repas' }}"
+          sequence:
+            - action: esphome.distributeur_croquettes_regler_repas
+              data:
+                numero: "{{ j.numero | int }}"
+                heure: "{{ (j.h | int) // 60 }}"
+                minute: "{{ (j.h | int) % 60 }}"
+                quantite: "{{ j.q | int }}"
+                actif: "{{ j.a == 1 }}"
+        - conditions: "{{ j.action == 'tare' }}"
+          sequence:
+            - action: esphome.distributeur_croquettes_tare
+      default:
+        - action: button.press
+          target: {entity_id: button.distributeur_croquettes_nourrir_maintenant}

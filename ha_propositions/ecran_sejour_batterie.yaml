@@ -1,0 +1,79 @@
+# 26/10/2026 : PROPOSITION (pas encore dans HA) — l'écran du séjour sur batterie, surveillé comme les autres appareils sur
+# batterie (modèle : la station météo e-paper, capteurs MQTT rattachés à un appareil). Source : la santé de l'écran,
+# retenue, dashboard_guition/appareil/sejour/infos (publiée au réveil puis toutes les 60 s ; l'écran dort entre deux) :
+#   {…, "batterie": 78, "tension": 3.92, "en_charge": 0, "debranche": 1792900000}
+# À poser APRÈS accord : sauvegarde, grep des clés (sensor: / binary_sensor: sous mqtt:), contrôle, rechargement MQTT.
+
+# ---------------------------------------------------------------------------------------------------- A. configuration.yaml, mqtt: sensor:
+    # 26/10/2026 : écran du séjour sur batterie (contrat dashboard_guition, santé de l'écran)
+    - name: "Batterie"
+      unique_id: ecran_sejour_batterie
+      default_entity_id: sensor.dashboard_sejour_batterie
+      state_topic: "dashboard_guition/appareil/sejour/infos"
+      value_template: "{{ value_json.batterie }}"
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      device: &dashboard_sejour
+        identifiers: [ecran_guition_sejour]
+        name: "Dashboard séjour"
+        manufacturer: Guition
+        model: "ESP32-S3 4848S040 sur batterie (radar LD2410S)"
+        suggested_area: Séjour
+    - name: "Tension de la batterie"
+      unique_id: ecran_sejour_tension
+      default_entity_id: sensor.dashboard_sejour_tension
+      state_topic: "dashboard_guition/appareil/sejour/infos"
+      value_template: "{{ value_json.tension }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      suggested_display_precision: 2
+      device: *dashboard_sejour
+    - name: "Débranché depuis"
+      unique_id: ecran_sejour_debranche
+      default_entity_id: sensor.dashboard_sejour_debranche
+      state_topic: "dashboard_guition/appareil/sejour/infos"
+      value_template: "{{ (value_json.debranche | int(0)) | as_datetime if (value_json.debranche | int(0)) > 0 else none }}"
+      device_class: timestamp
+      device: *dashboard_sejour
+
+# ---------------------------------------------------------------------------------------------------- B. configuration.yaml, mqtt: binary_sensor: (nouvelle sous-section)
+  binary_sensor:
+    - name: "En charge"
+      unique_id: ecran_sejour_en_charge
+      default_entity_id: binary_sensor.dashboard_sejour_en_charge
+      state_topic: "dashboard_guition/appareil/sejour/infos"
+      value_template: "{{ 'ON' if value_json.en_charge | int(0) == 1 else 'OFF' }}"
+      device_class: battery_charging
+      device: *dashboard_sejour
+
+# ---------------------------------------------------------------------------------------------------- C. automations.yaml
+- id: '1792200000034'
+  alias: Dashboard séjour · batterie faible
+  description: >-
+    26/10/2026 : le dashboard du séjour (sur batterie) passe sous 15 % puis sous 5 % (il va s'éteindre) : notification au
+    téléphone, une fois par passage (pas de rappel tant qu'il ne remonte pas au-dessus).
+  mode: single
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.dashboard_sejour_batterie
+      below: 15
+      id: faible
+    - trigger: numeric_state
+      entity_id: sensor.dashboard_sejour_batterie
+      below: 5
+      id: vide
+  conditions:
+    - condition: state
+      entity_id: binary_sensor.dashboard_sejour_en_charge
+      state: "off"
+  actions:
+    - action: notify.mobile_app_poco
+      continue_on_error: true
+      data:
+        title: "🔋 Dashboard séjour"
+        message: >-
+          {{ 'Batterie presque vide (' ~ states('sensor.dashboard_sejour_batterie') ~ ' %) : il va s’éteindre, à recharger.'
+             if trigger.id == 'vide' else
+             'Batterie faible (' ~ states('sensor.dashboard_sejour_batterie') ~ ' %) : à recharger bientôt.' }}

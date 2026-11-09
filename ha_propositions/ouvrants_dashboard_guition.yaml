@@ -1,0 +1,82 @@
+# 22/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour les ouvrants.
+# À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
+# puis automation.reload ; vérifier les messages retenus en lecture seule). Aucune commande de test sur …/set.
+# L'ancienne 1791000000184 (dashboard/store/set, dashboard/rideau/set) reste en place pour l'ancien firmware.
+# Les sécurités ne changent pas : le store banne se replie toujours seul si vent / pluie (1784090000002, qui réagit
+# aussi à une sortie demandée par mauvais temps) ; la toile suit toujours la Fire TV (1791000000163).
+
+- id: '1792200000011'
+  alias: Écran · ouvrants · état
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : dashboard_guition/ouvrants/<id>/etat, retenu,
+    {position, mouvement ouvre|ferme|arret, en_ligne} ; toile en plus firetv 0|1. Positions de HA : 100 = ouvert
+    (store banne SORTI, store cuisine relevé, toile remontée), 0 = fermé (store banne rentré, toile tout en bas).
+    store_terrasse = store banne ESPHome, volet_cuisine = cover.store_cuisine (IKEA FYRTUR), toile = toile du VP.
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id: [cover.store_terrasse, cover.store_cuisine, cover.toile_vp_et_ampli_toile, media_player.fire_tv_sejour]
+    - trigger: homeassistant
+      event: start
+  actions:
+    - repeat:
+        for_each:
+          - {id: store_terrasse, e: cover.store_terrasse}
+          - {id: volet_cuisine, e: cover.store_cuisine}
+          - {id: toile, e: cover.toile_vp_et_ampli_toile}
+        sequence:
+          - variables:
+              etat: "{{ states(repeat.item.e) }}"
+              msg: >-
+                {{ {'position': state_attr(repeat.item.e, 'current_position') | int(0),
+                    'mouvement': {'opening': 'ouvre', 'closing': 'ferme'}.get(etat, 'arret'),
+                    'en_ligne': 0 if etat in ['unavailable', 'unknown'] else 1} }}
+          - action: mqtt.publish
+            data:
+              topic: "dashboard_guition/ouvrants/{{ repeat.item.id }}/etat"
+              retain: true
+              payload: >-
+                {%- if repeat.item.id == 'toile' -%}
+                {{ dict(msg, firetv=1 if states('media_player.fire_tv_sejour') in ['on', 'idle', 'playing', 'paused', 'buffering'] else 0) | tojson }}
+                {%- else -%}{{ msg | tojson }}{%- endif -%}
+
+- id: '1792200000012'
+  alias: Écran · ouvrants · commandes
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/ouvrants/<id>/set {"action":"ouvrir|fermer|stop"} |
+    {"action":"position","position":0-100} ; toile : {"action":"seance","on":0|1} = allume / éteint la Fire TV
+    (c'est 1791000000163 qui bouge la toile).
+  mode: queued
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/ouvrants/+/set
+  conditions:
+    - condition: template
+      value_template: >-
+        {% set j = trigger.payload_json | default({}) %}
+        {% set id = trigger.topic.split('/')[2] %}
+        {{ id in ['store_terrasse', 'volet_cuisine', 'toile'] and j is mapping
+           and (j.get('action') in ['ouvrir', 'fermer', 'stop']
+                or (j.get('action') == 'position' and j.get('position') is number and 0 <= j.position <= 100)
+                or (id == 'toile' and j.get('action') == 'seance' and j.get('on') in [0, 1])) }}
+  actions:
+    - variables:
+        j: "{{ trigger.payload_json }}"
+        e: >-
+          {{ {'store_terrasse': 'cover.store_terrasse', 'volet_cuisine': 'cover.store_cuisine',
+              'toile': 'cover.toile_vp_et_ampli_toile'}[trigger.topic.split('/')[2]] }}
+    - choose:
+        - conditions: "{{ j.action == 'seance' }}"
+          sequence:
+            - action: "media_player.{{ 'turn_on' if j.on == 1 else 'turn_off' }}"
+              target: {entity_id: media_player.fire_tv_sejour}
+        - conditions: "{{ j.action == 'position' }}"
+          sequence:
+            - action: cover.set_cover_position
+              target: {entity_id: "{{ e }}"}
+              data: {position: "{{ j.position | int }}"}
+      default:
+        - action: "cover.{{ {'ouvrir': 'open_cover', 'fermer': 'close_cover', 'stop': 'stop_cover'}[j.action] }}"
+          target: {entity_id: "{{ e }}"}

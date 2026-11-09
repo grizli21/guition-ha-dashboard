@@ -1,0 +1,117 @@
+# 22/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour la qualité de l'air.
+# À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
+# puis automation.reload ; vérifier les messages retenus en lecture seule). Aucune commande de test sur …/set.
+# Les anciennes 1791000000187 / 183 (dashboard/espurifier, dashboard/purificateur) restent en place pour l'ancien firmware.
+# PRÉALABLE de 1792200000010 : les capteurs de air_historique_configuration.yaml (configuration.yaml).
+
+- id: '1792200000008'
+  alias: Écran · air · état
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : dashboard_guition/air/<id>/etat (atelier = ESPurifier,
+    sejour = Xiaomi Mi Air 4), retenu, {pm25, info, modes, mode, en_ligne}. modes = libellés des boutons de l'écran,
+    mode = index dans cette liste (-1 : préréglage Xiaomi « Favorite », sans bouton). info : indice COV (atelier),
+    filtre restant (séjour). Le COV change toutes les secondes : pas de déclencheur dessus, rafraîchi toutes les 5 min.
+    queued max 2 : toujours une publication APRÈS le dernier changement.
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id:
+        - select.espurifier_mode
+        - sensor.espurifier_pm2_5
+        - fan.purificateur
+        - sensor.purificateur_pm2_5
+    - trigger: time_pattern
+      minutes: /5
+    - trigger: homeassistant
+      event: start
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/air/atelier/etat
+        retain: true
+        payload: >-
+          {% set m = states('select.espurifier_mode') %}
+          {% set options = ['Arrêt', 'Manuel', 'Niveau 1', 'Niveau 2', 'Niveau 3'] %}
+          {{ {'pm25': states('sensor.espurifier_pm2_5') | float(0) | round(0) | int,
+              'info': 'COV ' ~ (states('sensor.espurifier_indice_voc') | float(0) | round(0) | int),
+              'modes': ['Arrêt', 'Fan', '1', '2', '3'],
+              'mode': options.index(m) if m in options else -1,
+              'en_ligne': 0 if m in ['unavailable', 'unknown'] else 1} | tojson }}
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/air/sejour/etat
+        retain: true
+        payload: >-
+          {% set f = 'fan.purificateur' %}
+          {% set p = state_attr(f, 'preset_mode') %}
+          {{ {'pm25': states('sensor.purificateur_pm2_5') | float(0) | round(0) | int,
+              'info': 'Filtre ' ~ (states('sensor.purificateur_filter_life_remaining') | int(0)) ~ ' %',
+              'modes': ['Arrêt', 'Auto', 'Silence', 'Fan'],
+              'mode': 0 if not is_state(f, 'on') else {'Auto': 1, 'Silent': 2, 'Fan': 3}.get(p, -1),
+              'en_ligne': 0 if states(f) in ['unavailable', 'unknown'] else 1} | tojson }}
+
+- id: '1792200000009'
+  alias: Écran · air · commandes
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/air/<id>/set {"action":"mode", "mode":<index>}.
+    atelier : 0-4 -> select.espurifier_mode (Arrêt, Manuel, Niveau 1-3) ;
+    sejour : 0 -> éteint, 1-3 -> préréglage Auto / Silent / Fan (allume au besoin).
+  mode: queued
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/air/+/set
+  conditions:
+    - condition: template
+      value_template: >-
+        {% set j = trigger.payload_json | default({}) %}
+        {% set id = trigger.topic.split('/')[2] %}
+        {{ j is mapping and j.get('action') == 'mode'
+           and ((id == 'atelier' and j.get('mode') in [0, 1, 2, 3, 4]) or (id == 'sejour' and j.get('mode') in [0, 1, 2, 3])) }}
+  actions:
+    - variables:
+        id: "{{ trigger.topic.split('/')[2] }}"
+        m: "{{ trigger.payload_json.mode }}"
+    - choose:
+        - conditions: "{{ id == 'atelier' }}"
+          sequence:
+            - action: select.select_option
+              target: {entity_id: select.espurifier_mode}
+              data: {option: "{{ ['Arrêt', 'Manuel', 'Niveau 1', 'Niveau 2', 'Niveau 3'][m] }}"}
+        - conditions: "{{ id == 'sejour' and m == 0 }}"
+          sequence:
+            - action: fan.turn_off
+              target: {entity_id: fan.purificateur}
+      default:
+        - action: fan.set_preset_mode
+          target: {entity_id: fan.purificateur}
+          data: {preset_mode: "{{ ['', 'Auto', 'Silent', 'Fan'][m] }}"}
+
+- id: '1792200000010'
+  alias: Écran · air · historique
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/air/<id>/historique, retenu, {"pas":30, "points":[…48…]} : PM2,5 des
+    24 dernières heures, un point par demi-heure, le plus récent en dernier, 255 = pas de mesure. Tenu par HA
+    (sensor.ecran_historique_pm25_*, configuration.yaml) : l'écran qui démarre ou se réveille reçoit la courbe entière.
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id: [sensor.ecran_historique_pm25_atelier, sensor.ecran_historique_pm25_sejour]
+    - trigger: homeassistant
+      event: start
+  actions:
+    - repeat:
+        for_each:
+          - {id: atelier, e: sensor.ecran_historique_pm25_atelier}
+          - {id: sejour, e: sensor.ecran_historique_pm25_sejour}
+        sequence:
+          - condition: template            # pas encore de point : on ne publie pas une courbe vide
+            value_template: "{{ state_attr(repeat.item.e, 'points') | default([], true) | length > 0 }}"
+          - action: mqtt.publish
+            data:
+              topic: "dashboard_guition/air/{{ repeat.item.id }}/historique"
+              retain: true
+              payload: "{{ {'pas': 30, 'points': state_attr(repeat.item.e, 'points') | list} | tojson }}"

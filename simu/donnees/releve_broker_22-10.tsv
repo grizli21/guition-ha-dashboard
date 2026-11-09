@@ -1,0 +1,29 @@
+dashboard_guition/air/atelier/etat	{"en_ligne": 1, "info": "COV 75", "mode": 0, "modes": ["Arr\u00eat", "Fan", "1", "2", "3"], "pm25": 3}
+dashboard_guition/air/sejour/etat	{"en_ligne": 1, "info": "Filtre 59 %", "mode": 0, "modes": ["Arr\u00eat", "Auto", "Silence", "Fan"], "pm25": 4}
+dashboard_guition/ballon/etat	{"chauffe": 0, "consigne": 50, "eco": 1, "mode": "auto", "temp": 44.7}
+dashboard_guition/cafe/etat	{"bouilloire": {"chauffe": 0, "en_ligne": 0, "h": 0, "prog": 0, "temp": 50}, "cafe": {"allumee": 0, "en_ligne": 0, "h": 943, "marche": 0, "prog": 0}, "recentes": []}
+dashboard_guition/croquettes/etat	{"autonomie": 0, "bol": 90.0, "jour_semaine": 4, "jours": [{"g": 0, "n": 2}, {"g": 0, "n": 6}, {"g": 595, "n": 7}, {"g": 16, "n": 4}, {"g": 44, "n": 10}, {"g": 0, "n": 9}, {"g": 50, "n": 8}], "repas": [{"a": 1, "h": 390, "q": 15}, {"a": 1, "h": 750, "q": 15}, {"a": 1, "h": 1170, "q": 15}, {"a": 0, "h": 1205, "q": 10}], "stock": 0, "vide": 0}
+dashboard_guition/imprimante/etat	{"buse": 14, "buse_c": 0, "caisson": 14, "caisson_c": 0, "carte_mere": 1, "chauffage": 1, "couche": 0, "couches": 0, "etat": "prete", "fichier": "", "filtration": 0, "fin": 883, "lumiere": 1, "plateau": 14, "plateau_c": 0, "progression": 0, "reste_min": 0, "vignette": ""}
+dashboard_guition/lumieres/bandeau_bureau/etat	{"couleur": 1, "en_ligne": 1, "nom": "Bandeau bureau", "on": 0, "piece": "Bureau"}
+dashboard_guition/lumieres/bandeau_lidl/etat	{"couleur": 1, "en_ligne": 0, "nom": "Bandeau Lidl", "on": 0, "piece": "Atelier"}
+dashboard_guition/lumieres/bandeau_wled/etat	{"couleur": 1, "en_ligne": 0, "nom": "Bandeau WLED", "on": 0, "piece": "Atelier"}
+dashboard_guition/lumieres/chevet/etat	{"couleur": 1, "en_ligne": 1, "nom": "Chevet", "on": 0, "piece": "Chambre"}
+dashboard_guition/lumieres/globe_lunaire/etat	{"couleur": 0, "en_ligne": 1, "nom": "Globe lunaire", "on": 0, "piece": "S\u00e9jour"}
+dashboard_guition/lumieres/lampadaire_1/etat	{"couleur": 1, "en_ligne": 0, "nom": "Lampadaire 1", "on": 0, "piece": "S\u00e9jour"}
+dashboard_guition/lumieres/lampadaire_2/etat	{"couleur": 1, "en_ligne": 0, "nom": "Lampadaire 2", "on": 0, "piece": "S\u00e9jour"}
+dashboard_guition/lumieres/lampadaire_3/etat	{"couleur": 1, "en_ligne": 0, "nom": "Lampadaire 3", "on": 0, "piece": "S\u00e9jour"}
+dashboard_guition/lumieres/lampe_bureau/etat	{"couleur": 0, "en_ligne": 1, "nom": "Lampe de bureau", "on": 0, "piece": "Bureau"}
+dashboard_guition/lumieres/lampe_fenetre/etat	{"couleur": 1, "en_ligne": 1, "nom": "Lampe fen\u00eatre", "on": 0, "piece": "S\u00e9jour"}
+dashboard_guition/lumieres/panneau_led/etat	{"couleur": 1, "en_ligne": 0, "nom": "Panneau LED", "on": 0, "piece": "Atelier"}
+dashboard_guition/maison/etat	{"ext_hum": 81, "ext_temp": 7.8, "maj": 1792698094, "phase": "nuit", "presence": 0}
+dashboard_guition/ouvrants/store_terrasse/etat	{"en_ligne": 1, "mouvement": "arret", "position": 0}
+dashboard_guition/ouvrants/toile/etat	{"en_ligne": 1, "firetv": 0, "mouvement": "arret", "position": 100}
+dashboard_guition/ouvrants/volet_cuisine/etat	{"en_ligne": 1, "mouvement": "arret", "position": 0}
+dashboard_guition/poele/etat	{"brassage": 0, "consigne": 240, "corps": 24.1, "en_ligne": 1, "feu": "eteint", "fumees": 20, "kd": 10.0, "ki": 0.01, "kp": 3.0, "limite": 30, "mode": "auto", "recharge": 180, "tirage": 100, "tirage_manuel": 100, "tirage_min": 30}
+dashboard_guition/thermostats/chambre1/etat	{"batterie": 45, "chauffe": 0, "consigne": 15.0, "hum": 65.1, "mode": "arret", "signal": 156, "temp": 14.6}
+dashboard_guition/thermostats/chambre2/etat	{"batterie": 100, "chauffe": 0, "consigne": 15.0, "hum": 69.7, "mode": "arret", "signal": 255, "temp": 13.4}
+dashboard_guition/thermostats/cuisine/etat	{"batterie": 60, "chauffe": 0, "consigne": 15.0, "hum": 69.6, "mode": "arret", "signal": 156, "temp": 14.4}
+dashboard_guition/thermostats/sdb/etat	{"batterie": 56, "chauffe": 0, "consigne": 20.0, "hum": 79.3, "mode": "arret", "signal": 164, "temp": 14.3}
+dashboard_guition/thermostats/sejour/etat	{"batterie": 56, "chauffe": 0, "consigne": 15.0, "hum": 72.8, "mode": "arret", "signal": 196, "temp": 14.0}
+dashboard_guition/vmc/maison/etat	{"auto": 0, "hum": 79, "hum_lieu": "salle de bain", "seuil": 80, "vitesse": 1}
+dashboard_guition/vmc/sous_sol/etat	{"auto": 0, "hum": 81, "hum_lieu": "sous-sol", "seuil": 0, "vitesse": 0}

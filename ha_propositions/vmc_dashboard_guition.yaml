@@ -1,0 +1,92 @@
+# 22/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour la VMC.
+# À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
+# puis automation.reload ; vérifier les messages retenus en lecture seule). Aucune commande de test sur …/set.
+# Les anciennes 1791000000188 / 191 (dashboard/vmc/…) restent en place pour l'ancien firmware.
+
+- id: '1792200000006'
+  alias: Écran · VMC · état
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : dashboard_guition/vmc/<zone>/etat (maison, sous_sol), retenu,
+    {vitesse 0|1|2, auto 0|1, hum, hum_lieu, seuil}. Maison : hum = pièce la plus humide des 5 (celles que regarde
+    binary_sensor.forte_humidite_maison, seuil 80 % dans configuration.yaml), auto = input_boolean.vmc_maison_forcee
+    (un automatisme tient la vitesse : forte humidité ou boost douche/toilettes). Sous-sol : pas d'automatisme (seuil 0),
+    humidité de l'arrivée d'eau pour information.
+    queued max 2 : toujours une publication APRÈS le dernier changement.
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id:
+        - fan.vmc_maison
+        - fan.vmc_sous_sol
+        - input_boolean.vmc_maison_forcee
+        - sensor.humidite_cuisine
+        - sensor.humidite_sejour
+        - sensor.humidite_salle_de_bain
+        - sensor.humidite_chambre_1
+        - sensor.humidite_chambre_2
+        - sensor.arrivee_eau_sous_sol_humidite
+    - trigger: homeassistant
+      event: start
+  actions:
+    - variables:
+        plus_humide: >-
+          {% set pieces = [{'e': 'sensor.humidite_cuisine', 'nom': 'cuisine'}, {'e': 'sensor.humidite_sejour', 'nom': 'séjour'},
+                           {'e': 'sensor.humidite_salle_de_bain', 'nom': 'salle de bain'},
+                           {'e': 'sensor.humidite_chambre_1', 'nom': 'chambre 1'}, {'e': 'sensor.humidite_chambre_2', 'nom': 'chambre 2'}] %}
+          {% set ns = namespace(h=-1, nom='') %}
+          {% for p in pieces if states(p.e) | is_number and states(p.e) | float > ns.h %}
+            {% set ns.h = states(p.e) | float %}{% set ns.nom = p.nom %}
+          {% endfor %}
+          {{ {'h': ns.h | round(0) | int, 'nom': ns.nom} }}
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/vmc/maison/etat
+        retain: true
+        payload: >-
+          {% set f = 'fan.vmc_maison' %}
+          {{ {'vitesse': 0 if not is_state(f, 'on') else (2 if state_attr(f, 'percentage') | int(0) > 50 else 1),
+              'auto': 1 if is_state('input_boolean.vmc_maison_forcee', 'on') else 0,
+              'hum': [plus_humide.h, 0] | max,
+              'hum_lieu': plus_humide.nom,
+              'seuil': 80} | tojson }}
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/vmc/sous_sol/etat
+        retain: true
+        payload: >-
+          {% set f = 'fan.vmc_sous_sol' %}
+          {{ {'vitesse': 0 if not is_state(f, 'on') else (2 if state_attr(f, 'percentage') | int(0) > 50 else 1),
+              'auto': 0,
+              'hum': states('sensor.arrivee_eau_sous_sol_humidite') | float(0) | round(0) | int,
+              'hum_lieu': 'sous-sol',
+              'seuil': 0} | tojson }}
+
+- id: '1792200000007'
+  alias: Écran · VMC · commandes
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/vmc/<zone>/set {"action":"vitesse", "vitesse":0|1|2}
+    (0 arrêt, 1 petite 50 %, 2 grande 100 %).
+  mode: queued
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/vmc/+/set
+  conditions:
+    - condition: template
+      value_template: >-
+        {% set j = trigger.payload_json | default({}) %}
+        {{ trigger.topic.split('/')[2] in ['maison', 'sous_sol']
+           and j is mapping and j.get('action') == 'vitesse' and j.get('vitesse') in [0, 1, 2] }}
+  actions:
+    - variables:
+        f: "fan.vmc_{{ trigger.topic.split('/')[2] }}"
+        v: "{{ trigger.payload_json.vitesse }}"
+    - if: "{{ v == 0 }}"
+      then:
+        - action: fan.turn_off
+          target: {entity_id: "{{ f }}"}
+      else:
+        - action: fan.set_percentage
+          target: {entity_id: "{{ f }}"}
+          data: {percentage: "{{ 50 if v == 1 else 100 }}"}

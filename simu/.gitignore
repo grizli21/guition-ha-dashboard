@@ -1,0 +1,7 @@
+# Sorties du simulateur (régénérées par make)
+construction*/
+captures/
+simu
+simu-*
+*.d
+donnees/*.o

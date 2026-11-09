@@ -1,0 +1,320 @@
+--- a/src/core/lv_obj_scroll.c
++++ b/src/core/lv_obj_scroll.c
+@@ -12,6 +12,11 @@
+ #include "lv_obj_private.h"
+ #include "../indev/lv_indev_scroll.h"
+ #include "lv_obj_style_internal.h"
++/* 05/11/2026 ETAPE 3 (scroll par bande, portage du 8.4) : le chemin rapide lit les tampons
++ * d'image et la liste des aires a synchroniser (prives : lv_display_private.h), et la
++ * soustraction d'aires lv_area_diff (lv_area_private.h). */
++#include "../display/lv_display_private.h"
++#include "../misc/lv_area_private.h"
+ 
+ /*********************
+  *      DEFINES
+@@ -459,6 +464,249 @@
+     }
+ }
+ 
++/* =====================================================================
++ * 05/11/2026 — ETAPE 3 migration 9.6 : PORTAGE du « scroll par bande » (chemin rapide écrit
++ * en 8.4 dans lib/lvgl-8.4.0/src/core/lv_obj_scroll.c, étage 1 de production).
++ *
++ * But : quand un conteneur marqué (LV_OBJ_FLAG_USER_1) défile, ne PAS repeindre toute son aire
++ * (mesuré en 9.6 brut : 175 336 px = le conteneur 404 x 434 entier, en UNE zone, par pas du
++ * geste), mais décaler la mémoire d'image du déplacement réellement appliqué et ne repeindre
++ * que deux bandes (entrée + sortie).
++ *
++ * Quatre règles, les mêmes qu'en 8.4 (chacune justifiée par une divergence mesurée au
++ * prototype de l'époque, journal OPTI_JOURNAL.md) :
++ *  1. décaler sur le déplacement RÉELLEMENT appliqué aux enfants (lv_obj_move_children_by est
++ *     le seul point où le départ est certain ; jamais la demande), cumul entre deux bascules
++ *     de tampon (plusieurs pas de doigt peuvent tomber entre deux images) ;
++ *  2. deux bandes invalidées : entrée ET sortie (sans la sortie, l'enfant qui quitte l'aire
++ *     laisse ses pixels : mesuré 19 946 px persistés sur 121_lumieres_sous_disque en 8.4) ;
++ *  3. l'éligibilité se statue à la création du conteneur (drapeau posé par le projet), jamais en
++ *     cours de geste : une exclusion tardive ne défait pas les images déjà sautées (mesuré en
++ *     8.4 : 84 images / 3 712 609 px sur les cas « fond » et « barre ») ;
++ *  4. le chemin rapide ne remplace QUE l'invalidation émise par le défilement ; une image de
++ *     réparation de l'aire entière part 150 ms après le DERNIER pas (minuterie réarmée à chaque
++ *     décalage). PAS de LV_EVENT_SCROLL_END : en 8.4 il part à chaque pas de l'élan, et réparer
++ *     là faisait passer l'image de 2 bandes à l'aire entière (196 000 px au lieu de 15 000).
++ *
++ * Différences 8.4 -> 9.6 lues dans le code (d'où le portage et pas une transposition) :
++ *  - les tampons ne sont plus des `lv_color_t *` mais des `lv_draw_buf_t` (display_private.h:69-74 :
++ *    buf_1/buf_2/buf_3/buf_act) ; le pas de ligne vient de `header.stride`, la taille du pixel de
++ *    `header.cf` (en 8.4 : hor_res * sizeof(lv_color_t)) ;
++ *  - `disp->sync_areas` est toujours une liste chaînée, mais 9.6 la SOUS-TRAITE déjà
++ *    (lv_area_diff, lv_refr.c:677-790) au lieu de la retirer en bloc : le chemin rapide fait de
++ *    même, il ne retire de la liste que ce qui est déjà couvert translaté, et garde le reste ;
++ *  - l'invalidation entre par `lv_inv_area` (lv_refr.c:270+) et les aires ne sont jointes que si
++ *    la jointure est plus petite (lv_refr_join_area, lv_refr.c:637+) : deux bandes opposées ne
++ *    sont donc jamais fusionnées.
++ * ===================================================================== */
++
++/* Adaptateur fourni par le projet (déclaration faible : sans lui, le chemin rapide reste éteint).
++ * Il renvoie la mémoire d'image où LVGL dessinera la prochaine image (buf_act, donc le tampon
++ * NON montré), ou NULL quand l'écran n'est pas en deux mémoires. Le contrat est celui du 8.4 :
++ * NULL = chemin rapide éteint. Le simulateur en fournit une définition forte. */
++__attribute__((weak)) uint8_t * ui_ecran_memoire_active(void)
++{
++    return NULL;
++}
++
++/* Le projet doit écrire en PSRAM (vidage du cache) les lignes que le décalage a touchées :
++ * elles sont écrites par le CPU, pas par LVGL, et ne passeraient par l'englobant habituel. */
++__attribute__((weak)) void ui_ecran_zone_decalee(const lv_area_t * zone)
++{
++    LV_UNUSED(zone);
++}
++
++static lv_timer_t * s_repare_tmr = NULL;  /* réparation de fin de geste (règle 4 bis), en attente */
++static lv_obj_t * s_repare_obj = NULL;
++static lv_area_t s_repare_zone;
++static uint8_t * s_tampon_decale = NULL; /* tampon caché déjà recopié depuis sa dernière bascule */
++static lv_obj_t * s_decale_obj = NULL;   /* à quel conteneur marqué s'applique ce cumul (un seul à la fois) */
++static int32_t s_decalage_x = 0;         /* cumul du décalage déjà recopié dans ce tampon */
++static int32_t s_decalage_y = 0;
++
++static void scroll_fast_repare_cb(lv_timer_t * tmr)
++{
++    lv_timer_pause(tmr);
++    s_tampon_decale = NULL; /* fin de geste : la réparation repeint l'aire entière, la trace du décalage est morte */
++    s_decale_obj = NULL;
++    if(s_repare_obj != NULL && lv_obj_has_flag(s_repare_obj, LV_OBJ_FLAG_USER_1)) {
++        lv_obj_invalidate_area(s_repare_obj, &s_repare_zone); /* une image complète : efface tout pixel périmé */
++    }
++    s_repare_obj = NULL;
++}
++
++static void scroll_fast_delete_cb(lv_event_t * e)
++{
++    lv_obj_t * objet = lv_event_get_target_obj(e);
++    if(s_repare_obj == objet) {
++        s_repare_obj = NULL;
++        if(s_repare_tmr != NULL) lv_timer_pause(s_repare_tmr);
++    }
++    if(s_decale_obj == objet) {
++        s_decale_obj = NULL;
++        s_tampon_decale = NULL;
++    }
++}
++
++bool _lv_obj_scroll_fast_shift(lv_obj_t * obj, int32_t x, int32_t y)
++{
++    if(x == 0 && y == 0) return false;
++
++    /* Mode DIRECT à deux tampons uniquement : c'est le seul où la mémoire d'image est l'image
++     * affichée. En 9.6, les tampons sont des lv_draw_buf_t (display_private.h:69-74). */
++    lv_display_t * disp = lv_obj_get_display(obj);
++    if(disp == NULL) return false;
++    if(disp->render_mode != LV_DISPLAY_RENDER_MODE_DIRECT) return false;
++    if(disp->buf_1 == NULL || disp->buf_2 == NULL) return false;
++    if(disp->buf_1->data == NULL || disp->buf_2->data == NULL) return false;
++
++    /* Adaptateur du projet : NULL = pas en mode deux mémoires -> chemin rapide éteint.
++     * Il doit désigner le tampon que la librairie considère comme actif (sinon : désaccord,
++     * on n'a aucune garantie sur ce qui est montré -> chemin éteint). */
++    uint8_t * dst = ui_ecran_memoire_active();
++    if(dst == NULL) return false;
++
++    lv_draw_buf_t * dst_buf = NULL;
++    lv_draw_buf_t * src_buf = NULL;
++    if(dst == disp->buf_1->data) {
++        dst_buf = disp->buf_1;
++        src_buf = disp->buf_2;
++    }
++    else if(dst == disp->buf_2->data) {
++        dst_buf = disp->buf_2;
++        src_buf = disp->buf_1;
++    }
++    else {
++        return false;
++    }
++
++    /* Aire décalée = coordonnées du conteneur rognées à l'écran (les enfants sont rognés aux
++     * coordonnées de l'objet, pas à son aire de contenu). */
++    lv_area_t a;
++    lv_obj_get_coords(obj, &a);
++    if(a.x1 < 0) a.x1 = 0;
++    if(a.y1 < 0) a.y1 = 0;
++    if(a.x2 > lv_display_get_horizontal_resolution(disp) - 1) a.x2 = lv_display_get_horizontal_resolution(disp) - 1;
++    if(a.y2 > lv_display_get_vertical_resolution(disp) - 1) a.y2 = lv_display_get_vertical_resolution(disp) - 1;
++    int32_t w = lv_area_get_width(&a), h = lv_area_get_height(&a);
++    if(w <= 0 || h <= 0) return false;
++
++    /* Règle 1 : cumul du décalage depuis la dernière bascule de ce tampon. Le pas reçu est le
++     * déplacement réellement appliqué aux enfants, jamais la demande. Il compte TOUS les pas,
++     * même ceux qu'on refusera : les enfants ont bougé quand même, et la recopie repart toujours
++     * de la mémoire montrée (elle n'est pas incrémentale). */
++    int32_t tx, ty;
++    if(dst == s_tampon_decale && obj == s_decale_obj) {
++        tx = s_decalage_x + x;
++        ty = s_decalage_y + y;
++    }
++    else {
++        tx = x;
++        ty = y;
++    }
++
++    /* Bande plus grande que l'aire : le décalage ne sert à rien, repli sur invalidation complète. */
++    if(LV_ABS(tx) >= w || LV_ABS(ty) >= h) {
++        s_tampon_decale = dst;
++        s_decale_obj = obj;
++        s_decalage_x = tx;
++        s_decalage_y = ty;
++        return false;
++    }
++
++    /* Recopie translatée, tampon montré -> tampon caché : sans chevauchement, une passe par ligne.
++     * Différence 9.6 : le pas de ligne et la taille du pixel viennent de l'en-tête du tampon. */
++    int32_t dx1 = LV_MAX(a.x1, a.x1 + tx), dx2 = LV_MIN(a.x2, a.x2 + tx);
++    int32_t dy1 = LV_MAX(a.y1, a.y1 + ty), dy2 = LV_MIN(a.y2, a.y2 + ty);
++    const size_t stride = (size_t)dst_buf->header.stride;
++    const size_t bpp = (size_t)lv_color_format_get_size(dst_buf->header.cf);
++    if(stride == 0 || bpp == 0) return false;
++    const size_t ligne = (size_t)(dx2 - dx1 + 1) * bpp;
++    int32_t r;
++    for(r = dy1; r <= dy2; r++) {
++        uint8_t * drow = dst + (size_t)r * stride + (size_t)dx1 * bpp;
++        const uint8_t * srow = src_buf->data + (size_t)(r - ty) * stride + (size_t)(dx1 - tx) * bpp;
++        lv_memcpy(drow, srow, ligne);
++    }
++    s_tampon_decale = dst;
++    s_decale_obj = obj;
++    s_decalage_x = tx;
++    s_decalage_y = ty;
++    ui_ecran_zone_decalee(&a); /* à l'écran : ces lignes, écrites par le CPU, doivent être vidées du cache */
++
++    /* Les aires de synchronisation double tampon qui croiseraient l'aire décalée sont tenues pour
++     * déjà recopées — TRANSLATÉES — par le décalage ci-dessus. Comme en 9.6 (refr_sync_areas,
++     * lv_refr.c:695-723) on ne supprime que ce qui est couvert : la partie de l'aire de
++     * synchronisation RESTÉE hors de l'aire décalée reste due et est réinsérée. */
++    if(!lv_ll_is_empty(&disp->sync_areas)) {
++        lv_area_t * sa = lv_ll_get_head(&disp->sync_areas);
++        while(sa != NULL) {
++            lv_area_t * next = lv_ll_get_next(&disp->sync_areas, sa);
++            lv_area_t croise;
++            if(lv_area_intersect(&croise, sa, &a)) {
++                lv_area_t reste[4];
++                int8_t n = lv_area_diff(reste, sa, &a);
++                int8_t j;
++                for(j = 0; j < n; j++) {
++                    lv_area_t * na = lv_ll_ins_prev(&disp->sync_areas, sa);
++                    if(na) *na = reste[j];
++                }
++                lv_ll_remove(&disp->sync_areas, sa);
++                lv_free(sa);
++            }
++            sa = next;
++        }
++    }
++
++    /* Règle 2 : deux bandes, entrée ET sortie, pour ce pas seulement (l'union des pas d'un geste
++     * couvre tout ce qui doit être repeint). */
++    lv_area_t b;
++    if(ty > 0) { /* contenu descend : bande neuve en haut, périmée en bas */
++        b.x1 = a.x1; b.y1 = a.y1; b.x2 = a.x2; b.y2 = a.y1 + ty - 1;
++        lv_obj_invalidate_area(obj, &b);
++        b.y1 = a.y2 - ty + 1; b.y2 = a.y2;
++        lv_obj_invalidate_area(obj, &b);
++    }
++    else if(ty < 0) {
++        b.x1 = a.x1; b.y1 = a.y2 + ty; b.x2 = a.x2; b.y2 = a.y2;
++        lv_obj_invalidate_area(obj, &b);
++        b.y1 = a.y1; b.y2 = a.y1 - ty - 1;
++        lv_obj_invalidate_area(obj, &b);
++    }
++    if(tx > 0) {
++        b.x1 = a.x1; b.y1 = a.y1; b.x2 = a.x1 + tx - 1; b.y2 = a.y2;
++        lv_obj_invalidate_area(obj, &b);
++        b.x1 = a.x2 - tx + 1; b.x2 = a.x2;
++        lv_obj_invalidate_area(obj, &b);
++    }
++    else if(tx < 0) {
++        b.x1 = a.x1; b.y1 = a.y1; b.x2 = a.x1 - tx - 1; b.y2 = a.y2;
++        lv_obj_invalidate_area(obj, &b);
++        b.x1 = a.x2 + tx; b.x2 = a.x2;
++        lv_obj_invalidate_area(obj, &b);
++    }
++
++    /* Règle 4 bis (la « ceinture ») : 150 ms après le DERNIER pas — la minuterie est réarmée à
++     * chaque décalage, elle ne sonne donc jamais en pleine glisse — une image complète de l'aire
++     * efface tout pixel périmé accumulé. Jamais LV_EVENT_SCROLL_END : en 8.4 il part à chaque pas
++     * de l'élan et repeindrait l'aire entière à chaque image. */
++    if(!lv_obj_has_flag(obj, LV_OBJ_FLAG_USER_3)) {
++        lv_obj_add_flag(obj, LV_OBJ_FLAG_USER_3); /* suivis posés une seule fois par objet */
++        lv_obj_add_event_cb(obj, scroll_fast_delete_cb, LV_EVENT_DELETE, NULL);
++    }
++    s_repare_obj = obj;
++    s_repare_zone = a;
++    if(s_repare_tmr == NULL) {
++        s_repare_tmr = lv_timer_create(scroll_fast_repare_cb, 150, NULL);
++        if(s_repare_tmr == NULL) return true;
++        lv_timer_pause(s_repare_tmr);
++    }
++    lv_timer_reset(s_repare_tmr);
++    lv_timer_resume(s_repare_tmr);
++
++    return true;
++}
++
+ lv_result_t lv_obj_scroll_by_raw(lv_obj_t * obj, int32_t x, int32_t y)
+ {
+     LV_CHECK_OBJ(obj, MY_CLASS, return LV_RESULT_INVALID);
+@@ -475,7 +723,11 @@
+     lv_obj_move_children_by(obj, x, y, true);
+     lv_result_t res = lv_obj_send_event(obj, LV_EVENT_SCROLL, NULL);
+     if(res != LV_RESULT_OK) return res;
+-    lv_obj_invalidate(obj);
++    /* Chemin rapide : lv_obj_move_children_by est l'origine reelle du deplacement ; s'il a
++     * decale la memoire d'image (LV_OBJ_FLAG_USER_2, pose dans lv_obj_pos.c), les deux bandes
++     * sont deja invalidatees et le conteneur entier ne doit PAS l'etre. */
++    if(lv_obj_has_flag(obj, LV_OBJ_FLAG_USER_2)) lv_obj_remove_flag(obj, LV_OBJ_FLAG_USER_2);
++    else lv_obj_invalidate(obj);
+     return LV_RESULT_OK;
+ }
+ 
+--- a/src/core/lv_obj_pos.c
++++ b/src/core/lv_obj_pos.c
+@@ -19,6 +19,7 @@
+ #include "lv_obj_class_private.h"
+ #include "lv_obj_style_internal.h"
+ #include "../misc/lv_style_private.h"
++#include "lv_obj_scroll_private.h" /* 05/11/2026 ETAPE 3 : _lv_obj_scroll_fast_shift */
+ 
+ /*********************
+  *      DEFINES
+@@ -963,6 +964,16 @@
+ {
+     LV_CHECK_OBJ(obj, MY_CLASS, return);
+ 
++    /* Copie de travail (scroll par bande, portage 8.4 -> 9.6) : c'est ICI que le deplacement
++     * part vraiment — ignore_floating = true n'est utilise que par le defilement
++     * (lv_obj_scroll.c:475 ; les autres appelants — flex/grid, lv_obj_pos.c:946 — passent false).
++     * Chemin rapide opt-in (LV_OBJ_FLAG_USER_1 pose par le projet a la creation) : decalage de
++     * la memoire d'image + deux bandes. LV_OBJ_FLAG_USER_2 dit a lv_obj_scroll_by_raw de ne pas
++     * invalidater tout le conteneur. */
++    if(ignore_floating && lv_obj_has_flag(obj, LV_OBJ_FLAG_USER_1)) {
++        if(_lv_obj_scroll_fast_shift(obj, x_diff, y_diff)) lv_obj_add_flag(obj, LV_OBJ_FLAG_USER_2);
++    }
++
+     uint32_t i;
+     uint32_t child_cnt = lv_obj_get_child_count(obj);
+     for(i = 0; i < child_cnt; i++) {
+--- a/src/core/lv_obj_scroll_private.h
++++ b/src/core/lv_obj_scroll_private.h
+@@ -39,6 +39,13 @@
+  */
+ lv_result_t lv_obj_scroll_by_raw(lv_obj_t * obj, int32_t x, int32_t y);
+ 
++/**
++ * Chemin rapide « scroll par bande » (copie de travail, portage du patch 8.4).
++ * Appelé par lv_obj_move_children_by() quand le conteneur est marque LV_OBJ_FLAG_USER_1.
++ * Renvoie true si la memoire d'a-image a ete decalee et les deux bandes invalidatees.
++ */
++bool _lv_obj_scroll_fast_shift(lv_obj_t * obj, int32_t x, int32_t y);
++
+ /**********************
+  *      MACROS
+  **********************/

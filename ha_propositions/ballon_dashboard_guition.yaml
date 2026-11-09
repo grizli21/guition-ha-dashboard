@@ -1,0 +1,74 @@
+# 22/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour l'eau chaude.
+# À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
+# puis automation.reload ; vérifier le message retenu en lecture seule). Aucune commande de test sur …/set.
+# Les anciennes 1791000000179 / 173 (dashboard/ballon/…) restent en place pour l'ancien firmware.
+
+- id: '1792200000004'
+  alias: Écran · eau chaude · état
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : état retenu du chauffe-eau sur dashboard_guition/ballon/etat
+    {temp, consigne, mode arret|auto|force, eco 0|1, chauffe 0|1}. chauffe = relais du tableau électrique
+    (switch.tableau_electrique_chauffe_eau), comme l'ancien relay_state.
+    Pas de republication périodique : queued max 2 garantit une publication APRÈS le dernier changement
+    (single perdrait un changement arrivé pendant l'exécution, et le retenu resterait faux).
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id:
+        - sensor.ballon_eau_chaude_temperature
+        - input_number.ballon_consigne
+        - switch.tableau_electrique_chauffe_eau
+        - input_select.ballon_mode
+        - input_select.ballon_regime
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: template            # sonde pas encore lue : on garde le dernier message retenu
+      value_template: "{{ states('sensor.ballon_eau_chaude_temperature') | float(0) != 0 }}"
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/ballon/etat
+        retain: true
+        payload: >-
+          {{ {'temp': states('sensor.ballon_eau_chaude_temperature') | float(0) | round(1),
+              'consigne': states('input_number.ballon_consigne') | float(0) | round(0) | int,
+              'mode': {'OFF': 'arret', 'AUTO': 'auto', 'FORCE': 'force'}.get(states('input_select.ballon_mode'), 'arret'),
+              'eco': 1 if is_state('input_select.ballon_regime', 'ECO') else 0,
+              'chauffe': 1 if is_state('switch.tableau_electrique_chauffe_eau', 'on') else 0} | tojson }}
+
+- id: '1792200000005'
+  alias: Écran · eau chaude · commandes
+  description: >-
+    Contrat dashboard_guition : dashboard_guition/ballon/set {"action":"regler", ...} avec UNE clé :
+    consigne (40-70 °C, bornée) | mode arret|auto|force | eco 0|1.
+  mode: queued
+  triggers:
+    - trigger: mqtt
+      topic: dashboard_guition/ballon/set
+  conditions:
+    - condition: template
+      value_template: >-
+        {% set j = trigger.payload_json | default({}) %}
+        {{ j is mapping and j.get('action') == 'regler'
+           and (j.get('consigne') is number or j.get('mode') in ['arret', 'auto', 'force'] or j.get('eco') in [0, 1]) }}
+  actions:
+    - variables:
+        j: "{{ trigger.payload_json }}"
+    - choose:
+        - conditions: "{{ j.get('consigne') is number }}"
+          sequence:
+            - action: input_number.set_value
+              target: {entity_id: input_number.ballon_consigne}
+              data: {value: "{{ [[j.consigne | round(0), 40] | max, 70] | min }}"}
+        - conditions: "{{ j.get('mode') in ['arret', 'auto', 'force'] }}"
+          sequence:
+            - action: input_select.select_option
+              target: {entity_id: input_select.ballon_mode}
+              data: {option: "{{ {'arret': 'OFF', 'auto': 'AUTO', 'force': 'FORCE'}[j.mode] }}"}
+      default:
+        - action: input_select.select_option
+          target: {entity_id: input_select.ballon_regime}
+          data: {option: "{{ 'ECO' if j.eco == 1 else 'NORMAL' }}"}

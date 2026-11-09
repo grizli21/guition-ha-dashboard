@@ -1,0 +1,62 @@
+# 22/10/2026 : PROPOSITION (pas encore dans HA) — historique 24 h des PM2,5 tenu par HA pour les écrans
+# (décision du 22/10 : HA tient les courbes, l'écran les affiche ; voir CONTRAT_MQTT.md).
+# À insérer dans votre configuration.yaml, dans les blocs EXISTANTS
+# (pas de 2e clé « sensor: » ni « template: », elle écraserait la première). Puis rechargement :
+# « Statistiques » et « Entités modèles » (pas de redémarrage de HA).
+
+# ---- 1) à la fin de la liste « sensor: » (à côté de « Humidite salle de bain variation 5 min ») ----
+  # 22/10/2026 : PM2,5 moyens de la demi-heure écoulée, pour l'historique des écrans (dashboard_guition).
+  # average_step = moyenne pondérée par la durée (le Xiaomi ne publie qu'aux changements) ; keep_last_sample :
+  # une valeur stable depuis plus de 30 min reste la moyenne (sinon « inconnu » = faux trou).
+  - platform: statistics
+    name: "PM25 atelier moyenne 30 min"
+    unique_id: pm25_atelier_moyenne_30_min
+    entity_id: sensor.espurifier_pm2_5
+    state_characteristic: average_step
+    max_age:
+      minutes: 30
+    keep_last_sample: true
+    sampling_size: 2000
+  - platform: statistics
+    name: "PM25 sejour moyenne 30 min"
+    unique_id: pm25_sejour_moyenne_30_min
+    entity_id: sensor.purificateur_pm2_5
+    state_characteristic: average_step
+    max_age:
+      minutes: 30
+    keep_last_sample: true
+    sampling_size: 2000
+
+# ---- 2) à la fin de la liste « template: » (après « Température nord maxi du jour ») ----
+  # 22/10/2026 : historique 24 h des PM2,5 pour les écrans (contrat dashboard_guition) : attribut « points » = 48
+  # valeurs, une par demi-heure, la plus récente en dernier ; 255 = pas de mesure (appareil hors ligne). L'état =
+  # horodatage du dernier point. HA restaure état et attribut au redémarrage ; les demi-heures manquées pendant
+  # l'arrêt sont comblées par des 255 (la courbe garde sa place dans le temps).
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/30"
+    sensor:
+      - name: Ecran historique PM25 atelier
+        unique_id: ecran_historique_pm25_atelier
+        state: "{{ now().timestamp() | int }}"
+        attributes:
+          points: >-
+            {% set prec = this.attributes.get('points', []) | list %}
+            {% set dernier = this.state | int(0) %}
+            {% set manques = (((now().timestamp() - dernier) / 1800) | round(0) | int - 1) if dernier else 0 %}
+            {% set m = states('sensor.pm25_atelier_moyenne_30_min') %}
+            {% set hors_ligne = states('select.espurifier_mode') in ['unavailable', 'unknown'] %}
+            {% set v = 255 if hors_ligne or not m | is_number else [m | float | round(0) | int, 254] | min %}
+            {{ (prec + [255] * ([[manques, 0] | max, 48] | min) + [v])[-48:] }}
+      - name: Ecran historique PM25 sejour
+        unique_id: ecran_historique_pm25_sejour
+        state: "{{ now().timestamp() | int }}"
+        attributes:
+          points: >-
+            {% set prec = this.attributes.get('points', []) | list %}
+            {% set dernier = this.state | int(0) %}
+            {% set manques = (((now().timestamp() - dernier) / 1800) | round(0) | int - 1) if dernier else 0 %}
+            {% set m = states('sensor.pm25_sejour_moyenne_30_min') %}
+            {% set hors_ligne = states('fan.purificateur') in ['unavailable', 'unknown'] %}
+            {% set v = 255 if hors_ligne or not m | is_number else [m | float | round(0) | int, 254] | min %}
+            {{ (prec + [255] * ([[manques, 0] | max, 48] | min) + [v])[-48:] }}

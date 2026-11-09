@@ -1,0 +1,55 @@
+--- a/src/core/lv_refr.c
++++ b/src/core/lv_refr.c
+@@ -30,6 +30,17 @@
+ /*Display being refreshed*/
+ #define disp_refr LV_GLOBAL_DEFAULT()->disp_refresh
+ 
++#ifdef SONDE_INVALIDATION
++/* Mesure 05/11, etape 0 migration 9.6 : jumeau exact du compteur SONDE_INVALIDATION de LVGL 8.4
++ * (lib/lvgl-8.4.0/src/core/lv_refr.c). Eteint par defaut (flag de compilation), coute zero sinon.
++ *  - lv_sonde_inv_px / lv_sonde_inv_n : ce que LVGL RECOIT comme sale par image (avant clipping,
++ *    avant dedoublonnage) — la metrique de comparaison 8.4 contre 9.6 conservée ;
++ *  - lv_sonde_frame_px : ce que l'image dessine vraiment, jumeau du px_num passe a monitor_cb en 8.4. */
++uint32_t lv_sonde_inv_px = 0;
++uint32_t lv_sonde_inv_n = 0;
++uint32_t lv_sonde_frame_px = 0;
++#endif
++
+ /**********************
+  *      TYPEDEFS
+  **********************/
+@@ -277,6 +288,14 @@
+         disp = lv_display_get_default();
+     }
+     if(!disp) return LV_RESULT_INVALID;
++#ifdef SONDE_INVALIDATION
++    /* Mesure 05/11 (etape 0, migration 9.6) : jumeau de la sonde 8.4 — compte TOUT appel, avant
++     * clipping ecran et avant le rejet « deja dans une zone enregistree », comme en 8.4. */
++    if(area_p) {
++        lv_sonde_inv_px += (uint32_t)lv_area_get_size(area_p);
++        lv_sonde_inv_n++;
++    }
++#endif
+     if(!lv_display_is_invalidation_enabled(disp)) return LV_RESULT_INVALID;
+ 
+     /**
+@@ -797,6 +816,9 @@
+ {
+     if(disp_refr->inv_p == 0) return;
+     LV_PROFILER_REFR_BEGIN;
++#ifdef SONDE_INVALIDATION
++    lv_sonde_frame_px = 0; /* jumeau du px_num de la v8 : somme des aires non jointes dessinees */
++#endif
+ 
+     /*Notify the display driven rendering has started*/
+     lv_display_send_event(disp_refr, LV_EVENT_RENDER_START, NULL);
+@@ -818,6 +840,9 @@
+     for(i = 0; i < (int32_t)disp_refr->inv_p; i++) {
+         /*Refresh the unjoined areas*/
+         if(disp_refr->inv_area_joined[i]) continue;
++#ifdef SONDE_INVALIDATION
++        lv_sonde_frame_px += (uint32_t)lv_area_get_size(&disp_refr->inv_areas[i]);
++#endif
+ 
+         if(i == last_i) disp_refr->last_area = 1;
+         disp_refr->last_part = 0;

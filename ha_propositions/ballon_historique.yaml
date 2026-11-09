@@ -1,0 +1,132 @@
+# 25/10/2026 : PROPOSITION (pas encore dans HA) — page Eau chaude à 3 onglets (maquettes validées le 25/10,
+# simu/maquettes_eau.cpp). Quatre morceaux, à poser APRÈS accord (sauvegarde avant, id libres vérifiés, grep des clés) :
+#   A. configuration.yaml, bloc `template:` (à la suite de « Ecran historique exterieur ») : le capteur d'historique 24 h
+#   B. configuration.yaml, `recorder: exclude: entities:` : + sensor.ecran_historique_ballon (effet au prochain
+#      redémarrage de HA ; d'ici là le recorder garde ses attributs, ~3 Ko toutes les 5 min, comme les autres à leur pose)
+#   C. automations.yaml : 1792200000004 « Écran · eau chaude · état » REMPLACÉE (6 champs en plus, déclencheurs en plus)
+#   D. automations.yaml : 1792200000033 « Écran · eau chaude · historique 24 h » NOUVELLE
+# Puis template.reload + automation.reload ; vérifier les deux messages retenus en lecture seule. Rien sur …/set.
+
+# ---------------------------------------------------------------------------------------------------------------- A
+  # 25/10/2026 : historique 24 h du BALLON pour les écrans (contrat dashboard_guition, page Eau chaude, onglet Courbe) :
+  # 288 points (un toutes les 5 min, le plus récent en dernier). t = température en dixièmes de °C, -999 = pas de mesure ;
+  # c = consigne en °C ; l = litres d'eau chaude tirés pendant les 5 min (différence du compteur de l'ECOCOMPTEUR, en m³
+  # au litre près : il compte les mêmes impulsions que l'ESP du ballon, mais ne repart pas de zéro quand l'ESP redémarre) ; ch = 1 si le relais a chauffé À UN MOMENT des 5 min (vu à chaque changement du relais) ;
+  # hc = 1 si le tarif est en heures creuses au relevé. État = horodatage du dernier point. Exclus du recorder.
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/5"
+        id: releve
+      - trigger: state
+        entity_id: switch.tableau_electrique_chauffe_eau
+        to: "on"
+        id: chauffe
+    sensor:
+      - name: Ecran historique ballon
+        unique_id: ecran_historique_ballon
+        state: "{{ now().timestamp() | int if trigger.id == 'releve' else this.state }}"
+        attributes:
+          t: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('t', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('t', []) | list %}{% set s = states('sensor.ballon_eau_chaude_temperature') %}{% set v = (s | float * 10) | round(0) | int if s | is_number and s | float != 0 else -999 %}{{ (prec + [-999] * manques + [v])[-288:] }}{% endif %}
+          c: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('c', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('c', []) | list %}{% set v = states('input_number.ballon_consigne') | float(0) | round(0) | int %}{{ (prec + [v] * manques + [v])[-288:] }}{% endif %}
+          l: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('l', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('l', []) | list %}{% set s = states('sensor.ecocompteur_eau_chaude') %}{% set avant = this.attributes.get('total') %}{% set v = ((s | float - avant | float) * 1000) | round(0) | int if s | is_number and avant is number and s | float >= avant | float else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          total: >-
+            {% set s = states('sensor.ecocompteur_eau_chaude') %}{{ (s | float if s | is_number else this.attributes.get('total')) if trigger.id == 'releve' else this.attributes.get('total') }}
+          ch: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('ch', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('ch', []) | list %}{% set v = 1 if this.attributes.get('vue', false) or is_state('switch.tableau_electrique_chauffe_eau', 'on') else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+          vue: "{{ true if trigger.id == 'chauffe' else is_state('switch.tableau_electrique_chauffe_eau', 'on') }}"
+          hc: >-
+            {% if trigger.id == 'chauffe' %}{{ this.attributes.get('hc', []) | list }}{% else %}{% set dernier = this.state | int(0) %}{% set manques = (((now().timestamp() - dernier) / 300) | round(0) | int - 1) if dernier else 0 %}{% set manques = [[manques, 0] | max, 288] | min %}{% set prec = this.attributes.get('hc', []) | list %}{% set v = 1 if is_state('sensor.teleinfo_tarif_courant', 'Heures creuses') else 0 %}{{ (prec + [0] * manques + [v])[-288:] }}{% endif %}
+
+# ---------------------------------------------------------------------------------------------------------------- B
+#      - sensor.ecran_historique_ballon
+
+# ---------------------------------------------------------------------------------------------------------------- C
+- id: '1792200000004'
+  alias: Écran · eau chaude · état
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : état retenu du chauffe-eau sur dashboard_guition/ballon/etat
+    {temp, consigne, mode arret|auto|force, eco 0|1, chauffe 0|1, chaude_jour L, froide_jour L, kwh_jour, debit L/min,
+    puissance W, combles °C}. chauffe = relais du tableau électrique (switch.tableau_electrique_chauffe_eau).
+    froide_jour = compteur d'ARRIVÉE de la maison (toute l'eau entrée, y compris celle qui remplit le ballon) : l'écran
+    l'affiche « eau totale » (25/10).
+    puissance = tore de l'Ecocompteur (relevé toutes les 10 s), arrondie à 50 W.
+    Pas de republication périodique : queued max 2 garantit une publication APRÈS le dernier changement.
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  triggers:
+    - trigger: state
+      entity_id:
+        - sensor.ballon_eau_chaude_temperature
+        - input_number.ballon_consigne
+        - switch.tableau_electrique_chauffe_eau
+        - input_select.ballon_mode
+        - input_select.ballon_regime
+        - sensor.ballon_eau_chaude_eau_chaude_journalier
+        - sensor.arrivee_eau_journalier
+        - sensor.jour_chauffe_eau
+        - sensor.ballon_eau_chaude_eau_chaude_debit
+        - sensor.ecocompteur_chauffe_eau
+        - sensor.ballon_eau_chaude_combles_temperature
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: template            # sonde pas encore lue : on garde le dernier message retenu
+      value_template: "{{ states('sensor.ballon_eau_chaude_temperature') | float(0) != 0 }}"
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/ballon/etat
+        retain: true
+        payload: >-
+          {{ {'temp': states('sensor.ballon_eau_chaude_temperature') | float(0) | round(1),
+              'consigne': states('input_number.ballon_consigne') | float(0) | round(0) | int,
+              'mode': {'OFF': 'arret', 'AUTO': 'auto', 'FORCE': 'force'}.get(states('input_select.ballon_mode'), 'arret'),
+              'eco': 1 if is_state('input_select.ballon_regime', 'ECO') else 0,
+              'chauffe': 1 if is_state('switch.tableau_electrique_chauffe_eau', 'on') else 0,
+              'chaude_jour': states('sensor.ballon_eau_chaude_eau_chaude_journalier') | float(0) | round(0) | int,
+              'froide_jour': states('sensor.arrivee_eau_journalier') | float(0) | round(0) | int,
+              'kwh_jour': states('sensor.jour_chauffe_eau') | float(0) | round(1),
+              'debit': states('sensor.ballon_eau_chaude_eau_chaude_debit') | float(0) | round(0) | int,
+              'puissance': ((states('sensor.ecocompteur_chauffe_eau') | float(0)) / 50) | round(0) | int * 50,
+              'combles': states('sensor.ballon_eau_chaude_combles_temperature') | float(0) | round(0) | int} | tojson }}
+
+# ---------------------------------------------------------------------------------------------------------------- D
+- id: '1792200000033'
+  alias: Écran · eau chaude · historique 24 h
+  description: >-
+    Contrat dashboard_guition. À chaque nouveau point (toutes les 5 min), retenu, EN ENTIER (un message perdu ne décale
+    rien) : dashboard_guition/ballon/historique {"fin": minute du jour du dernier point, "t": [288 dixièmes de °C,
+    -999 = pas de mesure], "c": [[rang, consigne °C], …] (seulement ses changements : un escalier), "l": [[rang, litres],
+    …] (seulement les points où on a tiré de l'eau chaude), "ch": "72 chiffres hexa" (1 bit par point : le relais a
+    chauffé), "hc": "72 chiffres hexa" (1 bit par point : heures creuses)}.
+  mode: queued
+  max: 2
+  triggers:
+    - trigger: state
+      entity_id: sensor.ecran_historique_ballon
+      not_to: [unknown, unavailable]
+  variables:
+    e: sensor.ecran_historique_ballon
+    fin: >-
+      {% set t = as_local(as_datetime(states(e) | int(0))) %}{{ t.hour * 60 + t.minute }}
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/ballon/historique
+        retain: true
+        payload: >-
+          {% set c = state_attr(e, 'c') | list %}
+          {% set ns = namespace(c=[], prec=none, l=[]) %}
+          {% for v in c %}{% if v != ns.prec %}{% set ns.c = ns.c + [[loop.index0, v]] %}{% set ns.prec = v %}{% endif %}{% endfor %}
+          {% for v in state_attr(e, 'l') | list %}{% if v > 0 %}{% set ns.l = ns.l + [[loop.index0, v]] %}{% endif %}{% endfor %}
+          {% set hx = namespace(ch='', hc='') %}
+          {% set ch = state_attr(e, 'ch') | list %}{% set ch = [0] * (288 - ch | length) + ch %}
+          {% set hc = state_attr(e, 'hc') | list %}{% set hc = [0] * (288 - hc | length) + hc %}
+          {% for k in range(36) %}{% set o = namespace(a=0, b=0) %}
+            {% for j in range(8) %}{% if ch[k * 8 + j] %}{% set o.a = o.a + 2 ** j %}{% endif %}{% if hc[k * 8 + j] %}{% set o.b = o.b + 2 ** j %}{% endif %}{% endfor %}
+            {% set hx.ch = hx.ch ~ '%02x' % o.a %}{% set hx.hc = hx.hc ~ '%02x' % o.b %}{% endfor %}
+          {{ {'fin': fin | int, 't': state_attr(e, 't') | list, 'c': ns.c, 'l': ns.l, 'ch': hx.ch, 'hc': hx.hc} | to_json }}

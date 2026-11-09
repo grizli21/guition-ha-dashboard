@@ -1,0 +1,92 @@
+--- a/src/core/lv_refr.c
++++ b/src/core/lv_refr.c
+@@ -19,6 +19,22 @@
+ #include "../lvgl_public.h"
+ #include "lv_obj_style_internal.h"
+ 
++#if defined(ARDUINO)
++/* Mesure 06/11 — profondeur de dessin et marge de pile, page par page (OPTI_JOURNAL 06/11).
++ * Compteur de profondeur pose sur lv_obj_refr : en 9.6 c'est LA recursion du parcours d'objets
++ * (lv_obj_refr <-> lv_obj_redraw : lv_refr.c:182/211/232/254 -> 536 ; refr_obj_and_children,
++ * lv_refr.c:1119, n'est PAS recursive — appelee une fois par ecran/couche depuis refr_area).
++ * Une seule lecture de uxTaskGetStackHighWaterMark (octets, noyau FreeRTOS S3) par image, a la
++ * fin de lv_display_refr_timer ; une seule trace par image via lv_pile_trace (crochet applicatif).
++ * Versionne : simu/v9/pile_parcours_9.6.patch — ne jamais editer ce fichier a la main :
++ * simu/v9/applique_pile_ecran.sh [etat|appliquer|retirer]. */
++#include <freertos/FreeRTOS.h>
++#include <freertos/task.h>
++static int lv_pile_prof = 0;
++static int lv_pile_prof_max = 0;
++extern void lv_pile_trace(int profondeur_max, int marge_pile_o);
++#endif
++
+ /*********************
+  *      DEFINES
+  *********************/
+@@ -371,6 +387,10 @@
+     LV_PROFILER_REFR_BEGIN;
+     LV_TRACE_REFR("begin");
+ 
++#if defined(ARDUINO)
++    uint32_t lv_pile_inv_avant = 0; /* zones sales de l'image : 0 = rien de dessine, pas de trace */
++#endif
++
+     if(timer) {
+         disp_refr = timer->user_data;
+     }
+@@ -428,6 +448,9 @@
+     lv_obj_invalidate_expand_blur(disp_refr);
+     lv_refr_join_area();
+     refr_sync_areas();
++#if defined(ARDUINO)
++    lv_pile_inv_avant = disp_refr->inv_p;
++#endif
+     refr_invalid_areas();
+ 
+     if(disp_refr->inv_p == 0) goto refr_finish;
+@@ -451,6 +474,14 @@
+ 
+ refr_finish:
+ 
++#if defined(ARDUINO)
++    /* Fin d'image : une seule lecture du water mark de pile + une seule trace. */
++    if(lv_pile_inv_avant) {
++        lv_pile_trace(lv_pile_prof_max, (int)uxTaskGetStackHighWaterMark(NULL));
++        lv_pile_prof_max = 0;
++    }
++#endif
++
+ #if LV_DRAW_SW_COMPLEX == 1
+     lv_draw_sw_mask_cleanup();
+ #endif
+@@ -507,7 +538,7 @@
+ }
+ 
+ 
+-void lv_obj_refr(lv_layer_t * layer, lv_obj_t * obj)
++static void lv_obj_refr_sonde(lv_layer_t * layer, lv_obj_t * obj)
+ {
+     LV_CHECK_ARG(layer != NULL, return);
+     LV_CHECK_ARG(obj != NULL, return);
+@@ -628,6 +659,21 @@
+     layer->recolor = layer_recolor;
+ }
+ 
++/* Enveloppe du compteur : signature publique inchangee, appelee par tous les sites (lv_refr.c
++ * et lv_snapshot.c). Le compteur suit la recursion reelle : lv_obj_refr_sonde -> lv_obj_redraw
++ * -> wrapper lv_obj_refr pour chaque enfant. */
++void lv_obj_refr(lv_layer_t * layer, lv_obj_t * obj)
++{
++#if defined(ARDUINO)
++    lv_pile_prof++;
++    if(lv_pile_prof > lv_pile_prof_max) lv_pile_prof_max = lv_pile_prof;
++    lv_obj_refr_sonde(layer, obj);
++    lv_pile_prof--;
++#else
++    lv_obj_refr_sonde(layer, obj);
++#endif
++}
++
+ /**********************
+  *   STATIC FUNCTIONS
+  **********************/

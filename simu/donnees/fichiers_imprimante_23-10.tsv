@@ -1,0 +1,13 @@
+dashboard_guition/imprimante/fichiers	{"base": "http://192.168.1.30/server/files/gcodes/.thumbs/", "nb": 12}
+dashboard_guition/imprimante/fichiers/0	{"date": "04/10", "fichier": "respeaker3_0.2mm_PLA_Generic Klipper Printer_1h44m.gcode", "matiere": "PLA \u00b7 29 g", "minutes": 104, "nom": "respeaker3"}
+dashboard_guition/imprimante/fichiers/1	{"date": "03/10", "fichier": "tc3ec_moxon_lid_0.2mm_PLA_Generic Klipper Printer_2h18m.gcode", "matiere": "PLA \u00b7 43 g", "minutes": 138, "nom": "tc3ec_moxon_lid"}
+dashboard_guition/imprimante/fichiers/2	{"date": "13/09", "fichier": "piege souris_0.2mm_PLA_Generic Klipper Printer_2h2m.gcode", "matiere": "PLA \u00b7 38 g", "minutes": 122, "nom": "piege souris"}
+dashboard_guition/imprimante/fichiers/3	{"date": "12/09", "fichier": "piege souris_0.2mm_PLA_Generic Klipper Printer_14h15m.gcode", "matiere": "PLA \u00b7 321 g", "minutes": 855, "nom": "piege souris"}
+dashboard_guition/imprimante/fichiers/4	{"date": "12/09", "fichier": "piege souris_0.2mm_PLA_Generic Klipper Printer_4h19m.gcode", "matiere": "PLA \u00b7 101 g", "minutes": 259, "nom": "piege souris"}
+dashboard_guition/imprimante/fichiers/5	{"date": "12/09", "fichier": "piege souris_0.2mm_PLA_Generic Klipper Printer_39m23s.gcode", "matiere": "PLA \u00b7 13 g", "minutes": 39, "nom": "piege souris"}
+dashboard_guition/imprimante/fichiers/6	{"date": "12/09", "fichier": "piege souris_0.2mm_PLA_Generic Klipper Printer_1h20m.gcode", "matiere": "PLA \u00b7 24 g", "minutes": 80, "nom": "piege souris"}
+dashboard_guition/imprimante/fichiers/7	{"date": "12/09", "fichier": "piege souris_0.2mm_PLA_Generic Klipper Printer_1h2m.gcode", "matiere": "PLA \u00b7 19 g", "minutes": 62, "nom": "piege souris"}
+dashboard_guition/imprimante/fichiers/8	{"date": "12/09", "fichier": "piege souris_0.2mm_PLA_Generic Klipper Printer_2h34m.gcode", "matiere": "PLA \u00b7 60 g", "minutes": 154, "nom": "piege souris"}
+dashboard_guition/imprimante/fichiers/9	{"date": "12/09", "fichier": "piege souris_0.2mm_PLA_Generic Klipper Printer_2h33m.gcode", "matiere": "PLA \u00b7 60 g", "minutes": 153, "nom": "piege souris"}
+dashboard_guition/imprimante/fichiers/10	{"date": "12/09", "fichier": "piege souris_0.2mm_PLA_Generic Klipper Printer_2h31m.gcode", "matiere": "PLA \u00b7 60 g", "minutes": 151, "nom": "piege souris"}
+dashboard_guition/imprimante/fichiers/11	{"date": "11/09", "fichier": "box_0.2mm_PLA_Generic Klipper Printer_9h1m.gcode", "matiere": "PLA \u00b7 219 g", "minutes": 541, "nom": "box"}
