@@ -335,8 +335,16 @@ Code de ce dépôt : **MIT** ([LICENSE](LICENSE)). Bibliothèques incluses dans 
 | [ArduinoJson 7.4.2](https://arduinojson.org) | MIT |
 | [PubSubClient](https://pubsubclient.knolleary.net) | MIT |
 | [ESP32Ping](https://github.com/marian-craciunescu/ESP32Ping) | LGPL 2.1 |
-| [JPEGDEC 1.8.4](https://github.com/bitbank2/JPEGDEC) (simulateur) | Apache 2.0 |
+| [JPEGDEC 1.8.4](https://github.com/bitbank2/JPEGDEC) (**simulateur PC seulement**, exclu du firmware) | Apache 2.0 |
 | [HLK-LD2410S](https://github.com/phuongnamzz/HLK-LD2410S) (driver radar modifié) | MIT |
+
+Fournis par le framework (non inclus dans le dépôt, téléchargés à la compilation) :
+
+| Composant | Licence |
+|---|---|
+| [Arduino-ESP32 3.x](https://github.com/espressif/arduino-esp32) (via [pioarduino](https://github.com/pioarduino/platform-espressif32)) | LGPL 2.1 |
+| [ESP-IDF](https://github.com/espressif/esp-idf) | Apache 2.0 |
+| [esp_new_jpeg](https://components.espressif.com/components/espressif/esp_new_jpeg) (décodeur JPEG de l'écran : caméra et vignettes) | ESPRESSIF MIT (usage sur produits Espressif) |
 
 Polices et icônes : les polices sources — [Montserrat](https://fonts.google.com/specimen/Montserrat)
 (SIL OFL 1.1), « 3x5 » de [K-Type](https://ktype.co.uk) (gratuite à l'usage, conditions de
