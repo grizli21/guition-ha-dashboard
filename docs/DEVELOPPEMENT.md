@@ -44,8 +44,8 @@ make -C simu asan            # mêmes pages sous AddressSanitizer / UBSan
 python3 simu/galerie.py galerie.html   # assemble les captures en une page HTML consultable
 ```
 
-Le simulateur rejoue les messages MQTT d'un relevé réel anonymisé ([simu/donnees/](simu/donnees/))
-et produit ~280 captures, dont les images des trois GIF de cette page. C'est lui qui a fabriqué la
+Le simulateur rejoue les messages MQTT d'un relevé réel anonymisé ([simu/donnees/](../simu/donnees/))
+et produit ~280 captures, dont les images des trois GIF du README. C'est lui qui a fabriqué la
 galerie ci-dessus — le code affiché est
 bit à bit celui de l'écran (mêmes sources, même `lv_conf.h`, couleurs 16 bits).
 
