@@ -127,7 +127,7 @@ flowchart LR
 
 ## Sous le capot
 
-Tout ce qui suit a été mesuré sur l'écran ou au simulateur. La LVGL patchée ne repeint que deux
+Les points résumés ici ont tous été mesurés sur l'écran ou au simulateur. La LVGL patchée ne repeint que deux
 bandes pendant le défilement : **61 → 9 ms** par pas de geste. L'anneau du thermostat n'invalide
 que sa zone changeante : **75 → 24 ms** par pas de consigne. À la fermeture, la caméra rend
 **1,67 Mo** de tampons. Le simulateur PC compile le vrai code des pages et le chien de garde
