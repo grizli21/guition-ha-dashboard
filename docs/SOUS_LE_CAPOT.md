@@ -18,7 +18,9 @@ public.
   cours de geste ne défait pas les images déjà sautées — chiffrée un temps en 8.4 à 84 images /
   3 712 609 px de pixels orphelins.
 - **Rotation 0, deux mémoires d'image en PSRAM.** Toute la production tourne en rotation 0 : le pilote
-  LovyanGFX alloue deux imagebuffers plein écran, LVGL dessine dans celui qui n'est pas montré, la
+  LovyanGFX, **modifié** pour l'occasion (il n'a d'origine qu'une mémoire d'image : voir
+  [lovyangfx_double_tampon_1.2.19.patch](patches/lovyangfx_double_tampon_1.2.19.patch)), alloue deux imagebuffers plein
+  écran, LVGL dessine dans celui qui n'est pas montré, la
   dalle bascule au VSYNC — plus de copie vers la dalle (mesuré : 51 ms, pire 81, page Informations)
   et **77 ko de RAM interne rendus** ([src/ecran/ecran.cpp](../src/ecran/ecran.cpp)). C'est la condition
   du chemin rapide : sans mémoire à décaler, rien à décaler. Le mode direct à une seule mémoire a été
