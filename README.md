@@ -129,9 +129,15 @@ flowchart LR
   et **patchée à la main** : le correctif de défilement `scroll_bande_9.6.patch` est appliqué
   (marqueur `.bande-applique`) ; les deux autres patchs de `docs/patches/` sont protégés par des
   drapeaux de compilation et non appliqués.
-- **Build hybride pioarduino** : plateforme figée `55.03.312-1` (Arduino 3.3.12 / ESP-IDF 5.5.5),
-  `custom_sdkconfig` pour le Wi-Fi (fenêtre TCP 32 Ko, IRAM). Le fichier `include/version_git.h`
-  (commit affiché page Infos) est écrit par `version_git.py` avant chaque compilation.
+- **Build hybride pioarduino** : plateforme figée `55.03.312-1` (Arduino 3.3.12 / ESP-IDF 5.5.5).
+  `custom_sdkconfig` recompile l'Arduino avec un Wi-Fi taillé pour la **caméra** : la version précompilée fige
+  la fenêtre TCP à 5 760 octets, ce qui plafonnait le flux MJPEG vers 600 Ko/s, soit 11-12 images/s. Fenêtre
+  TCP de 32 Ko, fenêtre de réception Wi-Fi de 6 à 16 trames, Wi-Fi et lwIP en IRAM : avec le flux en HTTP/1.0
+  et le JPEG reçu directement à sa place, la caméra est passée à **15,3-15,9 images différentes/s**.
+  Contrepartie : un flux qui n'est plus lu bloque ~22 des 32 tampons de réception et l'écran devient
+  « sourd » : la caméra coupe donc ses flux dès qu'elle n'est plus affichée.
+- Le fichier `include/version_git.h` (commit affiché page Infos) est écrit par `version_git.py` avant
+  chaque compilation.
 - Codage en **C++ avec identifiants français** : c'est le choix du projet, assumé et homogène.
 
 ## Sous le capot
