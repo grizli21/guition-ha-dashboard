@@ -60,7 +60,7 @@ public repository.
   the allocator only sends to PSRAM blocks larger than **512 B**
   (`heap_caps_malloc_extmem_enable`), otherwise the internal heap chokes.
 - **The PC simulator does not lie, but it does not keep time.** It compiles the REAL page
-  sources, with the same configuration, and produces about 280 480 × 480 captures: pixel identity in
+  sources, with the same configuration, and produces about 280 captures at 480 × 480: pixel identity in
   the byte-to-byte comparison between two binaries, draw calls and invalidated pixels counted per
   primitive, the full scenario under AddressSanitizer/UBSan (zero reports). But its microseconds are
   PC time, **300 to 600 times** faster than the screen: all the README figures that talk about time
