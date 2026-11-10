@@ -25,7 +25,7 @@ to `build_flags` in `platformio.ini` (French by default; vocabulary in [docs/GLO
 
 - [Galerie](#galerie) · [Navigation](#navigation) · [Matériel](#matériel) · [Architecture](#architecture) · [Sous le capot](#sous-le-capot)
 - [Démarrage rapide](#démarrage-rapide) · [Aller plus loin](#aller-plus-loin) · [Limites connues](#limites-connues) · [Licence et crédits](#licence-et-crédits)
-- Pages détaillées : [Installation](docs/INSTALLATION.md) · [Sous le capot](docs/SOUS_LE_CAPOT.md) · [Développement](docs/DEVELOPPEMENT.md) · [Crédits](docs/CREDITS.md) · [Support 3D](materiel/support-bureau/)
+- Pages détaillées : [Installation](docs/INSTALLATION.md) · [Sous le capot](docs/SOUS_LE_CAPOT.md) · [Développement](docs/DEVELOPPEMENT.md) · [Crédits](docs/CREDITS.md) · [Écran sur batterie](materiel/ecran-batterie/) · [Support 3D](materiel/support-bureau/)
 
 L'anneau du chauffage pendant la montée en température (9 images du simulateur, animées) :
 
@@ -171,10 +171,9 @@ broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](
 - [docs/SOUS_LE_CAPOT.md](docs/SOUS_LE_CAPOT.md) — les neuf points techniques complets, avec leurs mesures.
 - [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md) — outillage, ajouter une page, diagnostics, simulateur en détail, arborescence.
 - [docs/CREDITS.md](docs/CREDITS.md) — licence, bibliothèques, polices et icônes, avec leurs licences.
+- [materiel/ecran-batterie/](materiel/ecran-batterie/) — l'écran sur batterie : radar, consommation mesurée, économies du firmware, boîtier 3D (licence CC BY-NC 4.0).
 - [materiel/support-bureau/](materiel/support-bureau/) — support de bureau imprimable en 3D, adapté à la rotation 0 (licence CC BY-NC-SA 4.0).
 
-<!-- Emplacement prévu pour la future page docs/… (batterie / matériel des écrans sur batterie) :
-     ajouter ici une puce de cette liste. -->
 
 ## Limites connues
 
