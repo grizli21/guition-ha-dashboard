@@ -53,6 +53,17 @@ réservé aux mesures de rendu — ne pas le flasher sans savoir pourquoi.
 `platformio.ini` (au simulateur : `make -C simu UI_LANG_EN=1`). Le dialogue MQTT avec Home Assistant ne
 change pas : seuls les textes affichés sont traduits.
 
+## Mode démo : essayer sans Home Assistant
+
+Copiez les trois gabarits de secrets (étape 1) **sans les remplir**, décommentez `-D MODE_DEMO` dans
+`platformio.ini` et flashez par câble (`ecran-usb`) : pas d'écran à déclarer. L'écran ne cherche ni Wi-Fi
+ni MQTT ; au démarrage, il rejoue un jeu de
+messages MQTT embarqué ([src/ui_lvgl/ui_demo.cpp](../src/ui_lvgl/ui_demo.cpp)) par le même code de lecture
+qu'avec Home Assistant, et toutes les pages se remplissent (heure fixée à 21:30). Les boutons du chauffage,
+de la VMC, des lumières, des ouvrants, de l'eau chaude, du poêle et du café répondent comme si Home
+Assistant renvoyait l'état ; la musique répond à un faux Music Assistant. Restent vides : caméras,
+pochettes et logos de radios (ils arrivent par le réseau). Au simulateur : `make -C simu MODE_DEMO=1`.
+
 ## 4. Home Assistant
 
 Le contrat complet (topics, JSON, conventions) tient dans [CONTRAT_MQTT.md](../CONTRAT_MQTT.md) :

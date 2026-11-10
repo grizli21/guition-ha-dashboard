@@ -36,6 +36,7 @@
 #include "../src/ui_lvgl/page_imprimante.h"
 #include "../src/ui_lvgl/page_pc.h"
 #include "../src/ui_lvgl/ui_mqtt.h"
+#include "../src/ui_lvgl/ui_demo.h"
 #include "../src/ui_lvgl/ui_images.h"
 #include "../src/ui_lvgl/ui_camera.h"
 #include "../src/ui_lvgl/ui_musique.h"
@@ -589,6 +590,10 @@ static void commande_fictive(int piece, th_mode_t mode, float consigne)
 
 int main()
 {
+#ifdef MODE_DEMO
+    // MODE DÉMO : pas de caméras simulées (donnees/cameras), pas de tests de texte — les zones caméra
+    // restent vides, comme sur l'écran de démo sans réseau.
+#else
     // 26/10 : caméras : donnees/cameras/<n>.jpg (vraies images relevées le 26/10 : 2 = entrée, 3 = imprimante) ; 02/11 : les
     // flux go2rtc (depuis le 28/10, la zone restait vide au simulateur)
     ui_camera_lire = [](int, const char *url, uint8_t *buf, size_t max, size_t *n)
@@ -618,6 +623,7 @@ int main()
             printf("[texte] « %s » -> « %s »\n", c, b);
         }
     }
+#endif
     mkdir("captures", 0755);
     lv_init();
     // 08/11 : sous 9.6 l'horloge se donne par une fonction (il n'y a plus de LV_TICK_CUSTOM dans la conf).
@@ -664,10 +670,25 @@ int main()
     // SIMU_VIDE=1 ./simu : écran sans aucune donnée (ni MQTT ni Home Assistant) : chaque page est ouverte, tapée au
     // hasard et capturée (captures/vide_*.png). Rien ne doit planter : à passer sous make asan (10/11 : 0 erreur).
     const bool vide = getenv("SIMU_VIDE") != nullptr;
+#ifdef MODE_DEMO
+    // MODE DÉMO : aucune donnée fictive du simulateur. Seulement l'allocation des tableaux du graphe, puis
+    // les branches réelles : commandes des pages -> publier() (affichée, interceptée par l'écho de ui_demo),
+    // musique -> faux Music Assistant embarqué. Les données viennent de la table ui_demo, par ui_mqtt_recevoir.
+    page_graphe_preparer();
+    ui_musique_brancher(); // mu_commande + synchro de la page musique (le transport, juste après)
+    ui_demo_brancher_ma();
+    ui_mqtt_publier = [](const char *sujet, const char *message, bool)
+    {
+        printf("[demo][commande] %s : %s\n", sujet, message); // ce qui partirait au broker
+        return true;
+    };
+    ui_mqtt_brancher();
+#else
     if (!vide) donnees_fictives();
     page_graphe_preparer();
     if (!vide) historique_fictif();
     th_commande = commande_fictive;
+#endif
     ui_shell_creer(pages, sizeof(pages) / sizeof(pages[0]), 0);
     avancer(600);
     if (vide)
@@ -697,6 +718,101 @@ int main()
     return 0;
 #endif
 
+#ifdef MODE_DEMO
+    // --- scénario de démo : rejou de la table, une capture par page, puis quelques appuis (avant/après) ---
+    ui_demo_lancer();
+    avancer(600);
+    // heure courante des pages (café, croquettes) : 21:30, l'heure fixe de la démo. Et la page Informations,
+    // comme sur l'écran réel où ui_appareil la remplit elle-même (ici : valeurs neutres, aucune donnée personnelle)
+    cf_maintenant = 21 * 60 + 30;
+    {
+        const char *sys[] = {TXT("0 j 00 h", "0 d 00 h"), TXT("mise sous tension", "power-on"), TXT("218 Ko", "218 KB"),
+                             TXT("6" SEP_DEC "1 Mo", "6" SEP_DEC "1 MB"), "44 °C", "240 MHz", "300 ms",
+                             TXT("arrêté", "off"), TXT("mode démo", "demo mode"), TXT("aucune (pas de Wi-Fi)", "none (no Wi-Fi)")};
+        for (int i = 0; i < IF_NB_SYSTEME; i++)
+            snprintf(if_systeme[i].valeur, sizeof if_systeme[i].valeur, "%s", sys[i]);
+        snprintf(if_liaisons[0].detail, sizeof if_liaisons[0].detail, "%s", TXT("coupé (mode démo)", "off (demo mode)"));
+        if_liaisons[0].ok = false;
+        snprintf(if_liaisons[1].detail, sizeof if_liaisons[1].detail, "%s", TXT("reçu il y a 2 s", "received 2 s ago"));
+        if_liaisons[1].ok = true;
+    }
+    static const char *const DEMO_PAGES[] = {"Chauffage", "Graphes", "Qualité de l'air", "Ouvrants", "Croquettes",
+                                             "Café", "Eau chaude", "VMC", "Poêle", "Musique", "Lumières", "Panneau LED",
+                                             "Imprimante 3D", "PC", "Réglages", "Informations"};
+    for (int i = 0; i < (int)(sizeof(DEMO_PAGES) / sizeof(DEMO_PAGES[0])); i++)
+    {
+        aller(DEMO_PAGES[i]);
+        // Musique : la synchro se fait au premier tic (1 s) après l'entrée — laisser passer le tic
+        avancer(strcmp(DEMO_PAGES[i], "Musique") ? 600 : 1500);
+        char nom[48];
+        snprintf(nom, sizeof nom, "demo_%02d", i + 1);
+        capture(nom);
+    }
+    // les onglets de Musique (bibliothèque et radios lues par le faux Music Assistant) et de l'imprimante
+    aller("Musique");
+    avancer(1500); // premier tic : artistes, radios, lecteurs, file
+    toucher(130, 24); // Biblio
+    lacher();
+    avancer(1500);
+    capture("demo_17_musique_biblio");
+    toucher(150, 100); // premier artiste : ses albums
+    lacher();
+    avancer(1200);
+    capture("demo_18_musique_albums");
+    toucher(220, 24); // Radios
+    lacher();
+    avancer(1200);
+    capture("demo_19_musique_radios");
+    aller("Imprimante 3D");
+    avancer(600);
+    toucher(245, 24); // Fichiers
+    lacher();
+    capture("demo_20_imprimante_fichiers");
+
+    // --- appuis : l'écho renvoie l'état que Home Assistant publierait (avant / après, garde de 3 s passée) ---
+    aller("Chauffage");
+    avancer(600);
+    capture("demo_21_chauffage_avant");
+    toucher(250, 442); // Éco sur la pièce affichée
+    lacher();
+    avancer(3600);
+    capture("demo_22_chauffage_apres");
+
+    aller("VMC");
+    avancer(600);
+    capture("demo_23_vmc_avant");
+    toucher(323, 220); // maison : Grande vitesse (troisième bouton de la carte du haut)
+    lacher();
+    avancer(3600);
+    capture("demo_24_vmc_apres");
+
+    aller("Lumières");
+    avancer(600);
+    capture("demo_25_lumieres_avant");
+    toucher(24, 77); // rond de la première lampe (Lampadaire 1, allumée) : l'éteindre
+    lacher();
+    avancer(3600);
+    capture("demo_26_lumieres_apres");
+
+    aller("Ouvrants");
+    avancer(600);
+    capture("demo_27_ouvrants_avant");
+    glisser(300, 100, 300, 197, 10); // volet cuisine : le curseur au doigt vers ~70 %
+    lacher();
+    avancer(3600);
+    capture("demo_28_ouvrants_apres");
+
+    aller("Café");
+    avancer(600);
+    toucher(268, 24); // onglet Bouilloire
+    lacher();
+    capture("demo_29_bouilloire_avant");
+    toucher(200, 434); // « maintenant » : la bouilloire se met en chauffe (l'écho le confirme)
+    lacher();
+    avancer(3600);
+    capture("demo_30_bouilloire_apres");
+    return 0;
+#else
     // --- scénario ---
     capture("01_thermostat");
     // 31/10 : anneau façon HA : chauffe en cours, consigne atteinte, arrêt (la pièce affichée, remise ensuite)
@@ -2685,5 +2801,6 @@ int main()
         fclose(f);
         printf("[audit] %d sujets rejoués sur %d vues : captures/audit_redessins.tsv\n", (int)derniers.size(), nb_vues);
     }
+#endif
     return 0;
 }

@@ -37,6 +37,15 @@ DEFS += -DUI_LANG_EN
 CONSTR := construction-en
 BIN := simu-en
 endif
+# MODE_DEMO=1 : construit le chemin démo (src/ui_lvgl/ui_demo.cpp) SANS les données fictives propres au
+# simulateur (donnees_fictives, historique_fictif, relevés du broker, réponses MA enregistrées).
+#   make -C simu MODE_DEMO=1
+# Dossier et binaire séparés, même raison que UI_LANG_EN.
+ifeq ($(MODE_DEMO),1)
+DEFS += -DMODE_DEMO
+CONSTR := construction-demo
+BIN := simu-demo
+endif
 
 CFLAGS   := -O2 -w -MMD -MP $(INC) $(DEFS)
 CXXFLAGS := -O2 -std=c++17 -Wall -Wno-unused-function -MMD -MP $(INC) $(DEFS)
@@ -96,4 +105,4 @@ $(CONSTR)/maquettes_pc.o: maquettes_pc.cpp
 -include $(OBJ:.o=.d)
 
 propre:
-	rm -rf $(CONSTR) construction-asan construction-en simu simu-asan simu-en
+	rm -rf $(CONSTR) construction-asan construction-en construction-demo simu simu-asan simu-en simu-demo

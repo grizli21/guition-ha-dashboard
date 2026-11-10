@@ -1,5 +1,6 @@
 #include "ui_diag.h"
 #include "ui_mqtt.h"
+#include "ui_demo.h" // MODE_DEMO : écho des commandes (le fichier est vide sans le drapeau)
 #include "page_thermostat.h"
 #include "page_ballon.h"
 #include "page_vmc.h"
@@ -152,6 +153,13 @@ static char g_pr_en_cours[96];  // fichier imprimé, d'après l'état (sans .gco
 
 static void publier(const char *sujet, const char *message)
 {
+#ifdef MODE_DEMO
+    // MODE DÉMO (10/11/2026) : pas de broker — la commande est interceptée ici, au point exact où elle partirait,
+    // et renvoyée à ui_mqtt_recevoir telle que Home Assistant l'aurait republiée (ui_demo_echo). Sans le drapeau,
+    // ces deux lignes n'existent pas : le chemin normal est strictement inchangé.
+    if (ui_demo_echo(sujet, message))
+        return;
+#endif
     bool ok = ui_mqtt_publier && ui_mqtt_publier(sujet, message, false);
     if (!ok)
         ui_trace("[mqtt] non envoyé : %s %s\n", sujet, message);

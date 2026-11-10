@@ -162,6 +162,9 @@ Il faut ensuite déclarer ses écrans par leur adresse MAC (table `ECRANS[]`) et
 (23 automatisations prêtes dans [ha_propositions/](ha_propositions/)). L'interface existe aussi en
 **anglais** (`-D UI_LANG_EN`). Pas à pas complet : **[docs/INSTALLATION.md](docs/INSTALLATION.md)**.
 
+**Juste pour voir ?** Le **mode démo** (`-D MODE_DEMO`) remplit toutes les pages sans Home Assistant, sans
+broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](docs/INSTALLATION.md#mode-démo--essayer-sans-home-assistant)).
+
 ## Aller plus loin
 
 - [docs/INSTALLATION.md](docs/INSTALLATION.md) — installation pas à pas : secrets, écrans par MAC, flash USB puis OTA, Home Assistant, langue, simulateur.

@@ -31,6 +31,7 @@
 #include "../ui_lvgl/ui_ecran.h" // 05/11 : adaptateur du « scroll par bande » (patch lv_obj_scroll.c)
 #include <src/draw/sw/lv_draw_sw.h>
 #include "../ui_lvgl/ui_shell.h"
+#include "../ui_lvgl/ui_demo.h" // MODE_DEMO : mode démo embarqué (fichier vide sans le drapeau)
 #include "../ui_lvgl/page_thermostat.h"
 #include "../ui_lvgl/page_graphe.h"
 #include "../ui_lvgl/page_air.h"
@@ -1659,6 +1660,17 @@ void setup()
     ui_diag_ram_etape("pilotes LVGL + affichage"); // 28/10 : AUDIT RAM
 
     ui_theme_init();
+#ifdef MODE_DEMO
+    // MODE DÉMO (10/11/2026) : aucune donnée fictive, pas de Wi-Fi, pas de MQTT. Les pages sont remplies par la
+    // table embarquée de ui_demo.cpp, rejouée par le VRAI chemin ui_mqtt_recevoir ; les commandes des pages sont
+    // interceptées dans publier() et renvoyées telles que Home Assistant les republierait (ui_demo_echo).
+    page_graphe_preparer();
+    ui_musique_brancher(); // 24/10 : la musique parle directement à Music Assistant
+    ui_demo_brancher_ma(); // en démo : Music Assistant simulé, réponses embarquées (voir ui_demo.cpp)
+    ui_mqtt_brancher();    // commandes des pages branchées + garde
+    ui_demo_lancer();
+    ui_diag_ram_etape("mode démo");
+#else
     donnees_fictives();
     page_graphe_preparer();
     historique_fictif();
@@ -1669,6 +1681,7 @@ void setup()
     ui_mqtt_demarrer(piece());
     ui_diag_ram_etape("ui_mqtt_demarrer"); // 28/10 : AUDIT RAM
     ui_musique_brancher(); // 24/10 : la musique parle directement à Music Assistant
+#endif
     ui_diag_ram_etape("ui_musique_brancher"); // 28/10 : AUDIT RAM
     // 24/10 : réglages de l'écran (mémoire flash, publiés pour HA), santé, rétroéclairage jour / nuit / veille
     // Arduino 3 : la broche reste à LovyanGFX (Light_PWM, 160 Hz, réglé dans LGFX_…ST7701_GT911.h) : un 2e ledcAttach
@@ -1688,9 +1701,16 @@ void setup()
             ui_shell_icone(sizeof(pages) / sizeof(pages[0]) - 1, PILES[niveau], couleur);
         };
     if (!g_court) // 26/10 : pas d'écran de démarrage au réveil (retour d'usage) : la page principale directement
+#ifdef MODE_DEMO
+        ui_demarrage_creer(TXT("Mode démo", "Demo mode")); // 10/11 : le démarrage le dit ; demarrage_tache l'efface en ~1,5 s
+#else
         ui_demarrage_creer(th_pieces[LV_CLAMP(0, rg_reglages.piece, TH_NB_PIECES - 1)].nom); // 24/10 : comme la production
+#endif
 
 
+#ifdef MODE_DEMO
+    // MODE DÉMO : pas de Wi-Fi, pas d'OTA, pas de banc réseau — rien ne cherche le réseau (voir aussi loop()).
+#else
     // Wi-Fi + OTA, même IP fixe que l'écran pour reflasher la production par le même chemin
     WiFi.mode(WIFI_STA);
     WiFi.setSleep(false); // sinon l'invitation OTA se perd (18/10)
@@ -1739,6 +1759,7 @@ void setup()
                           tft.readRect(0, y, 480, n, (lgfx::swap565_t *)px);
                   });
     ui_diag_ram_etape("banc (fin du setup)"); // 28/10 : AUDIT RAM
+#endif // MODE_DEMO (Wi-Fi + OTA + banc)
 }
 
 // 24/10 (retour d'usage : « une synchro au démarrage dans le splash screen ») : l'écran de démarrage suit les étapes, comme la
@@ -1748,6 +1769,21 @@ static void demarrage_tache()
 {
     if (!ui_demarrage_affiche())
         return;
+#ifdef MODE_DEMO
+    // MODE DÉMO : pas de Wi-Fi ni de MQTT à attendre — l'écran de démarrage dit « Mode démo » et s'efface vite.
+    if (millis() < 1500)
+    {
+        ui_demarrage_etape(TXT("Mode démo : données embarquées, pas de réseau", "Demo mode: embedded data, no network"), 60);
+        return;
+    }
+    ui_demarrage_etape(TXT("Mode démo", "Demo mode"), 100);
+    ui_trace("[demarrage] mode démo : interface en %lu ms\n", (unsigned long)millis());
+    trace_ram();
+    ui_demarrage_fin();
+    g_interface_prete_ms = millis();
+    ui_diag_ram_etape("interface prête (démo)"); // 28/10 : AUDIT RAM
+    return;
+#endif
     static uint32_t t_mqtt = 0, t_biblio = 0;
     const uint32_t t = millis();
     char b[96];
@@ -1921,12 +1957,15 @@ void loop()
     }
     ui_diag_tache();
     ui_diag_etape("ota");
+#ifndef MODE_DEMO
     ArduinoOTA.handle();
+#endif
 
     // 19/10 : essai d'un redémarrage logiciel en mode téléchargement (pour flasher par le port série du routeur)
     // ABANDONNÉ : la ROM de cette carte plante en « waiting for download » (LoadProhibited) même après reset système,
     // drapeaux USB à 0 et GPIO19/20 remis à zéro. Le reset par RTS à distance fonctionne, pas l'entrée en téléchargement.
 
+#ifndef MODE_DEMO
     // Wi-Fi perdu depuis 30 s : on recommence (scan : la borne la plus forte a pu changer)
     static uint32_t hors_ligne_depuis = 0;
     if (WiFi.isConnected() || g_wifi_coupe) // 31/10 : coupé exprès : pas de nouvel essai
@@ -1941,12 +1980,15 @@ void loop()
     ui_diag_etape("wifi");
     wifi_scan_tache(); // 02/11 : scans asynchrones
     wifi_surveiller();
+#endif
     ui_diag_etape("shell");
     ui_shell_tache();
     ui_diag_etape("mqtt");
     ui_mqtt_tache();
     ui_diag_etape("banc");
+#ifndef MODE_DEMO
     banc_tache();
+#endif
     ui_diag_etape("demarrage");
     demarrage_tache();
 
