@@ -207,6 +207,7 @@ de cette page. Le détail est dans [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md
 
 - [docs/SOUS_LE_CAPOT.md](docs/SOUS_LE_CAPOT.md) — les neuf points techniques complets, avec leurs mesures.
 - [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md) — outillage, ajouter une page, diagnostics, simulateur en détail, arborescence.
+- [materiel/support-bureau/](materiel/support-bureau/) — support de bureau imprimable en 3D, adapté à la rotation 0 (licence CC BY-NC-SA 4.0).
 
 <!-- Emplacement prévu pour la future page docs/… (batterie / matériel des écrans sur batterie) :
      ajouter ici une puce de cette liste. -->
@@ -225,7 +226,7 @@ de cette page. Le détail est dans [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md
 
 ## Licence et crédits
 
-Code de ce dépôt : **MIT** ([LICENSE](LICENSE)). Bibliothèques incluses dans `lib/` :
+Code de ce dépôt : **MIT** ([LICENSE](LICENSE)). Exception : les fichiers 3D de `materiel/` ont leur propre licence, indiquée dans leur dossier. Bibliothèques incluses dans `lib/` :
 
 | Bibliothèque | Licence |
 |---|---|
