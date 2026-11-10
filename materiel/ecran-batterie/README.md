@@ -40,7 +40,7 @@ Mesures faites à l'alimentation de laboratoire, réglée à la tension de la ba
   profonde (commande DSTB du ST7701), et le radar la réveille (GPIO 2).
 - **Démarrage court** au réveil : pas d'écran de démarrage, borne Wi-Fi et canal gardés en mémoire RTC
   pour se reconnecter sans balayage. Mesuré : **0,69 à 0,72 s** jusqu'à l'écran prêt, contre 1,39 s
-  pour un démarrage normal.
+  avec l'ancien firmware (avant le passage à LVGL).
 - **Mode économie** après 10 s sans toucher : luminosité de repos, processeur à 80 MHz, Wi-Fi en
   économie légère (`WIFI_PS_MIN_MODEM`).
 - **Wi-Fi coupé après la synchronisation** (option) : la radio s'éteint une fois les données reçues de
