@@ -1,5 +1,7 @@
 # Support de bureau — version « rotation 0 »
 
+[English](README.en.md) | **Français**
+
 Support imprimable pour l'écran Guition ESP32-S3-4848S040, adapté à l'orientation utilisée par
 ce firmware (rotation 0 : voir [Sous le capot](../../docs/SOUS_LE_CAPOT.md)).
 

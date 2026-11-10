@@ -1,5 +1,7 @@
 # Écran sur batterie
 
+[English](README.en.md) | **Français**
+
 Une variante de l'écran Guition ESP32-S3-4848S040 qui fonctionne **sans fil** : une batterie lithium,
 un radar de présence qui réveille l'écran quand quelqu'un approche, et un firmware qui passe l'essentiel
 de son temps en veille profonde. C'est le même firmware que les écrans muraux, avec la page « Batterie et

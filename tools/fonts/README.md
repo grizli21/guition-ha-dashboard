@@ -1,5 +1,7 @@
 # Polices sources — à télécharger, non redistribuées ici
 
+[English](README.en.md) | **Français**
+
 Ce dossier reçoit les polices sources utilisées par `tools/polices_ui.sh` pour générer les
 polices bitmap de l'interface (`lib/ressources/*.c`). Les fichiers sources ne sont **pas**
 redistribués dans ce dépôt (licences) : récupérez-les ici une fois avant de relancer le script.
