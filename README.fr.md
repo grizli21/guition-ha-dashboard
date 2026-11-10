@@ -1,5 +1,7 @@
 # Dashboard Guition — écran mural LVGL pour Home Assistant
 
+[English](README.md) | **Français**
+
 Tableau de bord mural pour écrans **Guition ESP32-S3-4848S040** : firmware LVGL 9.6, piloté par
 **Home Assistant via MQTT**, avec un **simulateur PC** qui compile le vrai code des pages et sort des
 captures 480 × 480. Dix-huit pages tactiles pensées pour la maison : chauffage, graphes 24 h,
@@ -7,11 +9,7 @@ qualité de l'air, ouvrants, croquettes, café, eau chaude, VMC, poêle à bois,
 panneau LED, imprimante 3D, PC, réglages, informations, batterie — plus la page radar des écrans
 sur batterie.
 
-**EN.** Wall-mounted dashboard for Guition ESP32-S3-4848S040 screens: an LVGL 9.6 firmware driven by
-Home Assistant over MQTT, plus a PC simulator that compiles the very same page code and renders
-480×480 captures. 18 touchscreen pages — heating, hot water, VMC, wood stove, music, lights,
-3D printer, PC, air quality, and more. **The interface is available in English**: add `-D UI_LANG_EN`
-to `build_flags` in `platformio.ini` (French by default; vocabulary in [docs/GLOSSAIRE_EN.md](docs/GLOSSAIRE_EN.md)).
+English version of this page: **[README.md](README.md)**.
 
 [![Licence : MIT](https://img.shields.io/badge/licence-MIT-4b714f)](LICENSE)
 [![LVGL 9.6.0](https://img.shields.io/badge/LVGL-9.6.0-41c17c)](lib/lvgl-9.6.0)
