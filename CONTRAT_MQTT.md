@@ -1,5 +1,7 @@
 # Contrat MQTT des écrans muraux (nouvelle interface LVGL)
 
+[English](CONTRAT_MQTT.en.md) | **Français**
+
 Référence du contrat MQTT, première rédaction le 22/10/2026, tenue à jour avec le code.
 Le code de l'écran (`src/ui_lvgl/`) et les automatisations HA suivent ce document : on le modifie d'abord, puis le code.
 
