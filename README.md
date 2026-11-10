@@ -26,7 +26,9 @@ L'anneau du chauffage pendant la montée en température (9 images du simulateur
 
 ## Galerie
 
-Rendu réel du code, capturé par le simulateur (`make -C simu`) :
+Rendu réel du code, capturé par le simulateur (`make -C simu`). Les valeurs chiffrées y sont dans la police pixel
+« 3x5 » de K-Type, une **option** à télécharger soi-même (usage personnel) ; par défaut, le firmware les affiche en
+Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--la-police-pixel--3x5--des-captures).
 
 <table>
   <tr>
@@ -244,10 +246,12 @@ Fournis par le framework (non inclus dans le dépôt, téléchargés à la compi
 | [esp_new_jpeg](https://components.espressif.com/components/espressif/esp_new_jpeg) (décodeur JPEG de l'écran : caméra et vignettes) | ESPRESSIF MIT (usage sur produits Espressif) |
 
 Polices et icônes : les polices sources — [Montserrat](https://fonts.google.com/specimen/Montserrat)
-(SIL OFL 1.1), « 3x5 » de [K-Type](https://www.k-type.com/fonts/3x5/) (gratuite pour un usage personnel
-seulement, voir [ses conditions](https://www.k-type.com/licences/)), [FontAwesome 5 Free](https://fontawesome.com) (OFL, icônes
-CC BY 4.0) — ne sont **pas redistribuées** dans le dépôt : voir [tools/fonts/README.md](tools/fonts/README.md)
-pour les récupérer et régénérer les polices bitmap (`lib/ressources/*.c`, dans le dépôt). Sources
+(SIL OFL 1.1), [FontAwesome 5 Free](https://fontawesome.com) (OFL, icônes CC BY 4.0) — ne sont **pas
+redistribuées** dans le dépôt : voir [tools/fonts/README.md](tools/fonts/README.md) pour les récupérer et
+régénérer les polices bitmap (`lib/ressources/*.c`, dans le dépôt). La police pixel « 3x5 » de Keith Bates /
+[K-Type](https://www.k-type.com/fonts/3x5/), visible sur les captures, est gratuite pour un usage personnel
+seulement ([conditions](https://www.k-type.com/licences/)) : elle n'est **ni fournie ni générée** ici, c'est
+l'option `POLICE_3X5`. Sources
 d'icônes [Material Design Icons](https://pictogrammers.com/library/mdi/) (Apache 2.0) dans
 `tools/mdi/`. Les images de démonstration du simulateur (caméras, pochettes, logos) sont des mires
 générées, libres de droit.

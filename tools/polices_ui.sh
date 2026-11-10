@@ -3,7 +3,7 @@
 # Jeu de caractères : tout le latin-1 (accents, ° µ · ² ³ « ») + ’ – — … − ≈ ← ↑ → ↓ ≤ ≥ (manquaient : vus au simulateur).
 # Les polices 12 et 14 « _fr » servent aussi aux pages de production : on en fait des copies « _ui » sans les toucher.
 # Lancer depuis la racine du dépôt :  bash tools/polices_ui.sh
-# Prérequis : les polices sources (Montserrat, 3x5 K-Type, FontAwesome woff) dans tools/fonts/ — voir tools/fonts/README.md.
+# Prérequis : les polices sources (Montserrat, FontAwesome woff ; en option la 3x5 de K-Type) dans tools/fonts/ — voir tools/fonts/README.md.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -37,8 +37,28 @@ gen 16 tools/fonts/Montserrat-Bold.ttf montserrat_b_16_fr # 31/10 : boutons de m
 $CONV $OPTS --size 36 --font "$FA" -r "61523,61524" -o lib/ressources/chevrons_36.c
 echo "chevrons_36.c"
 
-# 3x5 K-Type (pixel) : tailles où un carré tombe sur un nombre entier de pixels (25 -> 4 px, 37 -> 6 px, 49 -> 8 px)
-for t in 25 37; do
-    npx --yes lv_font_conv@1.5.2 --bpp 4 --size $t --font tools/fonts/3x5_K-Type.otf -r 32-126,160-255 --format lvgl --lv-include lvgl.h -o lib/ressources/k3x5_${t}.c
-    echo "k3x5_${t}.c"
+# Valeurs chiffrées, police par défaut : Montserrat Bold (UI_POLICE_TEMP / _TEMP_PETITE / _3X5_P / _3X5_M dans ui_theme.h).
+# Mêmes hauteurs de chiffres que la 3x5 (17 / 25 / 33 / 66 px), un peu réduites à 32 et 40 : Montserrat est plus large.
+for t in 24 32 40; do
+    $CONV --bpp 4 --size $t --font tools/fonts/Montserrat-Bold.ttf -r 32-126,160-255 --format lvgl --lv-include lvgl.h -o lib/ressources/montserrat_b_${t}_fr.c
+    echo "montserrat_b_${t}_fr.c"
 done
+$CONV --bpp 4 --size 94 --font tools/fonts/Montserrat-Bold.ttf -r 32,37,44-46,48-57,176 --format lvgl --lv-include lvgl.h -o lib/ressources/montserrat_b_94_num.c
+echo "montserrat_b_94_num.c"
+
+# OPTION POLICE_3X5 : police pixel « 3x5 » de K-Type (gratuite pour un usage personnel seulement, NON fournie).
+# Si tools/fonts/3x5_K-Type.otf est présent, génère ses 4 fichiers (ignorés par git), puis compiler avec -D POLICE_3X5.
+# Tailles où un carré tombe sur un nombre entier de pixels (37 -> 6 px, 49 -> 8 px).
+K3X5=tools/fonts/3x5_K-Type.otf
+if [ -f "$K3X5" ]; then
+    for t in 25 37; do
+        $CONV --bpp 4 --size $t --font "$K3X5" -r 32-126,160-255 --format lvgl --lv-include lvgl.h -o lib/ressources/k3x5_${t}.c
+        echo "k3x5_${t}.c"
+    done
+    $CONV --bpp 4 --size 49 --font "$K3X5" -r 32-126,160-255 --format lvgl --lv-include lvgl.h -o lib/ressources/k3x5_49_num.c
+    echo "k3x5_49_num.c"
+    $CONV --bpp 4 --size 99 --font "$K3X5" -r 32,37,44-46,48-57,176 --format lvgl --lv-include lvgl.h -o lib/ressources/k3x5_99_num.c
+    echo "k3x5_99_num.c"
+else
+    echo "($K3X5 absent : option POLICE_3X5 non générée, voir tools/fonts/README.md)"
+fi

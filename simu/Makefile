@@ -20,6 +20,10 @@ INC := -I. -I$(CONF) -I$(RACINE)/include -I$(LVGL) -I$(RACINE)/lib/icones -I$(RA
 # couleurs brouillées au simulateur, 23/10 ; sur l'ESP32-S3 sa version SIMD le respecte, comme la production)
 DEFS := -D__LINUX__ -DNO_SIMD -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE \
        -Dps_malloc=malloc -Dps_realloc=realloc -Dps_free=free -Dps_calloc=calloc
+# make -C simu POLICE_3X5=1 : police 3x5 de K-Type (option, voir tools/fonts/README.md) au lieu de Montserrat Bold
+ifdef POLICE_3X5
+DEFS += -DPOLICE_3X5
+endif
 # 08/11 : ps_malloc seul était remplacé ; ui_musique.cpp (9.6) appelle aussi ps_realloc (les tableaux
 # d'albums gardés entre deux versions), et ui_psram.h du PC ne définit pas ces noms-là.
 # -MMD -MP : chaque .o dépend de ses en-têtes (24/10 : un en-tête modifié laissait des .o périmés)

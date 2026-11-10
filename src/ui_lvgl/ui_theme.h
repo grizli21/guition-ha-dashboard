@@ -40,11 +40,7 @@ LV_FONT_DECLARE(montserrat_sb_30_fr); // valeurs de bandeau
 LV_FONT_DECLARE(montserrat_b_30_fr);  // 27/10 : nom de la pièce du thermostat, en gras
 LV_FONT_DECLARE(chevrons_36);         // 27/10 : flèches < > de l'en-tête du thermostat (36 au lieu de 30)
 LV_FONT_DECLARE(montserrat_b_58_num); // grandes valeurs (chiffres seulement)
-LV_FONT_DECLARE(k3x5_99_num);         // température du thermostat (3x5 K-Type, usage personnel ; chiffres seulement)
-LV_FONT_DECLARE(k3x5_49_num);         // consigne du thermostat (même police, carré de 8 px ; jeu latin complet)
 LV_FONT_DECLARE(montserrat_sb_22_fr); // valeurs secondaires (extérieur du thermostat)
-LV_FONT_DECLARE(k3x5_25);            // 3x5 petit (carré de 4 px) : heures, grammes dans les listes
-LV_FONT_DECLARE(k3x5_37);            // 3x5 moyen (carré de 6 px) : valeurs de carte
 
 #define UI_POLICE_LEGENDE (&montserrat_sb_12_ui)
 #define UI_POLICE_PETITE (&montserrat_14_ui)
@@ -55,11 +51,32 @@ LV_FONT_DECLARE(k3x5_37);            // 3x5 moyen (carré de 6 px) : valeurs de 
 #define UI_POLICE_NOM_PIECE (&montserrat_b_30_fr)
 #define UI_POLICE_CHEVRONS (&chevrons_36)
 #define UI_POLICE_GRANDE (&montserrat_b_58_num)
+#define UI_POLICE_TEXTE_22 (&montserrat_sb_22_fr)
+
+// --- Polices des valeurs chiffrées (température, consigne, heures, grammes, pourcentages) ---
+// Par défaut : Montserrat Bold (SIL OFL 1.1, fournie). Option POLICE_3X5 : la police pixel « 3x5 » de K-Type, celle des
+// captures du README. Elle est gratuite pour un usage personnel seulement et n'est donc PAS fournie : la télécharger
+// soi-même, générer ses fichiers (tools/polices_ui.sh) puis ajouter -D POLICE_3X5 aux build_flags (voir
+// tools/fonts/README.md).
+#ifdef POLICE_3X5
+LV_FONT_DECLARE(k3x5_99_num);         // température du thermostat (chiffres seulement)
+LV_FONT_DECLARE(k3x5_49_num);         // consigne du thermostat (carré de 8 px ; jeu latin complet)
+LV_FONT_DECLARE(k3x5_25);             // petit (carré de 4 px) : heures, grammes dans les listes
+LV_FONT_DECLARE(k3x5_37);             // moyen (carré de 6 px) : valeurs de carte
 #define UI_POLICE_TEMP (&k3x5_99_num)
 #define UI_POLICE_TEMP_PETITE (&k3x5_49_num)
-#define UI_POLICE_TEXTE_22 (&montserrat_sb_22_fr)
 #define UI_POLICE_3X5_P (&k3x5_25)
 #define UI_POLICE_3X5_M (&k3x5_37)
+#else
+LV_FONT_DECLARE(montserrat_b_94_num); // température du thermostat (chiffres seulement)
+LV_FONT_DECLARE(montserrat_b_40_fr);  // consigne du thermostat, grandes valeurs de page
+LV_FONT_DECLARE(montserrat_b_24_fr);  // petit : heures, grammes dans les listes
+LV_FONT_DECLARE(montserrat_b_32_fr);  // moyen : valeurs de carte
+#define UI_POLICE_TEMP (&montserrat_b_94_num)
+#define UI_POLICE_TEMP_PETITE (&montserrat_b_40_fr)
+#define UI_POLICE_3X5_P (&montserrat_b_24_fr)
+#define UI_POLICE_3X5_M (&montserrat_b_32_fr)
+#endif
 
 static inline lv_color_t ui_c(uint32_t rgb) { return lv_color_hex(rgb); }
 

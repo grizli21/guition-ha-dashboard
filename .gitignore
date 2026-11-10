@@ -24,3 +24,7 @@ dumps/
 
 # Notes de préparation à la publication (jamais publiées)
 PUBLICATION.md
+
+# Police « 3x5 » de K-Type (usage personnel seulement, non redistribuable) : source et fichiers générés restent locaux
+tools/fonts/3x5*.otf
+lib/ressources/k3x5_*.c
