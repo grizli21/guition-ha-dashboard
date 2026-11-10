@@ -98,7 +98,7 @@ restart between two fling steps spread the steps apart (47 → 135-300 ms) and s
 - On these chips, the eFuses lock the flash to **DIO** (2 wires): QIO/QOUT attempts fall back
   to DIO at boot — documented in the comments of [platformio.ini](platformio.ini).
 
-Measured on this branch (8/11/2026): **Flash 56.0 %** (2,641,031 B / 4,718,592 B), **internal RAM 25.1 %**
+Measured on this branch (8 Nov 2026): **Flash 56.0 %** (2,641,031 B / 4,718,592 B), **internal RAM 25.1 %**
 (82,160 B / 327,680 B), final image 2,677,199 B.
 
 ## Architecture

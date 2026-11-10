@@ -2,7 +2,7 @@
 
 **English** | [Français](CONTRAT_MQTT.md)
 
-MQTT contract reference, first written on 22/10/2026, kept in step with the code.
+MQTT contract reference, first written on 22 Oct 2026, kept in step with the code.
 The screen code (`src/ui_lvgl/`) and the HA automations follow this document: it is updated first, then the code.
 
 ## 1. Principles
@@ -173,7 +173,7 @@ chevet = `light.yeelight_bslamp1`.
 **S** `{"action":"regler", "on":1, "lum":60}` / `{"action":"regler", "teinte":200, "sat":80}` / `{"action":"regler", "kelvin":3000}`
 (HA: `light.turn_on` `hs_color` / `color_temp_kelvin` / `brightness_pct`)
 
-### LED Panel — `dashboard_guition/panneau_led/etat` and `/set` (page written on 02/11/2026, HA side installed on 07/11/2026)
+### LED Panel — `dashboard_guition/panneau_led/etat` and `/set` (page written on 2 Nov 2026, HA side installed on 7 Nov 2026)
 Red / infrared light-therapy panel in the workshop (ESPHome integration `panneau_led_rouge` in HA).
 **E** `{"seance":0|1, "allumees":0|1, "longueurs":"all|rouge_jaune|nir", "mode":"minuterie|illimite", "duree":15, "restant":9,
 "toutes":80, "i590":100, "i630":100, "i660":100, "i810":0, "i830":0, "i850":0, "i940":0, "radiateur":43, "ventilos":20, "en_ligne":1}`
