@@ -21,6 +21,12 @@ to `build_flags` in `platformio.ini` (French by default; vocabulary in [docs/GLO
 
 ---
 
+## Sommaire
+
+- [Galerie](#galerie) · [Navigation](#navigation) · [Matériel](#matériel) · [Architecture](#architecture) · [Sous le capot](#sous-le-capot)
+- [Démarrage rapide](#démarrage-rapide) · [Aller plus loin](#aller-plus-loin) · [Limites connues](#limites-connues) · [Licence et crédits](#licence-et-crédits)
+- Pages détaillées : [Installation](docs/INSTALLATION.md) · [Sous le capot](docs/SOUS_LE_CAPOT.md) · [Développement](docs/DEVELOPPEMENT.md) · [Crédits](docs/CREDITS.md) · [Support 3D](materiel/support-bureau/)
+
 L'anneau du chauffage pendant la montée en température (9 images du simulateur, animées) :
 
 <img src="docs/images/vitrine-chauffage.gif" width="360" alt="L'anneau du thermostat pendant la chauffe">
@@ -140,78 +146,25 @@ relance un écran figé en disant où il était.
 
 ## Démarrage rapide
 
-### Prérequis
-
-- [PlatformIO Core](https://platformio.org/install) (CLI `pio`).
-- Un PC Linux avec `g++` et `zlib` pour le simulateur ; `python3` (et `pillow` pour `tools/banc.py`).
-- Un broker MQTT et Home Assistant avec l'intégration MQTT.
-
-### 1. Configurer les secrets
-
-Les fichiers de secrets ne sont **pas** dans le dépôt — copiez les gabarits et remplissez-les :
-
 ```bash
-cp src/secrets_mqtt.h.exemple  src/secrets_mqtt.h          # broker, utilisateur, mot de passe
-cp src/secrets_ma.h.exemple    src/secrets_ma.h            # serveur et jeton Music Assistant
-cp src/ecran/secrets_wifi.h.exemple src/ecran/secrets_wifi.h  # SSID, mot de passe, plan d'IP local
+git clone https://github.com/grizli21/guition-ha-dashboard.git && cd guition-ha-dashboard
+cp src/secrets_mqtt.h.exemple src/secrets_mqtt.h            # puis remplir : broker MQTT
+cp src/secrets_ma.h.exemple src/secrets_ma.h                # Music Assistant
+cp src/ecran/secrets_wifi.h.exemple src/ecran/secrets_wifi.h  # Wi-Fi et plan d'IP
+pio run -e ecran-usb -t upload --upload-port /dev/ttyACM0   # premier flash par câble, ensuite en OTA
+make -C simu                                                # simulateur PC : captures dans simu/captures/
 ```
 
-### 2. Déclarer ses écrans
-
-Dans [src/ecran/ecran.cpp](src/ecran/ecran.cpp), la table `ECRANS[]` associe chaque écran à sa MAC :
-
-```c
-static const ecran_t ECRANS[] = {
-    // { MAC (placeholder), dernier octet de l'IP, pièce, rotation, batterie }
-    {{0xaa, 0xbb, 0xcc, 0x00, 0x00, 0x01}, 10, "cuisine",  0, false},
-    {{0xaa, 0xbb, 0xcc, 0x00, 0x00, 0x02}, 11, "sejour",   0, true },
-    // … remplacez les MAC par celles de vos écrans — la trace [ecran] du premier démarrage les affiche (pio device monitor)
-};
-```
-
-Les adresses du dépôt sont des **placeholders** : mettez vos MAC, et l'IP statique se construit
-avec `RESEAU_OCTET_1/2/3` + le dernier octet déclaré.
-
-### 3. Compiler et flasher
-
-```bash
-pio device list                                             # trouve ton port série (ttyACM0 ou ttyUSB0 selon le câble)
-pio run -e ecran-usb -t upload --upload-port /dev/ttyACM0    # premier flash : par câble (ou /dev/ttyUSB0)
-pio run -e ecran -t upload --upload-port 192.168.1.41        # ensuite : OTA, sans câble
-pio device monitor                                          # journal série, 115 200 bauds
-```
-
-L'OTA passe par `ArduinoOTA` (protocole d'upload `espota` du dépôt, 15 s de timeout) : une fois le
-premier flash fait par câble, plus besoin d'ouvrir l'écran. L'environnement `banc-chambre1-v9` est
-réservé aux mesures de rendu — ne pas le flasher sans savoir pourquoi.
-
-**Langue** : l'interface est en français par défaut. Pour l'anglais, décommentez `-D UI_LANG_EN` dans
-`platformio.ini` (au simulateur : `make -C simu UI_LANG_EN=1`). Le dialogue MQTT avec Home Assistant ne
-change pas : seuls les textes affichés sont traduits.
-
-### 4. Home Assistant
-
-Le contrat complet (topics, JSON, conventions) tient dans [CONTRAT_MQTT.md](CONTRAT_MQTT.md) :
-deux automatisations par page (« Écran · page · état » qui publie `etat` en retain, « Écran · page ·
-commandes » qui exécute les `set`). [ha_propositions/](ha_propositions/) contient **23 automatisations
-prêtes à l'emploi** pour HA (les miennes, adaptées : remplacez les entités d'exemple par les vôtres).
-La page Musique ne passe pas par MQTT : l'écran parle directement à **Music Assistant** (HTTP + jeton).
-
-### 5. Simulateur PC
-
-```bash
-make -C simu                 # compile le VRAI code des pages, joue le scénario, écrit simu/captures/*.png
-make -C simu asan            # mêmes pages sous AddressSanitizer / UBSan
-python3 simu/galerie.py galerie.html   # assemble les captures en une page HTML consultable
-```
-
-Il rejoue les messages MQTT d'un relevé réel anonymisé et produit ~280 captures, dont les images
-de cette page. Le détail est dans [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md#simulateur).
+Il faut ensuite déclarer ses écrans par leur adresse MAC (table `ECRANS[]`) et brancher Home Assistant
+(23 automatisations prêtes dans [ha_propositions/](ha_propositions/)). L'interface existe aussi en
+**anglais** (`-D UI_LANG_EN`). Pas à pas complet : **[docs/INSTALLATION.md](docs/INSTALLATION.md)**.
 
 ## Aller plus loin
 
+- [docs/INSTALLATION.md](docs/INSTALLATION.md) — installation pas à pas : secrets, écrans par MAC, flash USB puis OTA, Home Assistant, langue, simulateur.
 - [docs/SOUS_LE_CAPOT.md](docs/SOUS_LE_CAPOT.md) — les neuf points techniques complets, avec leurs mesures.
 - [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md) — outillage, ajouter une page, diagnostics, simulateur en détail, arborescence.
+- [docs/CREDITS.md](docs/CREDITS.md) — licence, bibliothèques, polices et icônes, avec leurs licences.
 - [materiel/support-bureau/](materiel/support-bureau/) — support de bureau imprimable en 3D, adapté à la rotation 0 (licence CC BY-NC-SA 4.0).
 
 <!-- Emplacement prévu pour la future page docs/… (batterie / matériel des écrans sur batterie) :
@@ -231,35 +184,8 @@ de cette page. Le détail est dans [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md
 
 ## Licence et crédits
 
-Code de ce dépôt : **MIT** ([LICENSE](LICENSE)). Exception : les fichiers 3D de `materiel/` ont leur propre licence, indiquée dans leur dossier. Bibliothèques incluses dans `lib/` :
-
-| Bibliothèque | Licence |
-|---|---|
-| [LVGL 9.6.0](https://lvgl.io) (vendorisée, patchée) | MIT |
-| [LovyanGFX 1.2.19](https://github.com/lovyan03/LovyanGFX) (vendorisée, modifiée : double tampon de l'écran, [patch](docs/patches/lovyangfx_double_tampon_1.2.19.patch) ; polices CJK retirées) | FreeBSD 2 clauses (lu dans `license.txt`) |
-| [ArduinoJson 7.4.2](https://arduinojson.org) | MIT |
-| [PubSubClient](https://pubsubclient.knolleary.net) | MIT |
-| [ESP32Ping](https://github.com/marian-craciunescu/ESP32Ping) | LGPL 2.1 |
-| [JPEGDEC 1.8.4](https://github.com/bitbank2/JPEGDEC) (**simulateur PC seulement**, exclu du firmware) | Apache 2.0 |
-| [HLK-LD2410S](https://github.com/phuongnamzz/HLK-LD2410S) (driver radar modifié) | MIT |
-
-Fournis par le framework (non inclus dans le dépôt, téléchargés à la compilation) :
-
-| Composant | Licence |
-|---|---|
-| [Arduino-ESP32 3.x](https://github.com/espressif/arduino-esp32) (via [pioarduino](https://github.com/pioarduino/platform-espressif32)) | LGPL 2.1 |
-| [ESP-IDF](https://github.com/espressif/esp-idf) | Apache 2.0 |
-| [esp_new_jpeg](https://components.espressif.com/components/espressif/esp_new_jpeg) (décodeur JPEG de l'écran : caméra et vignettes) | ESPRESSIF MIT (usage sur produits Espressif) |
-
-Polices et icônes : les polices sources — [Montserrat](https://fonts.google.com/specimen/Montserrat)
-(SIL OFL 1.1), [FontAwesome 5 Free](https://fontawesome.com) (OFL, icônes CC BY 4.0) — ne sont **pas
-redistribuées** dans le dépôt : voir [tools/fonts/README.md](tools/fonts/README.md) pour les récupérer et
-régénérer les polices bitmap (`lib/ressources/*.c`, dans le dépôt). La police pixel « 3x5 » de Keith Bates /
-[K-Type](https://www.k-type.com/fonts/3x5/), visible sur les captures, est gratuite pour un usage personnel
-seulement ([conditions](https://www.k-type.com/licences/)) : elle n'est **ni fournie ni générée** ici, c'est
-l'option `POLICE_3X5`. Sources
-d'icônes [Material Design Icons](https://pictogrammers.com/library/mdi/) (Apache 2.0) dans
-`tools/mdi/`. Les images de démonstration du simulateur (caméras, pochettes, logos) sont des mires
-générées, libres de droit.
+Code de ce dépôt : **MIT** ([LICENSE](LICENSE)). Les fichiers 3D de `materiel/` ont leur propre licence,
+indiquée dans leur dossier. Bibliothèques, polices et icônes utilisées, avec leurs licences :
+**[docs/CREDITS.md](docs/CREDITS.md)**.
 
 Développé avec l'aide d'assistants IA : Claude (Anthropic) et Qwen (exécuté en local).
