@@ -15,14 +15,14 @@ capteur » en plus.
 |---|---|
 | Écran | Guition ESP32-S3-4848S040 (le même que les écrans muraux) |
 | Mesure de la tension | pont diviseur 100 kΩ / 47 kΩ sur le GPIO 1 (ADC) ([ui_batterie_esp.cpp](../../src/ui_lvgl/ui_batterie_esp.cpp)) |
-| Détection de présence | radar 24 GHz **HLK-LD2410S**, sortie OUT sur le GPIO 2 : réveille l'ESP32-S3 de sa veille profonde (réveil ext0) |
+| Détection de présence | radar 24 GHz **HLK-LD2410S** : sortie OUT sur le GPIO 2 (réveille l'ESP32-S3 de sa veille profonde, réveil ext0) ; port série sur les GPIO 41 (RX de l'ESP32) et 40 (TX), 115 200 bauds, pour les mesures et les réglages |
 | Boîtier | dessiné de A à Z, 4 pièces imprimées en 3D : voir [Boîtier](#boîtier) |
 
 ## Modifications de la carte
 
 - **Amplificateur audio de la carte décâblé.**
 - **Pont diviseur** ajouté pour lire la tension de la batterie sur le GPIO 1.
-- **Radar LD2410S** câblé sur le GPIO 2, pour réveiller l'écran.
+- **Radar LD2410S** câblé : sortie OUT sur le GPIO 2 pour réveiller l'écran, port série sur les GPIO 40 et 41.
 
 ## Consommation mesurée
 
@@ -52,6 +52,22 @@ La page **Batterie et capteur** montre la charge, l'historique des réveils sur 
 minuterie) et le détail du dernier réveil, en millisecondes : Wi-Fi, MQTT, synchronisation, coupure.
 La tension est lissée sur 64 lectures (les 4 extrêmes écartés) ; la charge est déduite de la tension
 (au-dessus de 4,15 V).
+
+## La bibliothèque du radar, modifiée
+
+La bibliothèque [HLK-LD2410S](https://github.com/phuongnamzz/HLK-LD2410S) est incluse dans
+[lib/HLK-LD2410S](../../lib/HLK-LD2410S), avec ces modifications (datées en commentaire dans le code) :
+
+- **Compilation** avec l'ESP-IDF 5 : un `return` manquait.
+- **Commandes fiables** : la trame part d'un seul envoi (elle partait en 19 morceaux), et la réponse est
+  cherchée par son en-tête et l'écho de la commande, comme dans ESPHome. Avant, elle était lue comme un bloc
+  de taille fixe au début du tampon : une trame de mesure arrivée juste avant la décalait, et le passage en
+  configuration ratait au premier essai. Jusqu'à 3 renvois si le capteur ne répond pas.
+- **Seuils du firmware 1.1.1** du capteur : 16 seuils de déclenchement et 16 seuils de maintien, d'après son
+  protocole de 2024 (la bibliothèque suivait une notice de 2023).
+- **Énergie par zone en dB**, comme l'outil Hi-Link, pour la comparer directement aux seuils.
+- **Réglage automatique** : il n'attend plus indéfiniment quand le capteur cesse d'envoyer sa progression.
+- **Points de mesure** (trames brutes, commandes acquittées, compteurs) pour le journal et la page web du radar.
 
 ## Boîtier
 

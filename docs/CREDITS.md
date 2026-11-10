@@ -13,7 +13,7 @@ Code de ce dépôt : **MIT** ([LICENSE](../LICENSE)). Exception : les fichiers 3
 | [PubSubClient](https://pubsubclient.knolleary.net) | MIT |
 | [ESP32Ping](https://github.com/marian-craciunescu/ESP32Ping) | LGPL 2.1 |
 | [JPEGDEC 1.8.4](https://github.com/bitbank2/JPEGDEC) (**simulateur PC seulement**, exclu du firmware) | Apache 2.0 |
-| [HLK-LD2410S](https://github.com/phuongnamzz/HLK-LD2410S) (driver radar modifié) | MIT |
+| [HLK-LD2410S](https://github.com/phuongnamzz/HLK-LD2410S) (driver radar modifié : [pourquoi](../materiel/ecran-batterie/README.md#la-bibliothèque-du-radar-modifiée)) | MIT |
 
 Fournis par le framework (non inclus dans le dépôt, téléchargés à la compilation) :
 
