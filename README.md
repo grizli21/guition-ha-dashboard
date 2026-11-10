@@ -130,15 +130,9 @@ flowchart LR
   (marqueur `.bande-applique`) ; les deux autres patchs de `docs/patches/` sont protégés par des
   drapeaux de compilation et non appliqués.
 - **Build hybride pioarduino** : plateforme figée `55.03.312-1` (Arduino 3.3.12 / ESP-IDF 5.5.5).
-  `custom_sdkconfig` recompile l'Arduino avec un Wi-Fi taillé pour la **caméra** : la version précompilée fige
-  la fenêtre TCP à 5 760 octets, ce qui plafonnait le flux MJPEG vers 600 Ko/s, soit 11-12 images/s. Fenêtre
-  TCP de 32 Ko, fenêtre de réception Wi-Fi de 6 à 16 trames, Wi-Fi et lwIP en IRAM : avec le flux en HTTP/1.0
-  et le JPEG reçu directement à sa place, la caméra est passée à **15,3-15,9 images différentes/s**.
-  Contrepartie : le Wi-Fi et lwIP passent en RAM interne, qui est rare ; ça ne tient que grâce aux 77 Ko
-  libérés par l'affichage direct en deux mémoires d'image (voir [Sous le capot](docs/SOUS_LE_CAPOT.md)).
-  À noter aussi : avec une fenêtre de 32 Ko, un flux caméra resté ouvert sans être lu occuperait jusqu'à ~22
-  des 32 tampons de réception du Wi-Fi (32 Ko / ~1 460 octets par paquet), contre ~4 avant, et l'écran
-  deviendrait « sourd » à MQTT. L'écran ferme donc ses flux caméra dès qu'ils ne sont plus affichés.
+- **Wi-Fi recompilé pour la caméra** (`custom_sdkconfig`) : la version précompilée bridait le flux vidéo.
+  Avec une fenêtre TCP plus grande et quelques réglages du flux, la caméra passe de 11-12 à 15-16 images/s.
+  En échange, le Wi-Fi occupe plus de RAM interne.
 - Le fichier `include/version_git.h` (commit affiché page Infos) est écrit par `version_git.py` avant
   chaque compilation.
 - Codage en **C++ avec identifiants français** : c'est le choix du projet, assumé et homogène.
