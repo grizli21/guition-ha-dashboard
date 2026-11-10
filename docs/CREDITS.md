@@ -1,5 +1,7 @@
 # Licence et crédits
 
+**English** | [Français](en/CREDITS.md)
+
 [← Retour au README](../README.fr.md)
 
 

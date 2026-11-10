@@ -1,5 +1,7 @@
 # Installation
 
+**English** | [Français](en/INSTALLATION.md)
+
 [← Retour au README](../README.fr.md)
 
 Tout ce qu'il faut pour passer du dépôt cloné à un écran qui parle à Home Assistant.

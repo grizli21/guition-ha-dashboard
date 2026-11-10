@@ -1,5 +1,7 @@
 # Sous le capot
 
+**English** | [Français](en/SOUS_LE_CAPOT.md)
+
 ← [Retour au README](../README.fr.md)
 
 Tous les chiffres cités ci-dessous ont été mesurés, soit sur l'écran (banc PC ⇄ écran, séries A-B-A,
