@@ -1,6 +1,6 @@
 # Sous le capot
 
-← [Retour au README](../README.md)
+← [Retour au README](../README.fr.md)
 
 Tous les chiffres cités ci-dessous ont été mesurés, soit sur l'écran (banc PC ⇄ écran, séries A-B-A,
 captures comparées à l'octet), soit au simulateur. Seuls les mécanismes et la trace de leur mesure en

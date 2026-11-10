@@ -1,6 +1,6 @@
 # Licence et crédits
 
-[← Retour au README](../README.md)
+[← Retour au README](../README.fr.md)
 
 
 Code de ce dépôt : **MIT** ([LICENSE](../LICENSE)). Exception : les fichiers 3D de `materiel/` ont leur propre licence, indiquée dans leur dossier. Bibliothèques incluses dans `lib/` :
