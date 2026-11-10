@@ -134,10 +134,11 @@ flowchart LR
   la fenêtre TCP à 5 760 octets, ce qui plafonnait le flux MJPEG vers 600 Ko/s, soit 11-12 images/s. Fenêtre
   TCP de 32 Ko, fenêtre de réception Wi-Fi de 6 à 16 trames, Wi-Fi et lwIP en IRAM : avec le flux en HTTP/1.0
   et le JPEG reçu directement à sa place, la caméra est passée à **15,3-15,9 images différentes/s**.
-  Contrepartie : avec une fenêtre de 32 Ko, la caméra peut envoyer beaucoup de données d'avance. Si l'écran
-  quittait la page caméra sans fermer la connexion, ces données occuperaient ~22 des 32 tampons de réception
-  du Wi-Fi, que plus personne ne lit : les messages MQTT n'auraient plus de place et l'écran deviendrait
-  « sourd ». L'écran ferme donc toujours ses flux caméra dès qu'ils ne sont plus affichés.
+  Contrepartie : le Wi-Fi et lwIP passent en RAM interne, qui est rare ; ça ne tient que grâce aux 77 Ko
+  libérés par l'affichage direct en deux mémoires d'image (voir [Sous le capot](docs/SOUS_LE_CAPOT.md)).
+  À noter aussi : avec une fenêtre de 32 Ko, un flux caméra resté ouvert sans être lu occuperait jusqu'à ~22
+  des 32 tampons de réception du Wi-Fi (32 Ko / ~1 460 octets par paquet), contre ~4 avant, et l'écran
+  deviendrait « sourd » à MQTT. L'écran ferme donc ses flux caméra dès qu'ils ne sont plus affichés.
 - Le fichier `include/version_git.h` (commit affiché page Infos) est écrit par `version_git.py` avant
   chaque compilation.
 - Codage en **C++ avec identifiants français** : c'est le choix du projet, assumé et homogène.
