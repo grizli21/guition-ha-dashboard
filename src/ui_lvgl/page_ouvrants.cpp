@@ -3,7 +3,7 @@
 #include "ui_courbe.h" // 05/11 (vague D) : wrappers uc_* — dessin des stores sous 9.6
 #include "ui_diag.h"
 
-ov_ouvrant_t ov_ouvrants[OV_NB] = {{"Store terrasse", 0, true}, {"Volet cuisine", 100, false}};
+ov_ouvrant_t ov_ouvrants[OV_NB] = {{TXT("Store terrasse", "Patio blind"), 0, true}, {TXT("Volet cuisine", "Shutter"), 100, false}};
 int ov_toile = 100;
 bool ov_firetv = false;
 int ov_toile_mouvement = 0;
@@ -121,18 +121,18 @@ static void rafraichir()
     // mots courts : « Baissée à 40 % » débordait sous les boutons (vu au simulateur, 22/10) ; la toile n'est entre
     // deux positions que pendant son mouvement, le dessin à gauche montre où elle en est
     if (ov_toile_mouvement)
-        ui_label_texte(o_toile_etat, ov_toile_mouvement > 0 ? "Remonte" : "Descend");
+        ui_label_texte(o_toile_etat, ov_toile_mouvement > 0 ? TXT("Remonte", "Raising") : TXT("Descend", "Lowering"));
     else if (ov_toile >= 100)
-        ui_label_texte(o_toile_etat, "Levée");
+        ui_label_texte(o_toile_etat, TXT("Levée", "Up"));
     else if (ov_toile <= 0)
-        ui_label_texte(o_toile_etat, "Baissée");
+        ui_label_texte(o_toile_etat, TXT("Baissée", "Down"));
     else
-        ui_label_texte(o_toile_etat, "Arrêtée");
+        ui_label_texte(o_toile_etat, TXT("Arrêtée", "Stopped"));
     ui_style_text_color(o_toile_etat, ui_c(ov_toile >= 100 ? UI_TEXTE2 : UI_TEXTE), 0);
 
     // séance : bouton principal (ambre) pour lancer, secondaire pour finir
-    ui_label_texte(o_seance_txt, ov_firetv ? LV_SYMBOL_STOP "  Fin de séance : éteindre la Fire TV"
-                                              : LV_SYMBOL_PLAY "  Séance : allumer la Fire TV");
+    ui_label_texte(o_seance_txt, ov_firetv ? LV_SYMBOL_STOP "  " TXT("Fin de séance : éteindre la Fire TV", "End Movie: turn off Fire TV")
+                                              : LV_SYMBOL_PLAY "  " TXT("Séance : allumer la Fire TV", "Movie: turn on Fire TV"));
     ui_style_text_color(o_seance_txt, ui_c(ov_firetv ? UI_TEXTE : UI_SUR_ACCENT), 0);
     // 24/10 : gardé (ui_style_*) ; retiré / remis à chaque appel, donc à chaque mouvement du doigt sur un store, il
     // faisait redessiner tout le bouton à chaque image : c'est ce qui déclenchait le figeage de l'écran de la cuisine
@@ -215,7 +215,7 @@ static void trois_boutons(lv_obj_t *parent, int idx, lv_coord_t l, lv_coord_t h)
 
 void page_ouvrants_creer(lv_obj_t *zone)
 {
-    o_titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, "Ouvrants");
+    o_titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, TXT("Ouvrants", "Covers"));
     lv_obj_align(o_titre, LV_ALIGN_TOP_MID, 0, 2);
 
     const lv_coord_t carte_l = (UI_ZONE_L - 2 * UI_MARGE - 12) / 2;
@@ -283,9 +283,9 @@ void page_ouvrants_creer(lv_obj_t *zone)
     lv_obj_set_size(txt, 110, LV_SIZE_CONTENT);
     lv_obj_set_pos(txt, 118, 2);
     lv_obj_set_flex_flow(txt, LV_FLEX_FLOW_COLUMN);
-    ui_label(txt, UI_POLICE_TEXTE, UI_TEXTE, "Toile");
+    ui_label(txt, UI_POLICE_TEXTE, UI_TEXTE, TXT("Toile", "Screen"));
     o_toile_etat = ui_label(txt, UI_POLICE_TITRE, UI_TEXTE, "");
-    ui_label(txt, UI_POLICE_LEGENDE, UI_TEXTE3, "suit la Fire TV");
+    ui_label(txt, UI_POLICE_LEGENDE, UI_TEXTE3, TXT("suit la Fire TV", "follows Fire TV"));
 
     lv_obj_t *rang = ui_conteneur(c);
     lv_obj_set_size(rang, 3 * 44 + 2 * 6, 44);

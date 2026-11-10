@@ -24,7 +24,7 @@ static const uint32_t PNL_CNM[PNL_NB_INT] = {UI_ACCENT, 0xF0B429, 0xFF4B3E, 0xD2
 #define MODE_Y 354      // Minuterie / Illimité
 #define ACTION_Y 412    // Démarrer / Arrêter
 
-static const char *const ONGLETS[] = {"Séance", "Intensités"};
+static const char *const ONGLETS[] = {TXT("Séance", "Session"), TXT("Intensités", "Levels")};
 
 // Pointeurs valides seulement quand la page est affichée (remis à nullptr par page_panneau_led_quitter)
 static lv_obj_t *g_zone = nullptr;
@@ -68,15 +68,15 @@ static void rafraichir_seance()
         // AUCUNE lettre (plages générées : 32, 37, 44-46, 48-57, 176, soit espace, %, virgule, point, tiret, chiffres,
         // degré). La plus grande 3x5 qui ait les lettres, é compris, est k3x5_49_num (49 px, plages 32-126 et 160-255) :
         // c'est elle qui sert ici, pour le nombre comme pour le mot.
-        ui_label_texte(o_gros, "Illimité");
+        ui_label_texte(o_gros, TXT("Illimité", "Unlimited"));
         ui_label_texte(o_gros_u, "");
-        ui_label_texte(o_lecture, e.seance ? "sans minuterie" : "séance sans minuterie");
+        ui_label_texte(o_lecture, e.seance ? TXT("sans minuterie", "no timer") : TXT("séance sans minuterie", "session without timer"));
     }
     else
     {
         ui_label_texte_fmt(o_gros, "%d", LV_MAX(0, reste ? e.restant : e.duree));
         ui_label_texte(o_gros_u, "min");
-        ui_label_texte(o_lecture, reste ? "minutes restantes" : "durée de la séance");
+        ui_label_texte(o_lecture, reste ? TXT("minutes restantes", "minutes left") : TXT("durée de la séance", "session length"));
     }
     ui_style_text_color(o_gros, ui_c(e.seance ? UI_TEXTE : UI_TEXTE2), 0);
 
@@ -84,13 +84,13 @@ static void rafraichir_seance()
     const char *etat;
     uint32_t point;
     if (e.seance && e.allumees)
-        etat = "Séance en cours  ·  LED allumées", point = UI_VERT;
+        etat = TXT("Séance en cours  ·  LED allumées", "Session running  ·  LEDs on"), point = UI_VERT;
     else if (e.seance)
-        etat = "Séance en cours  ·  LED pas encore allumées", point = UI_ACCENT;
+        etat = TXT("Séance en cours  ·  LED pas encore allumées", "Session running  ·  LEDs not on yet"), point = UI_ACCENT;
     else if (e.allumees)
-        etat = "LED allumées hors séance", point = UI_ACCENT;
+        etat = TXT("LED allumées hors séance", "LEDs on, no session"), point = UI_ACCENT;
     else
-        etat = "Arrêt", point = UI_TEXTE3;
+        etat = TXT("Arrêt", "Off"), point = UI_TEXTE3;
     ui_label_texte(o_puce_txt, etat);
     ui_style_bg_color(o_puce_point, ui_c(point), 0);
 
@@ -124,7 +124,7 @@ static void rafraichir_seance()
     ui_style_text_color(o_ventilos, ui_c(e.radiateur >= PNL_VENTI_MAX ? UI_CHAUFFE : UI_TEXTE), 0);
 
     // démarrer (ambre) / arrêter (bouton ordinaire), comme la séance des Ouvrants
-    ui_label_texte(o_action_txt, e.seance ? LV_SYMBOL_STOP "  Arrêter la séance" : LV_SYMBOL_PLAY "  Démarrer la séance");
+    ui_label_texte(o_action_txt, e.seance ? LV_SYMBOL_STOP TXT("  Arrêter la séance", "  Stop session") : LV_SYMBOL_PLAY TXT("  Démarrer la séance", "  Start session"));
     ui_style_text_color(o_action_txt, ui_c(e.seance ? UI_TEXTE : UI_SUR_ACCENT), 0);
     if (e.seance)
         ui_style_retirer(o_action, &ui_st_bouton_principal, 0);
@@ -200,13 +200,13 @@ static void construire_seance(lv_obj_t *z)
     lv_obj_align(puce, LV_ALIGN_TOP_MID, 0, PASTILLE_Y);
 
     // longueurs d'onde : ALL / RED-YELLOW / NIR de HA, sous leurs noms français et leurs plages de nm
-    titre_section(z, LON_Y, "LONGUEURS D'ONDE");
+    titre_section(z, LON_Y, TXT("LONGUEURS D'ONDE", "WAVELENGTHS"));
     lv_obj_t *rang3 = ui_conteneur(z);
     lv_obj_set_size(rang3, UI_ZONE_L - 2 * UI_MARGE, 52);
     lv_obj_set_pos(rang3, UI_MARGE, LON_Y + 16);
     lv_obj_set_flex_flow(rang3, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(rang3, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    const char *noms[] = {"Toutes", "Rouge-jaune", "Infrarouge"}, *sous[] = {"590-940 nm", "590-660 nm", "810-940 nm"};
+    const char *noms[] = {TXT("Toutes", "All"), TXT("Rouge-jaune", "Red-yellow"), TXT("Infrarouge", "Infrared")}, *sous[] = {"590-940 nm", "590-660 nm", "810-940 nm"};
     for (int k = 0; k < 3; k++)
     {
         lv_obj_t *b = ui_bouton(rang3, 121, 52);
@@ -227,7 +227,7 @@ static void construire_seance(lv_obj_t *z)
     lv_obj_set_pos(c, UI_MARGE, CARTE_Y);
     lv_obj_set_style_pad_hor(c, 14, 0);
     lv_obj_set_style_pad_ver(c, 10, 0);
-    ui_label(c, UI_POLICE_PETITE, UI_TEXTE, "Durée de la minuterie");
+    ui_label(c, UI_POLICE_PETITE, UI_TEXTE, TXT("Durée de la minuterie", "Timer length"));
     lv_obj_t *ru = ui_valeur_unite(c, UI_POLICE_3X5_M, UI_ACCENT, "min", &o_duree_v);
     // 07/11 (retour d'usage) : lignes de base alignées sur celles du libellé, comme sur les autres pages. Mesuré sur la
     // capture de référence : encre du libellé 269..279, encre du « 18 min » 269..292 -> sa ligne de base tombait
@@ -265,12 +265,12 @@ static void construire_seance(lv_obj_t *z)
         lv_obj_set_style_pad_column(g, 8, 0);
         if (k == 0)
         {
-            ui_label(g, UI_POLICE_LEGENDE, UI_TEXTE3, "radiateur");
+            ui_label(g, UI_POLICE_LEGENDE, UI_TEXTE3, TXT("radiateur", "radiator"));
             o_radiateur = ui_label(g, UI_POLICE_PETITE, UI_TEXTE, "");
         }
         else
         {
-            ui_label(g, UI_POLICE_LEGENDE, UI_TEXTE3, "ventilateurs");
+            ui_label(g, UI_POLICE_LEGENDE, UI_TEXTE3, TXT("ventilateurs", "fans"));
             o_ventilos = ui_label(g, UI_POLICE_PETITE, UI_TEXTE, "");
         }
     }
@@ -281,7 +281,7 @@ static void construire_seance(lv_obj_t *z)
     lv_obj_set_pos(rm, UI_MARGE, MODE_Y);
     lv_obj_set_flex_flow(rm, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(rm, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    const char *mnoms[] = {"Minuterie", "Illimité"}, *msous[] = {"1 à 29 min", "sans arrêt automatique"};
+    const char *mnoms[] = {TXT("Minuterie", "Timer"), TXT("Illimité", "Unlimited")}, *msous[] = {TXT("1 à 29 min", "1 to 29 min"), TXT("sans arrêt automatique", "no auto stop")};
     for (int k = 0; k < 2; k++)
     {
         lv_obj_t *b = ui_bouton(rm, 185, 52);
@@ -380,7 +380,7 @@ static void construire_intensites(lv_obj_t *z)
         if (k)
             ui_label_texte_fmt(lv_label_create(nom), "%d nm", PNL_NM[k]);
         else
-            ui_label(nom, UI_POLICE_TEXTE, UI_TEXTE, "Toutes les LED");
+            ui_label(nom, UI_POLICE_TEXTE, UI_TEXTE, TXT("Toutes les LED", "All LEDs"));
         ui_style_text_font(lv_obj_get_child(nom, 1), UI_POLICE_TEXTE, 0); // le « 590 nm » à la même police que « Toutes les LED »
         o_int_val[k] = ui_label(r, UI_POLICE_TEXTE, UI_ACCENT, "");
 

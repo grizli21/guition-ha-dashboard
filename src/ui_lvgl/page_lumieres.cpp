@@ -30,21 +30,23 @@ static void lum_diag(const char *) {}
 #endif
 
 lu_lampe_t lu_lampes[LU_NB] = {
-    {"Lampadaire 1", "Séjour", true, false, 60, false, 2700, 30, 100, false},
-    {"Lampadaire 2", "Séjour", true, false, 60, false, 2700, 30, 100, false},
-    {"Lampadaire 3", "Séjour", true, false, 60, false, 2700, 30, 100, false},
-    {"Lampe fenêtre", "Séjour", true, false, 40, false, 3000, 28, 100, false},
-    {"Globe lunaire", "Séjour", false, false, 50, false, 2700, 0, 0, false},
-    {"Bandeau WLED", "Atelier", true, false, 100, false, 5000, 200, 100, false},
-    {"Bandeau Lidl", "Atelier", true, false, 80, false, 4000, 200, 100, false},
-    {"Panneau LED", "Atelier", true, false, 100, false, 5000, 0, 0, false},
-    {"Bandeau bureau", "Bureau", true, false, 80, true, 4000, 220, 100, false},
-    {"Lampe de bureau", "Bureau", false, false, 70, false, 4500, 0, 0, false},
-    {"Chevet", "Chambre", true, false, 20, false, 2400, 0, 0, false},
+    {TXT("Lampadaire 1", "Floor Lamp 1"), "Séjour", true, false, 60, false, 2700, 30, 100, false},
+    {TXT("Lampadaire 2", "Floor Lamp 2"), "Séjour", true, false, 60, false, 2700, 30, 100, false},
+    {TXT("Lampadaire 3", "Floor Lamp 3"), "Séjour", true, false, 60, false, 2700, 30, 100, false},
+    {TXT("Lampe fenêtre", "Window Lamp"), "Séjour", true, false, 40, false, 3000, 28, 100, false},
+    {TXT("Globe lunaire", "Moon Globe"), "Séjour", false, false, 50, false, 2700, 0, 0, false},
+    {TXT("Bandeau WLED", "WLED Strip"), TXT("Atelier", "Workshop"), true, false, 100, false, 5000, 200, 100, false},
+    {TXT("Bandeau Lidl", "Lidl Strip"), TXT("Atelier", "Workshop"), true, false, 80, false, 4000, 200, 100, false},
+    {TXT("Panneau LED", "LED Panel"), TXT("Atelier", "Workshop"), true, false, 100, false, 5000, 0, 0, false},
+    {TXT("Bandeau bureau", "Desk Strip"), TXT("Bureau", "Office"), true, false, 80, true, 4000, 220, 100, false},
+    {TXT("Lampe de bureau", "Desk Lamp"), TXT("Bureau", "Office"), false, false, 70, false, 4500, 0, 0, false},
+    {TXT("Chevet", "Bedside Lamp"), TXT("Chambre", "Bedroom"), true, false, 20, false, 2400, 0, 0, false},
 };
 void (*lu_commande)(int lampe) = nullptr;
 
+// PIECES : comparé aux noms de pièces venant de HA (protocole) → jamais traduit ; l'affichage : NOMS_PIECES
 static const char *PIECES[] = {"Toutes", "Séjour", "Atelier", "Bureau", "Chambre"};
+static const char *NOMS_PIECES[] = {TXT("Toutes", "All"), TXT("Séjour", "Living"), TXT("Atelier", "Workshop"), TXT("Bureau", "Office"), TXT("Chambre", "Bedroom")};
 #define DISQUE 220
 // 24/10 (retour d'usage : « la pipette va plus loin que le disque ») : rayon parcouru par le CENTRE de la pipette (26 px + son
 // liseré) pour qu'elle reste dedans ; le doigt au bord du disque vaut toujours 100 % de saturation
@@ -249,11 +251,11 @@ static void rafraichir()
         // (24/10, harmonie : « OFF » en pixel gris foncé ne se lisait pas sur la tuile)
         ui_style_text_font(o_vals[i], on ? UI_POLICE_3X5_P : UI_POLICE_LEGENDE, 0);
         if (l.hors_ligne)
-            ui_label_texte(o_vals[i], "hors ligne");
+            ui_label_texte(o_vals[i], TXT("hors ligne", "offline"));
         else if (on)
             ui_label_texte_fmt(o_vals[i], "%d%%", l.lum);
         else
-            ui_label_texte(o_vals[i], "éteinte");
+            ui_label_texte(o_vals[i], TXT("éteinte", "off"));
         ui_style_text_color(o_vals[i], ui_c(on ? UI_TEXTE : UI_TEXTE2), 0);
         ui_style_bg_color(o_tuiles[i], ui_c(g_sel[i] ? UI_ACCENT_FOND : UI_CARTE), 0);
         ui_style_border_color(o_tuiles[i], ui_c(g_sel[i] ? UI_ACCENT : UI_BORD), 0);
@@ -302,7 +304,7 @@ static void rafraichir()
     ui_style_opa(o_temp, LV_OPA_COVER, 0);
     if (l.mode_hs)
     {
-        ui_label_texte(o_temp_val, "BLANC");
+        ui_label_texte(o_temp_val, TXT("BLANC", "WHITE"));
         ui_aligner(o_temp_val, LV_ALIGN_LEFT_MID, 10, 0);
         ui_cacher(o_temp_trait, true); // 06/11 : pointeur direct — l'enfant 1 est le dégradé depuis le correctif clip_corner
     }
@@ -514,7 +516,7 @@ void page_lumieres_creer(lv_obj_t *zone)
         ui_style_bg_color(b, ui_c(UI_CARTE2), LV_STATE_CHECKED);
         ui_style_text_color(b, ui_c(UI_TEXTE), LV_STATE_CHECKED);
         lv_obj_t *l = lv_label_create(b);
-        ui_label_texte(l, PIECES[i]);
+        ui_label_texte(l, NOMS_PIECES[i]);
         lv_obj_center(l);
         o_pieces[i] = b;
         lv_obj_add_event_cb(b, piece_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
@@ -672,7 +674,7 @@ void page_lumieres_creer(lv_obj_t *zone)
         if (k == 0)
             ui_style_ajouter(b, &ui_st_bouton_principal, 0);
         lv_obj_t *l = lv_label_create(b);
-        ui_label_texte(l, k == 0 ? "Allumer" : "Éteindre");
+        ui_label_texte(l, k == 0 ? TXT("Allumer", "Turn On") : TXT("Éteindre", "Turn Off"));
         lv_obj_center(l);
         lv_obj_add_event_cb(b, marche_cb, LV_EVENT_CLICKED, (void *)(intptr_t)(k == 0));
     }

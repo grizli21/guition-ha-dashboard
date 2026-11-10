@@ -5,8 +5,9 @@
 cq_etat_t cq_etat = {0, 0, 0, {{390, 15, true}, {750, 15, true}, {1170, 15, true}, {1320, 10, false}}, {}, 0, 0};
 void (*cq_commande)(cq_action_t action, int idx) = nullptr;
 
-static const char *JOURS_COURTS[] = {"Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"};
-static const char *JOURS_LONGS[] = {"Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"};
+static const char *JOURS_COURTS[] = {TXT("Lun", "Mon"), TXT("Mar", "Tue"), TXT("Mer", "Wed"), TXT("Jeu", "Thu"), TXT("Ven", "Fri"), TXT("Sam", "Sat"), TXT("Dim", "Sun")};
+static const char *JOURS_LONGS[] = {TXT("Lundi", "Monday"), TXT("Mardi", "Tuesday"), TXT("Mercredi", "Wednesday"), TXT("Jeudi", "Thursday"),
+    TXT("Vendredi", "Friday"), TXT("Samedi", "Saturday"), TXT("Dimanche", "Sunday")};
 
 #define BARRES_H 150 // hauteur utile des barres de la semaine (60 g en haut)
 #define BARRES_MAX 60
@@ -52,7 +53,7 @@ static void fmt_g(char *b, size_t n, float g)
     snprintf(b, n, "%.1f", g);
     for (char *p = b; *p; p++)
         if (*p == '.')
-            *p = ',';
+            *p = SEP_CAR;
 }
 
 static void rafraichir()
@@ -65,7 +66,7 @@ static void rafraichir()
         fmt_g(t, sizeof t, cq_etat.bol);
         ui_label_texte_fmt(o_bol, "%s", t);
         ui_label_texte_fmt(o_stock, "%d%%", cq_etat.stock);
-        ui_label_texte_fmt(o_stock_auto, "≈ %d jours", cq_etat.autonomie);
+        ui_label_texte_fmt(o_stock_auto, TXT("≈ %d jours", "≈ %d days"), cq_etat.autonomie);
         lv_obj_set_width(o_stock_barre, lv_pct(LV_CLAMP(0, cq_etat.stock, 100)));
         ui_style_bg_color(o_stock_barre, ui_c(cq_etat.stock < 15 ? UI_ROUGE : UI_ACCENT), 0);
         for (int i = 0; i < 4; i++)
@@ -94,7 +95,7 @@ static void rafraichir()
         somme += cq_etat.jours[k].g;
     const int moy = (somme + 3) / 6, ecart = moy - obj;
     ui_label_texte_fmt(o_moy, "%d", moy);
-    ui_label_texte_fmt(o_obj_txt, "Objectif %d g / jour", obj);
+    ui_label_texte_fmt(o_obj_txt, TXT("Objectif %d g / jour", "Goal %d g / day"), obj);
     ui_label_texte_fmt(o_ecart, "%+d", ecart);
     ui_style_text_color(o_ecart, ui_c(LV_ABS(ecart) <= 3 ? UI_VERT : UI_CHAUFFE), 0);
     lv_obj_set_y(o_obj_ligne, BARRES_H - obj * BARRES_H / BARRES_MAX);
@@ -108,7 +109,7 @@ static void rafraichir()
         lv_obj_align(o_pts[col], LV_ALIGN_BOTTOM_MID, 0, -34 - h - 6); // points juste au-dessus de la barre
         ui_style_bg_color(o_barres[col], ui_c(k == 0 ? UI_ACCENT : UI_ETEINT), 0);
         lv_obj_set_style_outline_width(o_barres[col], k == g_jour_choisi ? 2 : 0, 0);
-        ui_label_texte(o_noms[col], k == 0 ? "Auj." : JOURS_COURTS[(cq_etat.jour_semaine - k + 14) % 7]);
+        ui_label_texte(o_noms[col], k == 0 ? TXT("Auj.", "Today") : JOURS_COURTS[(cq_etat.jour_semaine - k + 14) % 7]);
         ui_style_text_color(o_noms[col], ui_c(k == g_jour_choisi ? UI_TEXTE : UI_TEXTE2), 0);
         for (int p = 0; p < 4; p++)
         {
@@ -127,7 +128,7 @@ static void rafraichir()
     const cq_jour_t &d = cq_etat.jours[g_jour_choisi];
     const bool auj = g_jour_choisi == 0;
     if (auj)
-        ui_label_texte(o_det_titre, "Aujourd'hui (en cours)");
+        ui_label_texte(o_det_titre, TXT("Aujourd'hui (en cours)", "Today (in progress)"));
     else
         ui_label_texte(o_det_titre, JOURS_LONGS[(cq_etat.jour_semaine - g_jour_choisi + 14) % 7]);
     // prochain repas actif après maintenant
@@ -136,18 +137,18 @@ static void rafraichir()
         if (r.actif && r.minute > cq_etat.maintenant && (prochain < 0 || r.minute < prochain))
             prochain = r.minute;
     if (auj && prochain >= 0)
-        snprintf(t, sizeof t, "%d repas servi%s sur %d · prochain à %dh%02d", d.repas, d.repas > 1 ? "s" : "", prevus,
-                 prochain / 60, prochain % 60);
+        snprintf(t, sizeof t, TXT("%d repas servi%s sur %d · prochain à %dh%02d", "%d meal%s served of %d · next at %02d:%02d"),
+                 d.repas, d.repas > 1 ? "s" : "", prevus, prochain / 60, prochain % 60);
     else
-        snprintf(t, sizeof t, "%d repas servi%s sur %d", d.repas, d.repas > 1 ? "s" : "", prevus);
+        snprintf(t, sizeof t, TXT("%d repas servi%s sur %d", "%d meal%s served of %d"), d.repas, d.repas > 1 ? "s" : "", prevus);
     ui_label_texte(o_det_repas, t);
     const int ej = d.g - obj;
     if (auj)
-        ui_label_texte_fmt(o_det_ecart, "Objectif du jour : %d g", obj);
+        ui_label_texte_fmt(o_det_ecart, TXT("Objectif du jour : %d g", "Today's goal: %d g"), obj);
     else if (ej == 0)
-        ui_label_texte(o_det_ecart, "Pile l'objectif");
+        ui_label_texte(o_det_ecart, TXT("Pile l'objectif", "Right on goal"));
     else
-        ui_label_texte_fmt(o_det_ecart, "%+d g par rapport à l'objectif", ej);
+        ui_label_texte_fmt(o_det_ecart, TXT("%+d g par rapport à l'objectif", "%+d g vs goal"), ej);
     ui_style_text_color(o_det_ecart, ui_c(auj || LV_ABS(ej) <= 3 ? UI_TEXTE2 : UI_CHAUFFE), 0);
     ui_label_texte_fmt(o_det_g, "%d", d.g);
 }
@@ -238,12 +239,12 @@ static lv_obj_t *petit_bouton(lv_obj_t *parent, lv_coord_t l, const char *txt, c
 
 static void construire_principale(lv_obj_t *zone)
 {
-    lv_obj_t *titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, "Croquettes");
+    lv_obj_t *titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, TXT("Croquettes", "Feeder"));
     lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 2);
 
     const lv_coord_t demi = (UI_ZONE_L - 2 * UI_MARGE - 12) / 2;
     lv_obj_t *c = tuile(zone, UI_MARGE, 50, demi, 70);
-    ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, "Bol");
+    ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, TXT("Bol", "Bowl"));
     ui_valeur_unite(c, UI_POLICE_3X5_M, UI_TEXTE, "g", &o_bol);
 
     c = tuile(zone, UI_MARGE + demi + 12, 50, demi, 70);
@@ -303,7 +304,7 @@ static void construire_principale(lv_obj_t *zone)
     lv_obj_set_pos(rang, UI_MARGE, 412);
     lv_obj_set_flex_flow(rang, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(rang, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    const char *noms[] = {"Servir", "Tare", "Semaine"};
+    const char *noms[] = {TXT("Servir", "Serve"), TXT("Tare", "Tare"), TXT("Semaine", "Week")};
     for (int a = 0; a < 3; a++)
     {
         lv_obj_t *b = ui_bouton(rang, 121, 52);
@@ -324,12 +325,12 @@ static void construire_semaine(lv_obj_t *zone)
     lv_obj_set_pos(ret, 8, 0);
     lv_obj_center(ui_label(ret, UI_POLICE_VALEUR, UI_TEXTE2, LV_SYMBOL_LEFT));
     lv_obj_add_event_cb(ret, retour_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t *titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, "Semaine");
+    lv_obj_t *titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, TXT("Semaine", "Week"));
     lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 2);
 
     const lv_coord_t demi = (UI_ZONE_L - 2 * UI_MARGE - 12) / 2;
     lv_obj_t *c = tuile(zone, UI_MARGE, 50, demi, 64);
-    ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, "Moyenne par jour");
+    ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, TXT("Moyenne par jour", "Average per day"));
     ui_valeur_unite(c, UI_POLICE_3X5_M, UI_TEXTE, "g", &o_moy);
     c = tuile(zone, UI_MARGE + demi + 12, 50, demi, 64);
     o_obj_txt = ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, "");

@@ -4,8 +4,10 @@
 #include "icones_ventilo_rgb.h" // l'hélice de la VMC (en couleur : LVGL 8.4 ne fait tourner que celles-là)
 
 aq_purificateur_t aq_purificateurs[AQ_NB] = {
-    {"Atelier", "ESPurifier", 0, {}, "", {"Arrêt", "Fan", "1", "2", "3"}, 5, 0, true},          // 22/10 : à l'atelier
-    {"Séjour", "Purificateur Xiaomi", 0, {}, "", {"Arrêt", "Auto", "Silence", "Fan"}, 4, 0, true}, // derrière le poêle
+    {TXT("Atelier", "Workshop"), "ESPurifier", 0, {}, "",
+     {TXT("Arrêt", "Off"), "Fan", "1", "2", "3"}, 5, 0, true},          // 22/10 : à l'atelier
+    {TXT("Séjour", "Living Room"), TXT("Purificateur Xiaomi", "Xiaomi Purifier"), 0, {}, "",
+     {TXT("Arrêt", "Off"), TXT("Auto", "Auto"), TXT("Silence", "Silent"), TXT("Fan", "Fan")}, 4, 0, true}, // derrière le poêle
 };
 void (*aq_commande)(int purificateur, int mode) = nullptr;
 
@@ -39,7 +41,7 @@ static void animer(int i, int periode)
 }
 
 static uint32_t couleur_niveau(int pm) { return pm < 12 ? UI_VERT : pm < 35 ? UI_ACCENT : UI_ROUGE; }
-static const char *mot_niveau(int pm) { return pm < 12 ? "Bon" : pm < 35 ? "Moyen" : "Mauvais"; }
+static const char *mot_niveau(int pm) { return pm < 12 ? TXT("Bon", "Good") : pm < 35 ? TXT("Moyen", "Moderate") : TXT("Mauvais", "Poor"); }
 
 // courbe des 24 h (module commun ui_courbe : même trait, trous non tracés) ; échelle 0 -> max des 24 h (au moins
 // 20 µg/m³, pour qu'un air propre reste plat) ; couleur = niveau de l'air maintenant
@@ -66,11 +68,11 @@ static void rafraichir()
         const aq_purificateur_t &p = aq_purificateurs[i];
         ui_label_texte_fmt(o_pm[i], "%d", p.pm25);
         ui_style_text_color(o_pm[i], ui_c(couleur_niveau(p.pm25)), 0);
-        ui_label_texte_fmt(o_niveau[i], "PM2,5 · %s", mot_niveau(p.pm25));
+        ui_label_texte_fmt(o_niveau[i], TXT("PM2,5 · %s", "PM2.5 · %s"), mot_niveau(p.pm25));
         ui_style_text_color(o_niveau[i], ui_c(couleur_niveau(p.pm25)), 0);
         // ventilation : le mode en cours, en gros (« Silence », « 1 », « Arrêt »), et l'hélice
         const bool marche = p.en_ligne && p.mode != 0;
-        ui_label_texte(o_etat[i], !p.en_ligne ? "Hors ligne" : p.mode >= 0 && p.mode < p.nb_modes ? p.modes[p.mode] : "Favori");
+        ui_label_texte(o_etat[i], !p.en_ligne ? TXT("Hors ligne", "Offline") : p.mode >= 0 && p.mode < p.nb_modes ? p.modes[p.mode] : TXT("Favori", "Favorite"));
         ui_style_text_color(o_etat[i], ui_c(marche ? UI_TEXTE : UI_TEXTE3), 0);
         ui_style_img_recolor(o_ventilo[i], ui_c(marche ? UI_TEXTE : UI_TEXTE3), 0);
         animer(i, periode_de(p, marche));
@@ -106,7 +108,7 @@ static void mode_cb(lv_event_t *e)
 
 void page_air_creer(lv_obj_t *zone)
 {
-    o_titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, "Qualité de l'air");
+    o_titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, TXT("Qualité de l'air", "Air Quality"));
     lv_obj_align(o_titre, LV_ALIGN_TOP_MID, 0, 2);
 
     for (int i = 0; i < AQ_NB; i++)

@@ -10,7 +10,8 @@ sur batterie.
 **EN.** Wall-mounted dashboard for Guition ESP32-S3-4848S040 screens: an LVGL 9.6 firmware driven by
 Home Assistant over MQTT, plus a PC simulator that compiles the very same page code and renders
 480×480 captures. 18 touchscreen pages — heating, hot water, VMC, wood stove, music, lights,
-3D printer, PC, air quality, and more.
+3D printer, PC, air quality, and more. **The interface is available in English**: add `-D UI_LANG_EN`
+to `build_flags` in `platformio.ini` (French by default; vocabulary in [docs/GLOSSAIRE_EN.md](docs/GLOSSAIRE_EN.md)).
 
 [![Licence : MIT](https://img.shields.io/badge/licence-MIT-4b714f)](LICENSE)
 [![LVGL 9.6.0](https://img.shields.io/badge/LVGL-9.6.0-41c17c)](lib/lvgl-9.6.0)
@@ -183,6 +184,10 @@ pio device monitor                                          # journal série, 11
 L'OTA passe par `ArduinoOTA` (protocole d'upload `espota` du dépôt, 15 s de timeout) : une fois le
 premier flash fait par câble, plus besoin d'ouvrir l'écran. L'environnement `banc-chambre1-v9` est
 réservé aux mesures de rendu — ne pas le flasher sans savoir pourquoi.
+
+**Langue** : l'interface est en français par défaut. Pour l'anglais, décommentez `-D UI_LANG_EN` dans
+`platformio.ini` (au simulateur : `make -C simu UI_LANG_EN=1`). Le dialogue MQTT avec Home Assistant ne
+change pas : seuls les textes affichés sont traduits.
 
 ### 4. Home Assistant
 

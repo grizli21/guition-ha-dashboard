@@ -4,6 +4,7 @@
 // « complet » = les traces de la session (la production : /log_complet.txt), « résumé » = les réveils des 24 h.
 #ifdef ARDUINO
 #include "ui_radar.h"
+#include "ui_langue.h"
 #include "page_radar.h"
 #include "page_batterie.h"
 #include "radar_page_web.h"
@@ -235,8 +236,9 @@ static bool finir_auto(bool avec_marge)
         liste(rd_etat.detection, b, sizeof b);
         ui_trace("[radar] déclenchement calculé par le capteur : %s\n", a);
         ui_trace("[radar] déclenchement relu après la marge   : %s\n", b);
-        ui_journal(justes != RD_ZONES, "Réglage auto : marge +%u dB %s, relue juste sur %d portes sur 16 (capteur : %s ; relu : %s)",
-                   (unsigned)g_marge, ok ? "écrite" : "NON écrite", justes, a, b);
+        ui_journal(justes != RD_ZONES, TXT("Réglage auto : marge +%u dB %s, relue juste sur %d portes sur 16 (capteur : %s ; relu : %s)",
+                              "Auto-tune: margin +%u dB %s, exact on %d of 16 gates (sensor: %s; reread: %s)"),
+                   (unsigned)g_marge, ok ? TXT("écrite", "written") : TXT("NON écrite", "NOT written"), justes, a, b);
     }
     mode_comm();
     delay(20);
@@ -438,7 +440,7 @@ static void web_brancher()
 // ---------------------------------------------------------------------------------------------------- écran
 static void cmd_lire()
 {
-    snprintf(rd_etat.message, sizeof rd_etat.message, lire_config() ? "seuils relus du radar" : "le radar ne répond pas");
+    snprintf(rd_etat.message, sizeof rd_etat.message, lire_config() ? TXT("seuils relus du radar", "thresholds re-read") : TXT("le radar ne répond pas", "radar not responding"));
     page_radar_maj();
 }
 
@@ -446,7 +448,7 @@ static void cmd_envoyer()
 {
     // les paramètres communs relus du capteur (sinon ceux de la production : 8 zones, 0, 10 s, 0,5 Hz, 0,5 Hz, rapide)
     const bool ok = appliquer(g_far, g_near, g_delai, g_freq_etat / 10.0f, g_freq_dist / 10.0f, (uint8_t)g_vitesse);
-    snprintf(rd_etat.message, sizeof rd_etat.message, ok ? "seuils envoyés au radar" : "échec de l'envoi");
+    snprintf(rd_etat.message, sizeof rd_etat.message, ok ? TXT("seuils envoyés au radar", "thresholds sent") : TXT("échec de l'envoi", "send failed"));
     ui_trace("[radar] seuils %s\n", ok ? "envoyés" : "NON envoyés");
     page_radar_maj();
 }
@@ -463,14 +465,14 @@ static void cmd_auto(uint16_t secondes)
     {
         g_depart_ms = 0;
         rd_etat.depart_s = 0;
-        snprintf(rd_etat.message, sizeof rd_etat.message, "réglage auto annulé");
+        snprintf(rd_etat.message, sizeof rd_etat.message, TXT("réglage auto annulé", "auto-tune cancelled"));
     }
     else
     {
         g_depart_ms = (millis() + SORTIE_S * 1000) | 1;
         g_depart_scan = secondes;
         rd_etat.depart_s = SORTIE_S;
-        snprintf(rd_etat.message, sizeof rd_etat.message, "sortez : départ dans %d s", SORTIE_S);
+        snprintf(rd_etat.message, sizeof rd_etat.message, TXT("sortez : départ dans %d s", "leave: starting in %d s"), SORTIE_S);
     }
     page_radar_maj();
 }
@@ -485,7 +487,7 @@ static void depart_tache()
         g_depart_ms = 0;
         rd_etat.depart_s = 0;
         const bool ok = demarrer_auto(g_depart_scan);
-        snprintf(rd_etat.message, sizeof rd_etat.message, ok ? "réglage auto lancé (%u s)" : "réglage auto refusé", (unsigned)g_depart_scan);
+        snprintf(rd_etat.message, sizeof rd_etat.message, ok ? TXT("réglage auto lancé (%u s)", "auto-tune started (%u s)") : TXT("réglage auto refusé", "auto-tune refused"), (unsigned)g_depart_scan);
         ui_trace("[radar] réglage auto %s\n", ok ? "lancé" : "refusé");
         page_radar_maj();
         return;
@@ -494,7 +496,7 @@ static void depart_tache()
     if (s != rd_etat.depart_s)
     {
         rd_etat.depart_s = s;
-        snprintf(rd_etat.message, sizeof rd_etat.message, "sortez : départ dans %u s", (unsigned)s);
+        snprintf(rd_etat.message, sizeof rd_etat.message, TXT("sortez : départ dans %u s", "leave: starting in %u s"), (unsigned)s);
         page_radar_maj();
     }
 }
@@ -548,13 +550,15 @@ static void cmd_diag(bool actif)
         g_diag_essais = pc ? 0 : 1;
         g_diag_essai_ms = millis();
         if (pc)
-            ui_journal(false, "Diag radar lancé (12 h au plus) · énergies %s", deja ? "reçues" : "demandées au capteur (essai 1)");
+            ui_journal(false, TXT("Diag radar lancé (12 h au plus) · énergies %s", "Radar diag started (12 h max) · energies %s"),
+                       deja ? TXT("reçues", "received") : TXT("demandées au capteur (essai 1)", "requested from sensor (try 1)"));
         else
-            ui_journal(false, "Diag radar lancé (12 h au plus) · capteur muet à l'essai 1 (%s) : nouvel essai dans 2 s",
+            ui_journal(false, TXT("Diag radar lancé (12 h au plus) · capteur muet à l'essai 1 (%s) : nouvel essai dans 2 s",
+                       "Radar diag started (12 h max) · sensor silent on try 1 (%s): retry in 2 s"),
                        octets_recus().c_str());
     }
     else
-        ui_journal(false, "Diag radar arrêté : %u détection%s", rd_etat.diag_nb, rd_etat.diag_nb > 1 ? "s" : "");
+        ui_journal(false, TXT("Diag radar arrêté : %u détection%s", "Radar diag stopped: %u detection%s"), rd_etat.diag_nb, rd_etat.diag_nb > 1 ? "s" : "");
     page_batterie_maj();
 }
 
@@ -581,12 +585,12 @@ static void diag_tache()
         g_diag_essais++;
         if (ld2410s.hasEngineeringData() || passer_pc())
         {
-            ui_journal(false, "Diag radar : énergies demandées au capteur (essai %u)", g_diag_essais);
+            ui_journal(false, TXT("Diag radar : énergies demandées au capteur (essai %u)", "Radar diag: energies requested from sensor (try %u)"), g_diag_essais);
             g_diag_essais = 0;
         }
         else if (g_diag_essais >= 5)
         {
-            ui_journal(true, "Diag radar : capteur muet après 5 essais, pas d'énergies (%s)", octets_recus().c_str());
+            ui_journal(true, TXT("Diag radar : capteur muet après 5 essais, pas d'énergies (%s)", "Radar diag: sensor silent after 5 tries, no energies (%s)"), octets_recus().c_str());
             g_diag_essais = 0;
         }
     }
@@ -632,10 +636,10 @@ static void diag_tache()
                 snprintf(suite, sizeof suite, " · +%u", en_attente);
             en_attente = 0;
             if (forte < 0)
-                ui_journal(false, "Détection, zone inconnue%s · %u,%02u m · %u s%s", ld2410s.hasEngineeringData() ? "" : " (aucune énergie reçue)",
+                ui_journal(false, TXT("Détection, zone inconnue%s · %u" SEP_DEC "%02u m · %u s%s", "Detection, unknown zone%s · %u" SEP_DEC "%02u m · %u s%s"), ld2410s.hasEngineeringData() ? "" : TXT(" (aucune énergie reçue)", " (no energy received)"),
                            distance / 100, distance % 100, s, suite);
             else
-                ui_journal(false, "Détection zone%s %s : %u dB (seuil %u) · %u,%02u m · %u s%s", strchr(zones, ',') ? "s" : "",
+                ui_journal(false, TXT("Détection zone%s %s : %u dB (seuil %u) · %u" SEP_DEC "%02u m · %u s%s", "Detection zone%s %s: %u dB (threshold %u) · %u" SEP_DEC "%02u m · %u s%s"), strchr(zones, ',') ? "s" : "",
                            zones[0] ? zones : "-", pic[forte], rd_etat.detection[forte], distance / 100, distance % 100, s, suite);
         }
     }
@@ -729,11 +733,13 @@ static void battement()
         {
             g_relances += etape >= 2 && etape <= 4;
             g_relance_par = etape == 2 ? "sortie" : etape == 3 ? "mode" : etape == 4 ? "relecture" : "seul";
-            ui_journal(false, "Radar : reparle après %lu s de silence, %s", (unsigned long)((t - t_trame) / 1000),
-                       etape == 2   ? (ack_sortie ? "relancé par la SORTIE de configuration (acquittée)" : "relancé par la sortie de configuration (non acquittée)")
-                       : etape == 3 ? "relancé par le MODE PC remis (la sortie seule n'a pas suffi)"
-                       : etape == 4 ? "relancé par la RELECTURE (ni la sortie ni le mode PC n'ont suffi)"
-                                    : "tout seul");
+            ui_journal(false, TXT("Radar : reparle après %lu s de silence, %s", "Radar: talking again after %lu s of silence, %s"),
+                       (unsigned long)((t - t_trame) / 1000),
+                       etape == 2   ? (ack_sortie ? TXT("relancé par la SORTIE de configuration (acquittée)", "woken by leaving CONFIG (acknowledged)")
+                                                  : TXT("relancé par la sortie de configuration (non acquittée)", "woken by leaving config (not acknowledged)"))
+                       : etape == 3 ? TXT("relancé par le MODE PC remis (la sortie seule n'a pas suffi)", "woken by re-entering PC MODE (leaving config was not enough)")
+                       : etape == 4 ? TXT("relancé par la RELECTURE (ni la sortie ni le mode PC n'ont suffi)", "woken by the REREAD (neither config exit nor PC mode sufficed)")
+                                    : TXT("tout seul", "on its own"));
         }
         etape = 0;
         t_trame = t;
@@ -748,14 +754,17 @@ static void battement()
         g_muets++;
         char premiere[40];
         if (g_premiere_ms)
-            snprintf(premiere, sizeof premiere, "1re trame à %lu ms", (unsigned long)g_premiere_ms);
+            snprintf(premiere, sizeof premiere, TXT("1re trame à %lu ms", "1st frame at %lu ms"), (unsigned long)g_premiere_ms);
         else
-            snprintf(premiere, sizeof premiere, "aucune trame");
-        char cmd[96] = "aucune commande notée";
+            snprintf(premiere, sizeof premiere, TXT("aucune trame", "no frame"));
+        char cmd[96] = TXT("aucune commande notée", "no command noted");
         if (g_cmd_rtc.magic == CMD_RTC_MAGIC)
-            snprintf(cmd, sizeof cmd, "dernière cmd %04X %s il y a %lu s, config %s", g_cmd_rtc.cmd, g_cmd_rtc.ok ? "ok" : "SANS RÉPONSE", (unsigned long)((esp_rtc_get_time_us() - g_cmd_rtc.t_us) / 1000000),
-                     g_cmd_rtc.ouverte ? "LAISSÉE OUVERTE" : "refermée");
-        ui_journal(true, "Radar muet %lu s : démarré il y a %lu s (%s), écran actif il y a %lu s, %lu o sans trame, %u MHz ; %s",
+            snprintf(cmd, sizeof cmd, TXT("dernière cmd %04X %s il y a %lu s, config %s", "last cmd %04X %s %lu s ago, config %s"),
+                     g_cmd_rtc.cmd, g_cmd_rtc.ok ? "ok" : TXT("SANS RÉPONSE", "NO REPLY"),
+                     (unsigned long)((esp_rtc_get_time_us() - g_cmd_rtc.t_us) / 1000000),
+                     g_cmd_rtc.ouverte ? TXT("LAISSÉE OUVERTE", "LEFT OPEN") : TXT("refermée", "closed"));
+        ui_journal(true, TXT("Radar muet %lu s : démarré il y a %lu s (%s), écran actif il y a %lu s, %lu o sans trame, %u MHz ; %s",
+                      "Radar silent %lu s: up %lu s (%s), screen active %lu s, %lu bytes with no frame, %u MHz; %s"),
                    (unsigned long)((t - t_trame) / 1000), (unsigned long)(t / 1000), premiere,
                    (unsigned long)(lv_disp_get_inactive_time(NULL) / 1000), (unsigned long)(ld2410s.byteCount() - octets),
                    (unsigned)getCpuFrequencyMhz(), cmd);
@@ -783,7 +792,9 @@ static void battement()
     }
     else if (etape == 4 && millis() - t_etape >= RELANCE_MS)
     {
-        ui_journal(true, "Radar toujours muet après sortie (%s), mode PC et relecture : nouvel essai dans 60 s", ack_sortie ? "acquittée" : "sans réponse");
+        ui_journal(true, TXT("Radar toujours muet après sortie (%s), mode PC et relecture : nouvel essai dans 60 s",
+                      "Radar still silent after exit (%s), PC mode and reread: retry in 60 s"),
+               ack_sortie ? TXT("acquittée", "acknowledged") : TXT("sans réponse", "no reply"));
         g_relance_par = "echec";
         etape = 5;
         t_etape = millis();
@@ -854,7 +865,7 @@ void ui_radar_tache()
                 ui_trace("[radar] réglage auto fini : %s (essai %u, %lu ms après la fin)\n", ok ? "seuils relus" : "le radar ne répond pas",
                          (unsigned)(essais + ok), (unsigned long)(essai - fin));
                 if (!ok)
-                    ui_journal(true, "Réglage auto : seuils non relus après 5 essais, marge NON posée");
+                    ui_journal(true, TXT("Réglage auto : seuils non relus après 5 essais, marge NON posée", "Auto-tune: thresholds not reread after 5 tries, margin NOT set"));
                 if (ok && g_auto_interrompu)
                     snprintf(rd_etat.message, sizeof rd_etat.message, "réglage auto interrompu à %u %%", (unsigned)g_auto_interrompu);
                 else

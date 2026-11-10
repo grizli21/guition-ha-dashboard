@@ -36,7 +36,7 @@ void bt_icone(int &niveau, uint32_t &couleur)
 static void duree_texte(char *b, size_t n, uint32_t s)
 {
     if (s >= 86400)
-        snprintf(b, n, "%u j %u h", (unsigned)(s / 86400), (unsigned)(s % 86400 / 3600));
+        snprintf(b, n, TXT("%u j %u h", "%u d %u h"), (unsigned)(s / 86400), (unsigned)(s % 86400 / 3600));
     else if (s >= 3600)
         snprintf(b, n, "%u h %02u", (unsigned)(s / 3600), (unsigned)(s % 3600 / 60));
     else
@@ -123,7 +123,7 @@ static void eveils_cb(lv_event_t *e)
             continue;
         uc_segment(ctx, gl, x(t), haut, x(t), bande1);
         char s[8];
-        snprintf(s, sizeof s, "%02dh", lt.tm_hour);
+        snprintf(s, sizeof s, TXT("%02dh", "%02d:00"), lt.tm_hour);
         const lv_area_t z = {(lv_coord_t)(x(t) - 18), (lv_coord_t)(bande1 + 4), (lv_coord_t)(x(t) + 18), (lv_coord_t)(bande1 + 18)};
         uc_texte(ctx, ld, &z, s, true);
     }
@@ -170,7 +170,7 @@ static void eveils_cb(lv_event_t *e)
 // étape (plein : atteinte), l'heure au-dessus, l'écart avec l'étape d'avant sur le trait
 static void chrono_cb(lv_event_t *e)
 {
-    static const char *const NOMS[BT_ETAPES] = {"réveil", "Wi-Fi", "MQTT", "synchro", "coupure"};
+    static const char *const NOMS[BT_ETAPES] = {TXT("réveil", "wake"), "Wi-Fi", "MQTT", TXT("synchro", "sync"), TXT("coupure", "Wi-Fi off")};
     // 31/10 (retour d'usage) : trait bleu, points et chiffres blancs, la coupure (le but du réveil) en ambre
     auto couleur = [](int i) { return i == BT_E_COUPURE ? (uint32_t)UI_ACCENT : (uint32_t)UI_TEXTE; };
     uc_cible_t * ctx = uc_cible_du(e);
@@ -247,16 +247,16 @@ static void rafraichir_batterie()
     }
     ui_label_texte_fmt(o_pct, "%d", bt_etat.pourcent);
     ui_style_text_color(o_pct, ui_c(couleur_batterie()), 0);
-    ui_label_texte_fmt(o_tension, "%d,%02d V", (int)bt_etat.tension, (int)(bt_etat.tension * 100 + 0.5f) % 100);
-    ui_label_texte(o_etat, bt_etat.charge ? LV_SYMBOL_USB "  En charge" : "Sur batterie");
+    ui_label_texte_fmt(o_tension, "%d" SEP_DEC "%02d V", (int)bt_etat.tension, (int)(bt_etat.tension * 100 + 0.5f) % 100);
+    ui_label_texte(o_etat, bt_etat.charge ? LV_SYMBOL_USB "  " TXT("En charge", "Charging") : TXT("Sur batterie", "On battery"));
     ui_style_text_color(o_etat, ui_c(bt_etat.charge ? UI_VERT : UI_TEXTE), 0);
     char d[24] = "";
     if (bt_etat.depuis && maintenant > bt_etat.depuis && maintenant > 1700000000u)
         duree_texte(d, sizeof d, maintenant - bt_etat.depuis);
     if (d[0])
-        ui_label_texte_fmt(o_depuis, bt_etat.charge ? "branché depuis %s" : "débranchée depuis %s", d);
+        ui_label_texte_fmt(o_depuis, bt_etat.charge ? TXT("branché depuis %s", "plugged in for %s") : TXT("débranchée depuis %s", "unplugged for %s"), d);
     else // 31/10 (retour d'usage) : plutôt qu'un vide (date effacée : celle du « 56 ans » était fausse)
-        ui_label_texte(o_depuis, bt_etat.charge ? "" : "débranchée · heure inconnue");
+        ui_label_texte(o_depuis, bt_etat.charge ? "" : TXT("débranchée · heure inconnue", "unplugged · time unknown"));
 
     // résumé des 24 h : nombre de réveils, temps allumé
     int n = 0;
@@ -268,7 +268,7 @@ static void rafraichir_batterie()
             allume += bt_etat.eveils[i].duree;
         }
     duree_texte(d, sizeof d, allume);
-    ui_label_texte_fmt(o_resume, "%d réveil%s · allumé %s en tout", n, n > 1 ? "s" : "", d);
+    ui_label_texte_fmt(o_resume, TXT("%d réveil%s · allumé %s en tout", "%d wake%s · on %s total"), n, n > 1 ? "s" : "", d);
     // le graphe n'est redessiné que si ses données ont changé (ou toutes les 15 min, pour glisser)
     uint32_t e = 2166136261u;
     const uint32_t parts[] = {(uint32_t)bt_etat.nb_eveils, bt_etat.nb_eveils ? bt_etat.eveils[bt_etat.nb_eveils - 1].duree : 0u,
@@ -281,13 +281,13 @@ static void rafraichir_batterie()
         lv_obj_invalidate(o_graphe);
     }
 
-    static const char *const CAUSES[] = {"radar", "toucher", "minuterie", "démarrage"};
+    static const char *const CAUSES[] = {TXT("radar", "radar"), TXT("toucher", "touch"), TXT("minuterie", "timer"), TXT("démarrage", "startup")};
     if (bt_etat.reveil > 1700000000u)
     {
         struct tm lt;
         const time_t tt = bt_etat.reveil;
         localtime_r(&tt, &lt);
-        ui_label_texte_fmt(o_cause, "%s · %02dh%02d", CAUSES[bt_etat.cause % 4], lt.tm_hour, lt.tm_min);
+        ui_label_texte_fmt(o_cause, TXT("%s · %02dh%02d", "%s · %02d:%02d"), CAUSES[bt_etat.cause % 4], lt.tm_hour, lt.tm_min);
     }
     else
         ui_label_texte(o_cause, CAUSES[bt_etat.cause % 4]);
@@ -319,10 +319,10 @@ static void rafraichir_reglages()
         char d[24];
         const uint32_t maintenant = (uint32_t)time(nullptr);
         duree_texte(d, sizeof d, rd_etat.diag_fin > maintenant ? rd_etat.diag_fin - maintenant : 0);
-        ui_label_texte_fmt(o_diag_txt, "en cours : %u détection%s · arrêt dans %s", rd_etat.diag_nb, rd_etat.diag_nb > 1 ? "s" : "", d);
+        ui_label_texte_fmt(o_diag_txt, TXT("en cours : %u détection%s · arrêt dans %s", "running: %u detection%s · stops in %s"), rd_etat.diag_nb, rd_etat.diag_nb > 1 ? "s" : "", d);
     }
     else
-        ui_label_texte(o_diag_txt, "écran noir, chaque détection dans le journal");
+        ui_label_texte(o_diag_txt, TXT("écran noir, chaque détection dans le journal", "black screen, every detection logged"));
     inter(o_coupure, bt_reglages.coupure_wifi);
     ui_label_texte_fmt(o_economie, "%u s " LV_SYMBOL_RIGHT, (unsigned)bt_reglages.economie_s);
     ui_label_texte(o_puissance, bt_reglages.wifi_reduit ? "7 dBm " LV_SYMBOL_RIGHT : "max " LV_SYMBOL_RIGHT);
@@ -433,7 +433,7 @@ static lv_obj_t *interrupteur(lv_obj_t *b)
 
 static void construire_reglages(lv_obj_t *zone)
 {
-    lv_obj_set_pos(ui_titre_section(zone, "GESTION D'ÉNERGIE"), UI_MARGE, 52);
+    lv_obj_set_pos(ui_titre_section(zone, TXT("GESTION D'ÉNERGIE", "POWER MANAGEMENT")), UI_MARGE, 52);
     lv_obj_t *c = o_reglages = ui_conteneur(zone);
     ui_style_ajouter(c, &ui_st_carte, 0);
     lv_obj_set_size(c, UI_ZONE_L - 2 * UI_MARGE, LV_SIZE_CONTENT);
@@ -443,13 +443,13 @@ static void construire_reglages(lv_obj_t *zone)
     lv_obj_set_flex_flow(c, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(c, 0, 0);
 
-    o_diag = interrupteur(ligne(c, "Diag radar", "", &o_diag_txt, diag_cb, true));
-    o_coupure = interrupteur(ligne(c, "Coupure Wi-Fi après la synchro", "réveil radar sans toucher · OTA : toucher d'abord", nullptr, coupure_cb, true));
-    o_economie = ui_label(ligne(c, "Économie après", "luminosité de repos, 80 MHz, Wi-Fi en veille", nullptr, economie_cb, true),
+    o_diag = interrupteur(ligne(c, TXT("Diag radar", "Radar diagnostics"), "", &o_diag_txt, diag_cb, true));
+    o_coupure = interrupteur(ligne(c, TXT("Coupure Wi-Fi après la synchro", "Wi-Fi off after sync"), TXT("réveil radar sans toucher · OTA : toucher d'abord", "radar wake without touch · OTA: touch first"), nullptr, coupure_cb, true));
+    o_economie = ui_label(ligne(c, TXT("Économie après", "Power save after"), TXT("luminosité de repos, 80 MHz, Wi-Fi en veille", "dim brightness, 80 MHz, Wi-Fi sleep"), nullptr, economie_cb, true),
                           UI_POLICE_TEXTE, UI_TEXTE2, "");
-    o_puissance = ui_label(ligne(c, "Puissance Wi-Fi", "7 dBm : moins de courant et de portée", nullptr, puissance_cb, true),
+    o_puissance = ui_label(ligne(c, TXT("Puissance Wi-Fi", "Wi-Fi power"), TXT("7 dBm : moins de courant et de portée", "7 dBm: less current, shorter range"), nullptr, puissance_cb, true),
                            UI_POLICE_TEXTE, UI_TEXTE2, "");
-    lv_obj_t *b = ligne(c, "Marge du réglage auto", "dB ajoutés aux seuils mesurés", nullptr, nullptr, false);
+    lv_obj_t *b = ligne(c, TXT("Marge du réglage auto", "Auto-tune margin"), TXT("dB ajoutés aux seuils mesurés", "dB added to measured thresholds"), nullptr, nullptr, false);
     lv_obj_t *r = ui_conteneur(b);
     lv_obj_set_size(r, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
@@ -500,7 +500,7 @@ static void construire_batterie(lv_obj_t *zone)
     lv_obj_align(o_depuis, LV_ALIGN_TOP_RIGHT, 0, 64);
 
     // réveils sur 24 h
-    lv_obj_set_pos(ui_titre_section(zone, "RÉVEILS · 24 H"), UI_MARGE, 160);
+    lv_obj_set_pos(ui_titre_section(zone, TXT("RÉVEILS · 24 H", "WAKE-UPS · 24 H")), UI_MARGE, 160);
     o_resume = ui_label(zone, UI_POLICE_LEGENDE, UI_TEXTE2, "");
     lv_obj_align(o_resume, LV_ALIGN_TOP_RIGHT, -UI_MARGE - 4, 164);
     c = ui_conteneur(zone);
@@ -511,7 +511,7 @@ static void construire_batterie(lv_obj_t *zone)
     o_graphe = ui_conteneur(c);
     lv_obj_set_size(o_graphe, lv_pct(100), 120);
     lv_obj_add_event_cb(o_graphe, eveils_cb, LV_EVENT_DRAW_MAIN, NULL);
-    const char *noms[] = {"radar", "toucher", "minuterie", "batterie"};
+    const char *noms[] = {TXT("radar", "radar"), TXT("toucher", "touch"), TXT("minuterie", "timer"), TXT("batterie", "battery")};
     const uint32_t coul[] = {UI_VERT, UI_ACCENT, UI_TEXTE3, UI_VERT};
     lv_coord_t x = 40;
     for (int k = 0; k < 4; k++)
@@ -527,7 +527,7 @@ static void construire_batterie(lv_obj_t *zone)
     }
 
     // dernier réveil : la chronologie en millis
-    lv_obj_set_pos(ui_titre_section(zone, "DERNIER RÉVEIL · MS"), UI_MARGE, 338);
+    lv_obj_set_pos(ui_titre_section(zone, TXT("DERNIER RÉVEIL · MS", "LAST WAKE · MS")), UI_MARGE, 338);
     o_cause = ui_label(zone, UI_POLICE_LEGENDE, UI_TEXTE2, "");
     lv_obj_align(o_cause, LV_ALIGN_TOP_RIGHT, -UI_MARGE - 4, 342);
     c = ui_conteneur(zone);
@@ -547,7 +547,7 @@ static void construire()
     g_zone = nullptr;
     o_reglages = nullptr;
     lv_obj_clean(zone);
-    static const char *const ONGLETS[] = {"Batterie", "Radar", "Réglages"};
+    static const char *const ONGLETS[] = {TXT("Batterie", "Battery"), TXT("Radar", "Radar"), TXT("Réglages", "Settings")};
     ui_onglets(zone, ONGLETS, 3, g_vue, onglet_cb, nullptr, o_onglets);
     if (g_vue == 0)
         construire_batterie(zone);

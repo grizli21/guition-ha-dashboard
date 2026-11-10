@@ -60,9 +60,9 @@ void uc_heures(const uc_cadre_t &c, int minute_fin, int mpp, int ecart)
         if (c.x(i) > c.x1 - 18 || c.x(i) < c.x0 + 12)
             continue; // étiquette coupée au bord : le trait suffit
         if (r % 60)
-            snprintf(buf, sizeof buf, "%02dh%02d", r / 60, r % 60);
+            snprintf(buf, sizeof buf, TXT("%02dh%02d", "%02d:%02d"), r / 60, r % 60);
         else
-            snprintf(buf, sizeof buf, "%02dh", r / 60);
+            snprintf(buf, sizeof buf, TXT("%02dh", "%02d:00"), r / 60);
         lv_area_t ta = {(lv_coord_t)(c.x(i) - 22), (lv_coord_t)(c.bas + 5), (lv_coord_t)(c.x(i) + 22), (lv_coord_t)(c.bas + 20)};
         uc_texte(c.ctx, td, &ta, buf, true);
     }
@@ -408,11 +408,12 @@ void uc_texte_heure(char *buf, size_t n, int i, int dernier, int minute_fin, int
 {
     if (minute_fin < 0)
     {
-        snprintf(buf, n, "il y a %d min", (dernier - i) * mpp);
+        snprintf(buf, n, TXT("il y a %d min", "%d min ago"), (dernier - i) * mpp);
         return;
     }
     const int m = minute_du_point(i, dernier, minute_fin, mpp);
-    snprintf(buf, n, "%s%02dh%02d", (dernier - i) * mpp > minute_fin ? "hier " : "", m / 60, m % 60);
+    snprintf(buf, n, TXT("%s%02dh%02d", "%s%02d:%02d"),
+             (dernier - i) * mpp > minute_fin ? TXT("hier ", "Yesterday ") : "", m / 60, m % 60);
 }
 
 lv_obj_t *uc_pastille(lv_obj_t *parent, const char *nom, uint32_t couleur, lv_coord_t largeur, lv_event_cb_t cb, int couche)

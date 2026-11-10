@@ -111,7 +111,7 @@ static void rafraichir_feu()
     }
     ui_label_texte_fmt(o_fumees, "%d", p.fumees);
     ui_style_text_color(o_fumees, ui_c(p.feu == PL_RECHARGER ? 0xFF8A7A : p.feu == PL_ETEINT ? UI_TEXTE2 : UI_TEXTE), 0);
-    ui_label_texte_fmt(o_corps, "poêle %d°", p.corps);
+    ui_label_texte_fmt(o_corps, TXT("poêle %d°", "stove %d°"), p.corps);
 
     // pastille d'état dans l'ouverture du bas
     uint32_t point = UI_TEXTE3, fond = UI_CARTE, bord = UI_BORD, texte = UI_TEXTE;
@@ -119,19 +119,20 @@ static void rafraichir_feu()
     switch (p.feu)
     {
     case PL_ETEINT:
-        snprintf(t, sizeof t, "Feu éteint · volet ouvert");
+        snprintf(t, sizeof t, TXT("Feu éteint · volet ouvert", "Fire off · damper open"));
         texte = UI_TEXTE2;
         break;
     case PL_ALLUMAGE:
-        snprintf(t, sizeof t, "Allumage");
+        snprintf(t, sizeof t, TXT("Allumage", "Ignition"));
         point = UI_ACCENT;
         break;
     case PL_REGULATION:
-        snprintf(t, sizeof t, p.mode ? "Régulation coupée" : "Régulation · consigne %d°", p.r.consigne);
+        snprintf(t, sizeof t, p.mode ? TXT("Régulation coupée", "Control off")
+                          : TXT("Régulation · consigne %d°", "Control · setpoint %d°"), p.r.consigne);
         point = p.mode ? UI_TEXTE3 : UI_VERT;
         break;
     case PL_RECHARGER:
-        snprintf(t, sizeof t, "Recharger le poêle");
+        snprintf(t, sizeof t, TXT("Recharger le poêle", "Refill stove"));
         point = UI_ROUGE;
         fond = 0x2A1717;
         bord = 0x5A2A26;
@@ -153,7 +154,9 @@ static void rafraichir_feu()
     // tirage
     const bool pid = p.fumees > 100 && p.mode == 0;
     const int tir = p.mode == 2 ? 100 : p.mode == 1 ? p.tirage_manuel : (pid ? p.tirage : 100);
-    ui_label_texte(o_tir_qui, p.mode == 0 ? (pid ? "PID" : "PID arrêté, ouvert") : p.mode == 1 ? "glisser pour régler" : "au levier du poêle");
+    ui_label_texte(o_tir_qui, p.mode == 0 ? (pid ? "PID" : TXT("PID arrêté, ouvert", "PID off, damper open"))
+                    : p.mode == 1 ? TXT("glisser pour régler", "drag to adjust")
+                                  : TXT("au levier du poêle", "on the stove lever"));
     ui_label_texte_fmt(o_tir_val, "%d%%", tir);
     uint32_t c = p.mode == 1 ? UI_ACCENT : p.mode == 0 ? UI_FROID : UI_TEXTE3;
     ui_style_text_color(o_tir_val, ui_c(c), 0);
@@ -211,7 +214,7 @@ static void construire_feu(lv_obj_t *z)
     lv_obj_set_flex_flow(centre, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(centre, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(centre, 4, 0);
-    ui_label(centre, UI_POLICE_TEXTE, UI_TEXTE2, "fumées");
+    ui_label(centre, UI_POLICE_TEXTE, UI_TEXTE2, TXT("fumées", "flue"));
     ui_valeur_unite(centre, UI_POLICE_TEMP, UI_TEXTE, "°C", &o_fumees); // le « ° » de la police pixel : un gros carré en 99
     o_corps = ui_label(centre, UI_POLICE_TITRE, UI_CHAUFFE, "");
 
@@ -260,7 +263,7 @@ static void construire_feu(lv_obj_t *z)
     lv_obj_set_pos(c, UI_MARGE + 80, 346);
     lv_obj_set_style_pad_hor(c, 14, 0);
     lv_obj_set_style_pad_ver(c, 6, 0);
-    lv_obj_t *l = ui_label(c, UI_POLICE_PETITE, UI_TEXTE, "Tirage");
+    lv_obj_t *l = ui_label(c, UI_POLICE_PETITE, UI_TEXTE, TXT("Tirage", "Draft"));
     lv_obj_set_pos(l, 0, 0);
     o_tir_qui = ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, "");
     lv_obj_set_pos(o_tir_qui, 56, 2);
@@ -296,7 +299,8 @@ static void construire_feu(lv_obj_t *z)
     lv_obj_set_pos(rang, UI_MARGE, 412);
     lv_obj_set_flex_flow(rang, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(rang, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    const char *noms[] = {"Auto", "Manuel", "Levier"}, *sous[] = {"PID", "à distance", "volet à 100 %"};
+    const char *noms[] = {TXT("Auto", "Auto"), TXT("Manuel", "Manual"), TXT("Levier", "Lever")},
+               *sous[] = {"PID", TXT("à distance", "remote"), TXT("volet à 100 %", "damper at 100%")};
     for (int m = 0; m < 3; m++)
     {
         lv_obj_t *b = ui_bouton(rang, 121, 52);
@@ -390,16 +394,16 @@ static void rafraichir_courbe()
     if (imin >= 0)
     {
         uc_texte_heure(h, sizeof h, imin, PL_HIST - 1, pl_etat.h_fin, 5);
-        ui_label_texte_fmt(o_cmin, "min %d° à %s", pl_etat.h_fumees[imin], h);
+        ui_label_texte_fmt(o_cmin, TXT("min %d° à %s", "min %d° at %s"), pl_etat.h_fumees[imin], h);
         uc_texte_heure(h, sizeof h, imax, PL_HIST - 1, pl_etat.h_fin, 5);
-        ui_label_texte_fmt(o_cmax, "max %d° à %s", pl_etat.h_fumees[imax], h);
+        ui_label_texte_fmt(o_cmax, TXT("max %d° à %s", "max %d° at %s"), pl_etat.h_fumees[imax], h);
     }
     else
     {
         ui_label_texte(o_cmin, "");
         ui_label_texte(o_cmax, "");
     }
-    ui_label_texte_fmt(o_tir_txt, pl_etat.h_tirage[i] != PL_VIDE_TIRAGE ? "Tirage %d %%" : "Tirage", pl_etat.h_tirage[i]);
+    ui_label_texte_fmt(o_tir_txt, pl_etat.h_tirage[i] != PL_VIDE_TIRAGE ? TXT("Tirage %d %%", "Draft %d %%") : TXT("Tirage", "Draft"), pl_etat.h_tirage[i]);
     for (int k = 0; k < 3; k++)
         if (k == g_echelle)
             lv_obj_add_state(o_echelles[k], LV_STATE_CHECKED);
@@ -417,7 +421,7 @@ static void rafraichir_courbe()
         if (pl_etat.h_corps[i] != PL_VIDE)
             snprintf(p, sizeof p, "%d", pl_etat.h_corps[i]);
         uc_texte_heure(h, sizeof h, i, PL_HIST - 1, pl_etat.h_fin, 5);
-        snprintf(b, sizeof b, "%s\n#FFB547 Fumées %s°#\nPoêle %s°\nConsigne %d°", h, f, p, pl_etat.r.consigne);
+        snprintf(b, sizeof b, TXT("%s\n#FFB547 Fumées %s°#\nPoêle %s°\nConsigne %d°", "%s\n#FFB547 Flue %s°#\nStove %s°\nSetpoint %d°"), h, f, p, pl_etat.r.consigne);
         ui_label_texte(o_bulle_txt, b);
         lv_area_t z;
         lv_obj_get_coords(g_zone, &z);
@@ -461,7 +465,7 @@ static void rafraichir_scrub(int i_avant)
     else
         ui_label_texte_fmt(o_cval, "%d°", pl_etat.fumees);
     ui_style_text_color(o_cval, ui_c(UI_ACCENT), 0);
-    ui_label_texte_fmt(o_tir_txt, pl_etat.h_tirage[i] != PL_VIDE_TIRAGE ? "Tirage %d %%" : "Tirage", pl_etat.h_tirage[i]);
+    ui_label_texte_fmt(o_tir_txt, pl_etat.h_tirage[i] != PL_VIDE_TIRAGE ? TXT("Tirage %d %%", "Draft %d %%") : TXT("Tirage", "Draft"), pl_etat.h_tirage[i]);
     if (g_scrub >= 0) // bulle : l'heure et les valeurs du point lu (mêmes textes que rafraichir_courbe)
     {
         char h[24], b[160], f[8] = "--", p[8] = "--";
@@ -470,7 +474,7 @@ static void rafraichir_scrub(int i_avant)
         if (pl_etat.h_corps[i] != PL_VIDE)
             snprintf(p, sizeof p, "%d", pl_etat.h_corps[i]);
         uc_texte_heure(h, sizeof h, i, PL_HIST - 1, pl_etat.h_fin, 5);
-        snprintf(b, sizeof b, "%s\n#FFB547 Fumées %s°#\nPoêle %s°\nConsigne %d°", h, f, p, pl_etat.r.consigne);
+        snprintf(b, sizeof b, TXT("%s\n#FFB547 Fumées %s°#\nPoêle %s°\nConsigne %d°", "%s\n#FFB547 Flue %s°#\nStove %s°\nSetpoint %d°"), h, f, p, pl_etat.r.consigne);
         lv_area_t avant_bulle;
         lv_obj_get_coords(o_bulle, &avant_bulle);
         const bool etait_visible = !lv_obj_has_flag(o_bulle, LV_OBJ_FLAG_HIDDEN);
@@ -637,7 +641,7 @@ static void construire_courbe(lv_obj_t *z)
     lv_obj_set_pos(rang, UI_MARGE, 412);
     lv_obj_set_flex_flow(rang, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(rang, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    static const char *const COUCHES[4] = {"Consigne", "Poêle", "Recharge", "Tirage"};
+    static const char *const COUCHES[4] = {TXT("Consigne", "Setpoint"), TXT("Poêle", "Stove"), TXT("Recharge", "Refill"), TXT("Tirage", "Draft")};
     static const uint32_t COUL[4] = {UI_TEXTE, UI_CHAUFFE, UI_ROUGE, UI_FROID};
     for (int k = 0; k < 4; k++)
         o_couches[k] = uc_pastille(rang, COUCHES[k], COUL[k], 89, couche_cb, k);
@@ -653,13 +657,13 @@ struct pl_ligne_t
     const char *unite;
 };
 static const pl_ligne_t LIGNES[7] = {
-    {"Consigne fumées", "visée par le PID", "consigne", 5, 150, 350, 0, "°"},
-    {"Tirage mini", "le volet ne ferme jamais plus", "tirage_min", 5, 0, 100, 0, "%"},
-    {"Alerte recharge", "fumées sous ce seuil", "recharge", 5, 100, 250, 0, "°"},
-    {"Gain P", "réaction à l'écart", "kp", 0.5f, 1, 10, 1, ""},
-    {"Gain I", "rattrape l'écart qui dure", "ki", 0.001f, 0.001f, 0.1f, 3, ""},
-    {"Gain D", "freine les variations", "kd", 1, 2, 50, 1, ""},
-    {"Limite intégrale", "anti-emballement", "limite", 5, 0, 100, 0, ""},
+    {TXT("Consigne fumées", "Flue setpoint"), TXT("visée par le PID", "targeted by the PID"), "consigne", 5, 150, 350, 0, "°"},
+    {TXT("Tirage mini", "Min draft"), TXT("le volet ne ferme jamais plus", "damper never closes further"), "tirage_min", 5, 0, 100, 0, "%"},
+    {TXT("Alerte recharge", "Refill alert"), TXT("fumées sous ce seuil", "flue gas below this threshold"), "recharge", 5, 100, 250, 0, "°"},
+    {TXT("Gain P", "P gain"), TXT("réaction à l'écart", "reacts to the gap"), "kp", 0.5f, 1, 10, 1, ""},
+    {TXT("Gain I", "I gain"), TXT("rattrape l'écart qui dure", "fixes a lasting gap"), "ki", 0.001f, 0.001f, 0.1f, 3, ""},
+    {TXT("Gain D", "D gain"), TXT("freine les variations", "damps changes"), "kd", 1, 2, 50, 1, ""},
+    {TXT("Limite intégrale", "Integral limit"), TXT("anti-emballement", "anti-windup"), "limite", 5, 0, 100, 0, ""},
 };
 
 static float lire(int i)
@@ -699,7 +703,7 @@ static void rafraichir_reglages()
         snprintf(b, sizeof b, "%.*f%s", LIGNES[i].decimales, lire(i), LIGNES[i].unite);
         for (char *p = b; *p; p++)
             if (*p == '.')
-                *p = ',';
+                *p = SEP_CAR;
         ui_label_texte(o_vals[i], b);
     }
 }
@@ -738,7 +742,7 @@ static void construire_reglages(lv_obj_t *z)
     {
         if (i == 0 || i == 3)
         {
-            ui_titre_section(page, i == 0 ? "RÉGULATION" : "PID");
+            ui_titre_section(page, i == 0 ? TXT("RÉGULATION", "CONTROL") : "PID");
             carte = ui_conteneur(page);
             ui_style_ajouter(carte, &ui_st_carte, 0);
             lv_obj_set_size(carte, lv_pct(100), LV_SIZE_CONTENT);
@@ -811,7 +815,7 @@ static void construire()
     lv_obj_clean(g_zone);
     g_vent_anime = -1;
 
-    static const char *const ONGLETS[] = {"Feu", "Courbe", "Réglages"};
+    static const char *const ONGLETS[] = {TXT("Feu", "Fire"), TXT("Courbe", "Chart"), TXT("Réglages", "Settings")};
     ui_onglets(g_zone, ONGLETS, 3, g_vue, onglet_cb, nullptr, o_onglets);
 
     if (g_vue == 0)

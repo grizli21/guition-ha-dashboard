@@ -269,36 +269,40 @@ static void rafraichir_ballon()
     ui_label_texte_fmt(o_temp, "%d", (int)(bc_etat.temp + 0.5f));
     const int n = douches();
     ui_label_texte_fmt(o_douches, "%d", n);
-    ui_label_texte(o_douches_u, n > 1 ? "douches" : "douche");
+    ui_label_texte(o_douches_u, n > 1 ? TXT("douches", "showers") : TXT("douche", "shower"));
     if (bc_etat.mode == BC_ARRET)
     {
-        ui_label_texte(o_chauffe, "arrêt");
+        ui_label_texte(o_chauffe, TXT("arrêt", "off"));
         ui_style_text_color(o_chauffe, ui_c(UI_TEXTE3), 0);
     }
     else if (bc_etat.chauffe)
     {
         if (bc_etat.puissance >= 100)
-            ui_label_texte_fmt(o_chauffe, "chauffe · %d,%d kW", bc_etat.puissance / 1000, bc_etat.puissance % 1000 / 100);
+            ui_label_texte_fmt(o_chauffe, TXT("chauffe · %d" SEP_DEC "%d kW", "heating · %d" SEP_DEC "%d kW"),
+                                bc_etat.puissance / 1000, bc_etat.puissance % 1000 / 100);
         else
-            ui_label_texte(o_chauffe, "chauffe");
+            ui_label_texte(o_chauffe, TXT("chauffe", "heating"));
         ui_style_text_color(o_chauffe, ui_c(C_RESISTANCE_CHAUDE), 0);
     }
     else
     {
-        ui_label_texte(o_chauffe, "au repos");
+        ui_label_texte(o_chauffe, TXT("au repos", "idle"));
         ui_style_text_color(o_chauffe, ui_c(UI_TEXTE2), 0);
     }
-    ui_label_texte(o_mode, bc_etat.mode == BC_ARRET ? "Arrêt" : bc_etat.mode == BC_FORCE ? "Forcé" : bc_etat.eco ? "Auto · éco" : "Auto · normal");
+    ui_label_texte(o_mode, bc_etat.mode == BC_ARRET   ? TXT("Arrêt", "Off")
+                            : bc_etat.mode == BC_FORCE ? TXT("Forcé", "Boost")
+                            : bc_etat.eco              ? TXT("Auto · éco", "Auto · eco")
+                                                       : TXT("Auto · normal", "Auto · normal"));
     ui_label_texte_fmt(o_combles, "%d °C", bc_etat.combles);
     ui_label_texte_fmt(o_jour[0], "%d", bc_etat.chaude_jour);
     ui_label_texte_fmt(o_jour[1], "%d", bc_etat.froide_jour);
-    ui_label_texte_fmt(o_jour[2], "%d,%d", (int)bc_etat.kwh_jour, (int)(bc_etat.kwh_jour * 10 + 0.5f) % 10);
+    ui_label_texte_fmt(o_jour[2], "%d" SEP_DEC "%d", (int)bc_etat.kwh_jour, (int)(bc_etat.kwh_jour * 10 + 0.5f) % 10);
     // toujours là (pas de vide en bas) : « -- » et grisé quand l'eau chaude ne coule pas (25/10)
     const bool coule = bc_etat.debit > 0;
     if (coule)
-        ui_label_texte_fmt(o_debit_txt, LV_SYMBOL_DOWNLOAD "  Eau chaude en cours · %d L/min", bc_etat.debit);
+        ui_label_texte_fmt(o_debit_txt, LV_SYMBOL_DOWNLOAD "  " TXT("Eau chaude en cours · %d L/min", "Hot water running · %d L/min"), bc_etat.debit);
     else
-        ui_label_texte(o_debit_txt, LV_SYMBOL_DOWNLOAD "  Eau chaude en cours · -- L/min");
+        ui_label_texte(o_debit_txt, LV_SYMBOL_DOWNLOAD "  " TXT("Eau chaude en cours · -- L/min", "Hot water running · -- L/min"));
     ui_style_text_color(o_debit_txt, ui_c(coule ? UI_FROID : UI_TEXTE3), 0);
     ui_style_border_color(o_debit, ui_c(coule ? UI_FROID : UI_BORD), 0);
 }
@@ -314,17 +318,18 @@ static void construire_ballon(lv_obj_t *z)
 
     lv_obj_t *r = ui_valeur_unite(z, UI_POLICE_TEMP, UI_TEXTE, "°C", &o_temp);
     lv_obj_align(r, LV_ALIGN_TOP_RIGHT, -UI_MARGE, 62);
-    lv_obj_t *rd = ui_valeur_unite(z, UI_POLICE_3X5_M, UI_ACCENT, "douches", &o_douches);
+    lv_obj_t *rd = ui_valeur_unite(z, UI_POLICE_3X5_M, UI_ACCENT, TXT("douches", "showers"), &o_douches);
     o_douches_u = lv_obj_get_child(rd, -1);
     lv_obj_align(rd, LV_ALIGN_TOP_RIGHT, -UI_MARGE, 174);
     trait_h(z, 222);
-    ligne_info(z, 234, "Chauffe", &o_chauffe);
-    ligne_info(z, 260, "Mode", &o_mode);
-    ligne_info(z, 286, "Combles", &o_combles);
+    ligne_info(z, 234, TXT("Chauffe", "Heating"), &o_chauffe);
+    ligne_info(z, 260, TXT("Mode", "Mode"), &o_mode);
+    ligne_info(z, 286, TXT("Combles", "Attic"), &o_combles);
 
     // la journée : trois chiffres posés sur le fond (pas de cartes : ce ne sont pas des boutons)
-    lv_obj_set_pos(ui_titre_section(z, "AUJOURD'HUI"), UI_MARGE, 332);
-    const char *noms[] = {"eau chaude", "eau totale", "énergie"}, *unites[] = {"L", "L", "kWh"};
+    lv_obj_set_pos(ui_titre_section(z, TXT("AUJOURD'HUI", "TODAY")), UI_MARGE, 332);
+    const char *noms[] = {TXT("eau chaude", "hot water"), TXT("eau totale", "total water"), TXT("énergie", "energy")},
+               *unites[] = {"L", "L", "kWh"};
     const uint32_t coul[] = {0xFF9A5B, UI_FROID, UI_ACCENT};
     const lv_coord_t l = (UI_ZONE_L - 2 * UI_MARGE) / 3;
     for (int i = 0; i < 3; i++)
@@ -458,9 +463,9 @@ static void rafraichir_courbe(bool graphe)
     if (imin >= 0 && bc_hist.fin >= 0)
     {
         uc_texte_heure(h, sizeof h, imin, BC_POINTS - 1, bc_hist.fin, 5);
-        ui_label_texte_fmt(o_cmin, "min %d° à %s", (bc_hist.temp[imin] + 5) / 10, h);
+        ui_label_texte_fmt(o_cmin, TXT("min %d° à %s", "min %d° at %s"), (bc_hist.temp[imin] + 5) / 10, h);
         uc_texte_heure(h, sizeof h, imax, BC_POINTS - 1, bc_hist.fin, 5);
-        ui_label_texte_fmt(o_cmax, "max %d° à %s", (bc_hist.temp[imax] + 5) / 10, h);
+        ui_label_texte_fmt(o_cmax, TXT("max %d° à %s", "max %d° at %s"), (bc_hist.temp[imax] + 5) / 10, h);
     }
     else
     {
@@ -473,8 +478,9 @@ static void rafraichir_courbe(bool graphe)
         if (bc_hist.temp[i] != BC_VIDE)
             snprintf(t, sizeof t, "%d", (bc_hist.temp[i] + 5) / 10);
         uc_texte_heure(h, sizeof h, i, BC_POINTS - 1, bc_hist.fin, 5);
-        snprintf(b, sizeof b, "%s\n#FF8A4B Eau %s°#\nConsigne %d°%s%s", h, t, (bc_hist.consigne[i] + 5) / 10,
-                 relais(i) ? "\n#E5484D Chauffe#" : "", bc_bit(bc_hist.creuses, i) ? "\nHeures creuses" : "\nHeures pleines");
+        snprintf(b, sizeof b, TXT("%s\n#FF8A4B Eau %s°#\nConsigne %d°%s%s", "%s\n#FF8A4B Water %s°#\nSetpoint %d°%s%s"),
+                 h, t, (bc_hist.consigne[i] + 5) / 10,
+                 relais(i) ? TXT("\n#E5484D Chauffe#", "\n#E5484D Heating#") : "", bc_bit(bc_hist.creuses, i) ? TXT("\nHeures creuses", "\nOff-peak") : TXT("\nHeures pleines", "\nPeak"));
         ui_label_texte(o_bulle_txt, b);
         lv_area_t z;
         lv_obj_get_coords(g_zone, &z);
@@ -515,8 +521,9 @@ static void rafraichir_scrub(int i_avant)
         if (bc_hist.temp[i] != BC_VIDE)
             snprintf(t, sizeof t, "%d", (bc_hist.temp[i] + 5) / 10);
         uc_texte_heure(h, sizeof h, i, BC_POINTS - 1, bc_hist.fin, 5);
-        snprintf(b, sizeof b, "%s\n#FF8A4B Eau %s°#\nConsigne %d°%s%s", h, t, (bc_hist.consigne[i] + 5) / 10,
-                 relais(i) ? "\n#E5484D Chauffe#" : "", bc_bit(bc_hist.creuses, i) ? "\nHeures creuses" : "\nHeures pleines");
+        snprintf(b, sizeof b, TXT("%s\n#FF8A4B Eau %s°#\nConsigne %d°%s%s", "%s\n#FF8A4B Water %s°#\nSetpoint %d°%s%s"),
+                 h, t, (bc_hist.consigne[i] + 5) / 10,
+                 relais(i) ? TXT("\n#E5484D Chauffe#", "\n#E5484D Heating#") : "", bc_bit(bc_hist.creuses, i) ? TXT("\nHeures creuses", "\nOff-peak") : TXT("\nHeures pleines", "\nPeak"));
         lv_area_t avant_bulle;
         lv_obj_get_coords(o_bulle, &avant_bulle);
         const bool etait_visible = !lv_obj_has_flag(o_bulle, LV_OBJ_FLAG_HIDDEN);
@@ -635,7 +642,7 @@ static void construire_courbe(lv_obj_t *z)
     lv_obj_add_event_cb(o_graphe, doigt_cb, LV_EVENT_ALL, NULL);
 
     // légende : chauffe, heures creuses / pleines ; puis le titre des barres
-    const char *noms[] = {"chauffe", "heures creuses", "heures pleines"};
+    const char *noms[] = {TXT("chauffe", "heating"), TXT("heures creuses", "off-peak"), TXT("heures pleines", "peak")};
     const uint32_t coul[] = {C_RELAIS, C_CREUSES, UI_BORD};
     lv_coord_t x = 4;
     for (int k = 0; k < 3; k++)
@@ -658,7 +665,7 @@ static void construire_courbe(lv_obj_t *z)
         x += 14 + lv_txt_get_width(noms[k], strlen(noms[k]), UI_POLICE_LEGENDE, 0, LV_TEXT_FLAG_NONE) + 12;
 #endif
     }
-    lv_obj_set_pos(ui_label(z, UI_POLICE_LEGENDE, UI_FROID, "Eau chaude tirée · litres par 2 h"), 4, G_Y + 262);
+    lv_obj_set_pos(ui_label(z, UI_POLICE_LEGENDE, UI_FROID, TXT("Eau chaude tirée · litres par 2 h", "Hot water drawn · litres per 2 h")), 4, G_Y + 262);
     o_bulle = uc_bulle(z, &o_bulle_txt);
     g_scrub = -1;
 }
@@ -766,21 +773,21 @@ static void construire_reglages(lv_obj_t *z)
     lv_obj_add_event_cb(tactile, curseur_cb, LV_EVENT_ALL, NULL);
 
     // à droite, comme la température dans Ballon : la consigne en grand
-    lv_obj_align(ui_titre_section(z, "CONSIGNE"), LV_ALIGN_TOP_RIGHT, -UI_MARGE, 56);
+    lv_obj_align(ui_titre_section(z, TXT("CONSIGNE", "SETPOINT")), LV_ALIGN_TOP_RIGHT, -UI_MARGE, 56);
     lv_obj_t *r = ui_valeur_unite(z, UI_POLICE_TEMP, UI_ACCENT, "°C", &o_rconsigne);
     lv_obj_align(r, LV_ALIGN_TOP_RIGHT, -UI_MARGE, 78);
-    lv_obj_t *aide = ui_label(z, UI_POLICE_LEGENDE, UI_TEXTE3, "glisser le curseur\nsur le ballon");
+    lv_obj_t *aide = ui_label(z, UI_POLICE_LEGENDE, UI_TEXTE3, TXT("glisser le curseur\nsur le ballon", "drag the slider\non the tank"));
     lv_obj_set_style_text_align(aide, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_align(aide, LV_ALIGN_TOP_RIGHT, -UI_MARGE, 186);
     trait_h(z, 232);
-    ligne_info(z, 244, "Eau", &o_reau);
+    ligne_info(z, 244, TXT("Eau", "Water"), &o_reau);
     lv_obj_t *v;
-    ligne_info(z, 270, "Contenance", &v);
+    ligne_info(z, 270, TXT("Contenance", "Capacity"), &v);
     ui_label_texte_fmt(v, "%d L", VOLUME);
-    ligne_info(z, 296, "Chauffe", &v);
-    ui_label_texte(v, "relais tableau");
+    ligne_info(z, 296, TXT("Chauffe", "Heating"), &v);
+    ui_label_texte(v, TXT("relais tableau", "panel relay"));
 
-    static const char *NOMS_MODE[] = {"Arrêt", "Auto", "Forcé"};
+    static const char *NOMS_MODE[] = {TXT("Arrêt", "Off"), TXT("Auto", "Auto"), TXT("Forcé", "Boost")};
     lv_obj_t *rang = ui_conteneur(z);
     lv_obj_set_size(rang, UI_ZONE_L - 2 * UI_MARGE, 52);
     lv_obj_set_pos(rang, UI_MARGE, 334);
@@ -806,8 +813,9 @@ static void construire_reglages(lv_obj_t *z)
     lv_obj_clear_flag(txt, LV_OBJ_FLAG_CLICKABLE); // le toucher doit arriver à la carte, pas au bloc de texte
     lv_obj_set_size(txt, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(txt, LV_FLEX_FLOW_COLUMN);
-    ui_label(txt, UI_POLICE_TEXTE, UI_TEXTE, "Régime éco");
-    ui_label(txt, UI_POLICE_LEGENDE, UI_TEXTE2, "une seule montée la nuit, en heures creuses");
+    ui_label(txt, UI_POLICE_TEXTE, UI_TEXTE, TXT("Régime éco", "Eco schedule"));
+    ui_label(txt, UI_POLICE_LEGENDE, UI_TEXTE2, TXT("une seule montée la nuit, en heures creuses",
+                                                  "one heat-up per night, off-peak"));
     o_eco_inter = lv_switch_create(eco);
     lv_obj_set_size(o_eco_inter, 52, 30);
     lv_obj_clear_flag(o_eco_inter, LV_OBJ_FLAG_CLICKABLE);
@@ -859,7 +867,7 @@ static void construire()
 {
     arreter_bulles();
     lv_obj_clean(g_zone);
-    static const char *const ONGLETS[] = {"Ballon", "Courbe", "Réglages"};
+    static const char *const ONGLETS[] = {TXT("Ballon", "Tank"), TXT("Courbe", "Chart"), TXT("Réglages", "Settings")};
     ui_onglets(g_zone, ONGLETS, 3, g_vue, onglet_cb, nullptr, o_onglets);
     if (g_vue == 0)
         construire_ballon(g_zone);

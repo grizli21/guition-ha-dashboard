@@ -8,6 +8,7 @@
 #include <algorithm>
 #include "../ui_lvgl/ui_diag.h"
 #include "../ui_lvgl/ui_psram.h"
+#include "../ui_lvgl/ui_langue.h"
 #include <WiFi.h>
 #include <esp_wifi.h>
 #include <esp_mac.h>
@@ -426,8 +427,10 @@ static void energie_tache()
         const uint8_t r = ui_radar_mouvement() | ui_radar_web_actif() << 1 | ui_radar_auto_en_cours() << 2 | ui_radar_diag_actif() << 3 |
                           (digitalRead(RADAR_REVEIL_PIN) ? 1 : 0) << 4;
         if (r && r != retenu)
-            ui_journal(true, "Pas de veille depuis %lu s :%s%s%s%s%s", (unsigned long)(inactif / 1000 - veille_s), r & 1 ? " présence" : "",
-                       r & 2 ? " page web" : "", r & 4 ? " réglage auto" : "", r & 8 ? " diag" : "", r & 16 ? " broche haute" : "");
+            ui_journal(true, TXT("Pas de veille depuis %lu s :%s%s%s%s%s", "No sleep for %lu s:%s%s%s%s%s"),
+                       (unsigned long)(inactif / 1000 - veille_s), r & 1 ? TXT(" présence", " presence") : "",
+                       r & 2 ? TXT(" page web", " web page") : "", r & 4 ? TXT(" réglage auto", " auto-tune") : "",
+                       r & 8 ? " diag" : "", r & 16 ? TXT(" broche haute", " pin high") : "");
         retenu = r;
     }
     else
@@ -1170,15 +1173,17 @@ void setup()
             const uint32_t ms = (uint32_t)((esp_rtc_get_time_us() - g_coucher.t_us) / 1000);
             char duree[16];
             if (ms < 60000)
-                snprintf(duree, sizeof duree, "%u,%u s", (unsigned)(ms / 1000), (unsigned)(ms % 1000 / 100));
+                snprintf(duree, sizeof duree, TXT("%u" SEP_DEC "%u s", "%u" SEP_DEC "%u s"), (unsigned)(ms / 1000), (unsigned)(ms % 1000 / 100));
             else
                 snprintf(duree, sizeof duree, "%u min", (unsigned)(ms / 60000));
             char attente[32] = "";
             if (g_coucher.attente_ms)
-                snprintf(attente, sizeof attente, " après %u,%u s d'attente", (unsigned)(g_coucher.attente_ms / 1000),
+                snprintf(attente, sizeof attente, TXT(" après %u" SEP_DEC "%u s d'attente", " after %u" SEP_DEC "%u s waiting"),
+                         (unsigned)(g_coucher.attente_ms / 1000),
                          (unsigned)(g_coucher.attente_ms % 1000 / 100));
-            snprintf(ui_appareil_reveil_info, sizeof ui_appareil_reveil_info, " · endormi %s ; au coucher précédent : broche %s%s",
-                     duree, g_coucher.broche_fin ? "haute" : "basse", attente);
+            snprintf(ui_appareil_reveil_info, sizeof ui_appareil_reveil_info,
+                     TXT(" · endormi %s ; au coucher précédent : broche %s%s", " · asleep for %s ; at previous sleep: pin %s%s"),
+                     duree, g_coucher.broche_fin ? TXT("haute", "high") : TXT("basse", "low"), attente);
         }
         g_coucher.magic = 0;
         g_coucher.attente_ms = 0; // un coucher sans garde (Wi-Fi absent) n'attend pas
@@ -1696,12 +1701,13 @@ void setup()
                  ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
     if (g_wifi_rtc.magic == WIFI_RTC_MAGIC && g_wifi_rtc.echecs) // échecs avant ce démarrage : dans la ligne du journal
     {
-        char vise[16] = "borne gardée";
+        char vise[16] = TXT("borne gardée", "held pin");
         if (g_wifi_rtc.rssi_vise)
             snprintf(vise, sizeof vise, "%d dBm", (int)g_wifi_rtc.rssi_vise);
         snprintf(ui_appareil_reveil_info + strlen(ui_appareil_reveil_info), sizeof ui_appareil_reveil_info - strlen(ui_appareil_reveil_info),
-                 " · ⚠️ Wi-Fi : %u échec%s avant (dernier : raison %u, %s, réveil %s)", g_wifi_rtc.echecs, g_wifi_rtc.echecs > 1 ? "s" : "",
-                 g_wifi_rtc.raison, vise, g_wifi_rtc.court ? "court" : "complet");
+                 TXT(" · ⚠️ Wi-Fi : %u échec%s avant (dernier : raison %u, %s, réveil %s)", " · ⚠️ Wi-Fi: %u failure%s before (last: reason %u, %s, wake-up %s)"),
+                 g_wifi_rtc.echecs, g_wifi_rtc.echecs > 1 ? "s" : "",
+                 g_wifi_rtc.raison, vise, g_wifi_rtc.court ? TXT("court", "short") : TXT("complet", "full"));
     }
     if (g_wifi_rtc.magic == WIFI_RTC_MAGIC)
         g_wifi_rtc.raison = 0;
@@ -1748,18 +1754,18 @@ static void demarrage_tache()
     const char *manque = nullptr;
     if (!WiFi.isConnected())
     {
-        ui_demarrage_etape("Wi-Fi : connexion à la borne…", 20);
+        ui_demarrage_etape(TXT("Wi-Fi : connexion à la borne…", "Wi-Fi: connecting…"), 20);
         if (t < 30000)
             return;
-        manque = "sans Wi-Fi";
+        manque = TXT("sans Wi-Fi", "no Wi-Fi");
     }
     else if (!ui_mqtt_connecte())
     {
-        snprintf(b, sizeof b, "Wi-Fi %s · %d dBm\nMQTT : connexion…", WiFi.SSID().c_str(), (int)WiFi.RSSI());
+        snprintf(b, sizeof b, TXT("Wi-Fi %s · %d dBm\nMQTT : connexion…", "Wi-Fi %s · %d dBm\nMQTT: connecting…"), WiFi.SSID().c_str(), (int)WiFi.RSSI());
         ui_demarrage_etape(b, 45);
         if (t < 30000)
             return;
-        manque = "sans MQTT";
+        manque = TXT("sans MQTT", "no MQTT");
     }
     else
     {
@@ -1768,10 +1774,10 @@ static void demarrage_tache()
         // les messages retenus arrivent en rafale juste après l'abonnement : on laisse passer la rafale
         if (!ui_mqtt_dernier_ha || t - t_mqtt < 1500)
         {
-            ui_demarrage_etape("Synchronisation avec Home Assistant…", 65);
+            ui_demarrage_etape(TXT("Synchronisation avec Home Assistant…", "Synchronizing with Home Assistant…"), 65);
             if (t - t_mqtt < 15000)
                 return;
-            manque = "Home Assistant ne répond pas";
+            manque = TXT("Home Assistant ne répond pas", "Home Assistant not responding");
         }
         else
         {
@@ -1783,12 +1789,12 @@ static void demarrage_tache()
             }
             if (!ui_musique_biblio_prete() && t - t_biblio < 10000)
             {
-                ui_demarrage_etape("Bibliothèque musicale…", 85);
+                ui_demarrage_etape(TXT("Bibliothèque musicale…", "Music library…"), 85);
                 return;
             }
         }
     }
-    ui_demarrage_etape(manque ? manque : "Prêt", 100);
+    ui_demarrage_etape(manque ? manque : TXT("Prêt", "Ready"), 100);
     ui_trace("[demarrage] interface en %lu ms%s%s\n", (unsigned long)t, manque ? " : " : "", manque ? manque : "");
     trace_ram();
     ui_demarrage_fin();

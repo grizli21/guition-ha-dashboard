@@ -31,7 +31,7 @@ void ui_demarrage_creer(const char *piece)
     ui_style_bg_color(o_barre, ui_c(UI_ACCENT), LV_PART_INDICATOR);
     lv_obj_set_style_anim_time(o_barre, 300, 0);
 
-    o_etat = ui_label(o_ecran, UI_POLICE_PETITE, UI_TEXTE2, "Démarrage…");
+    o_etat = ui_label(o_ecran, UI_POLICE_PETITE, UI_TEXTE2, TXT("Démarrage…", "Starting…"));
     lv_obj_set_width(o_etat, 360);
     lv_obj_set_style_text_align(o_etat, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align_to(o_etat, o_barre, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);

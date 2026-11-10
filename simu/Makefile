@@ -27,8 +27,21 @@ endif
 # 08/11 : ps_malloc seul était remplacé ; ui_musique.cpp (9.6) appelle aussi ps_realloc (les tableaux
 # d'albums gardés entre deux versions), et ui_psram.h du PC ne définit pas ces noms-là.
 # -MMD -MP : chaque .o dépend de ses en-têtes (24/10 : un en-tête modifié laissait des .o périmés)
+# 10/11/2026 : UI_LANG_EN=1 construit l'interface en ANGLAIS
+# (macro TXT de src/ui_lvgl/ui_langue.h). Sans cette variable : français, rendu STRICTEMENT identique.
+#   make -C simu UI_LANG_EN=1
+# Dossier de construction et binaire séparés (construction-en, simu-en) : make ne suit pas les drapeaux
+# de DEFS ; sans ça, changer UI_LANG_EN laisserait un binaire moitié FR, moitié EN.
+ifeq ($(UI_LANG_EN),1)
+DEFS += -DUI_LANG_EN
+CONSTR := construction-en
+BIN := simu-en
+endif
+
 CFLAGS   := -O2 -w -MMD -MP $(INC) $(DEFS)
 CXXFLAGS := -O2 -std=c++17 -Wall -Wno-unused-function -MMD -MP $(INC) $(DEFS)
+# make asan : SAN doit aussi passer à la COMPILATION (avant le 10/11, seulement à l'édition de liens :
+# ASan ne surveillait pas le code des pages)
 SAN ?=
 BIN ?= simu
 
@@ -53,34 +66,34 @@ asan:
 
 $(CONSTR)/%.o: $(RACINE)/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(SAN) -c $< -o $@
 
 $(CONSTR)/%.o: $(RACINE)/%.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(SAN) -c $< -o $@
 
 # 08/11 : les .o de donnees/ ne sont plus suivis par git (artefacts de compilation) : règle explicite,
 # sinon make retombait sur sa règle implicite, sans les -I, et la compilation echouait
 donnees/%.o: donnees/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(SAN) -c $< -o $@
 
 $(CONSTR)/simu.o: simu.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(SAN) -c $< -o $@
 
 $(CONSTR)/maquettes_eau.o: maquettes_eau.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(SAN) -c $< -o $@
 
 $(CONSTR)/maquettes_batterie.o: maquettes_batterie.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(SAN) -c $< -o $@
 
 $(CONSTR)/maquettes_pc.o: maquettes_pc.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(SAN) -c $< -o $@
 
 -include $(OBJ:.o=.d)
 
 propre:
-	rm -rf $(CONSTR) construction-asan simu simu-asan
+	rm -rf $(CONSTR) construction-asan construction-en simu simu-asan simu-en

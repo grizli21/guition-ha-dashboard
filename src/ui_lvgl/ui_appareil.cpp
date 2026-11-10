@@ -1,4 +1,5 @@
 #include "ui_appareil.h"
+#include "ui_langue.h"
 #include "ui_psram.h" // 29/10 : tableaux de texte en PSRAM
 #include "page_batterie.h"
 #include "ui_mqtt.h"
@@ -201,6 +202,30 @@ void ui_journal(bool alerte, const char *fmt, ...)
     journal_envoyer();
 }
 
+// Cause de réveil à l'affichage : ui_diag_esp.cpp et le JSON vers HA gardent le français (telnet,
+// comparaisons) ; seule la page Infos et le journal affiché voient la traduction. Table parallèle :
+// en français, les deux colonnes sont identiques, donc aucun changement sans le drapeau.
+static const char *cause_affichee(const char *c)
+{
+    static const struct { const char *fr, *en; } CAUSES[] = {
+        {"plantage", TXT("plantage", "crash")},
+        {"chien de garde des interruptions", TXT("chien de garde des interruptions", "interrupt watchdog")},
+        {"chien de garde des tâches", TXT("chien de garde des tâches", "task watchdog")},
+        {"chien de garde", TXT("chien de garde", "watchdog")},
+        {"boucle figée (chien de garde)", TXT("boucle figée (chien de garde)", "frozen loop (watchdog)")},
+        {"baisse de tension", TXT("baisse de tension", "brownout")},
+        {"mise sous tension", TXT("mise sous tension", "power-on")},
+        {"demandé", TXT("demandé", "requested")},
+        {"bouton reset", TXT("bouton reset", "reset button")},
+        {"réveil", TXT("réveil", "wake-up")},
+        {"autre", TXT("autre", "other")},
+    };
+    for (unsigned i = 0; i < sizeof CAUSES / sizeof CAUSES[0]; i++)
+        if (!strcmp(c, CAUSES[i].fr))
+            return CAUSES[i].en;
+    return c; // cause inconnue : telle quelle
+}
+
 // 26/10 : sortie de veille profonde (écran sur batterie) : une seule ligne par réveil dans le journal de HA
 static bool reveil()
 {
@@ -224,9 +249,9 @@ static void mqtt_evenement(bool connecte, uint32_t duree_ms)
     if (taire)
         return;
     if (connecte)
-        ui_journal(false, "MQTT connecté en %u,%u s", (unsigned)(duree_ms / 1000), (unsigned)(duree_ms % 1000 / 100));
+        ui_journal(false, TXT("MQTT connecté en %u" SEP_DEC "%u s", "MQTT connected in %u" SEP_DEC "%u s"), (unsigned)(duree_ms / 1000), (unsigned)(duree_ms % 1000 / 100));
     else
-        ui_journal(true, "MQTT perdu");
+        ui_journal(true, TXT("MQTT perdu", "MQTT lost"));
 }
 
 // Évènements vus chaque seconde : démarrage (1res données de HA), Wi-Fi, HA muet
@@ -241,13 +266,16 @@ static void journal_tic()
         if (ui_appareil_sante)
             ui_appareil_sante(s);
         if (ui_diag_etape_precedente()[0]) // plantage ou figeage : où en était la boucle (le détail : appareil/<nom>/dump)
-            ui_journal(true, "Démarrage (%s, pendant %s) · données en %u,%u s · version %s", s.redemarrage, ui_diag_etape_precedente(),
+            ui_journal(true, TXT("Démarrage (%s, pendant %s) · données en %u" SEP_DEC "%u s · version %s",
+                          "Startup (%s, stuck at %s) · data in %u" SEP_DEC "%u s · version %s"),
+                 cause_affichee(s.redemarrage), ui_diag_etape_precedente(),
                        (unsigned)(ui_mqtt_dernier_ha / 1000), (unsigned)(ui_mqtt_dernier_ha % 1000 / 100), s.version);
         else if (strcmp(s.redemarrage, "réveil") == 0)
-            ui_journal(false, "Réveil · données en %u,%u s%s", (unsigned)(ui_mqtt_dernier_ha / 1000),
+            ui_journal(false, TXT("Réveil · données en %u" SEP_DEC "%u s%s", "Wake-up · data in %u" SEP_DEC "%u s%s"), (unsigned)(ui_mqtt_dernier_ha / 1000),
                        (unsigned)(ui_mqtt_dernier_ha % 1000 / 100), ui_appareil_reveil_info);
         else
-            ui_journal(false, "Démarrage (%s) · données en %u,%u s · version %s%s", s.redemarrage[0] ? s.redemarrage : "?",
+            ui_journal(false, TXT("Démarrage (%s) · données en %u" SEP_DEC "%u s · version %s%s", "Startup (%s) · data in %u" SEP_DEC "%u s · version %s%s"),
+                 s.redemarrage[0] ? cause_affichee(s.redemarrage) : "?",
                        (unsigned)(ui_mqtt_dernier_ha / 1000), (unsigned)(ui_mqtt_dernier_ha % 1000 / 100), s.version,
                        ui_appareil_reveil_info);
     }
@@ -268,18 +296,18 @@ static void journal_tic()
         if (w && s.wifi[0])
             ui_journal(false, "Wi-Fi %s · %d dBm", s.wifi, s.rssi);
         else if (w)
-            ui_journal(false, "Wi-Fi connecté");
+            ui_journal(false, TXT("Wi-Fi connecté", "Wi-Fi connected"));
         else
-            ui_journal(true, "Wi-Fi perdu");
+            ui_journal(true, TXT("Wi-Fi perdu", "Wi-Fi lost"));
     }
     const bool muet = !g_reseau_volontaire && ui_mqtt_dernier_ha && lv_tick_elaps(ui_mqtt_dernier_ha) >= HA_SILENCE_MS;
     if (muet != ha_muet)
     {
         ha_muet = muet;
         if (muet)
-            ui_journal(true, "Home Assistant muet depuis 3 min");
+            ui_journal(true, TXT("Home Assistant muet depuis 3 min", "Home Assistant silent for 3 min"));
         else
-            ui_journal(false, "Home Assistant répond de nouveau");
+            ui_journal(false, TXT("Home Assistant répond de nouveau", "Home Assistant responding again"));
     }
     journal_envoyer();
     ui_diag_publier(ui_mqtt_publier, g_nom); // dump du plantage précédent, retenu (une fois, dès que le broker est là)
@@ -294,20 +322,21 @@ static bool sante()
     ui_appareil_sante(s);
     const uint32_t j = s.depuis_s / 86400, h = s.depuis_s % 86400 / 3600, mn = s.depuis_s % 3600 / 60;
     if (j)
-        snprintf(if_systeme[0].valeur, sizeof if_systeme[0].valeur, "%u j %02u h", (unsigned)j, (unsigned)h);
+        snprintf(if_systeme[0].valeur, sizeof if_systeme[0].valeur, TXT("%u j %02u h", "%u d %02u h"), (unsigned)j, (unsigned)h);
     else
         snprintf(if_systeme[0].valeur, sizeof if_systeme[0].valeur, "%u h %02u min", (unsigned)h, (unsigned)mn);
-    snprintf(if_systeme[1].valeur, sizeof if_systeme[1].valeur, "%s", s.redemarrage);
+    snprintf(if_systeme[1].valeur, sizeof if_systeme[1].valeur, "%s", cause_affichee(s.redemarrage));
     // 25/10 (retour d'usage : « débordement PSRAM ») : RAM et PSRAM chacune dans sa case, la PSRAM en Mo
-    snprintf(if_systeme[2].valeur, sizeof if_systeme[2].valeur, "%u Ko", (unsigned)s.ram_ko);
-    snprintf(if_systeme[3].valeur, sizeof if_systeme[3].valeur, "%u,%u Mo", (unsigned)(s.psram_ko / 1024), (unsigned)(s.psram_ko % 1024 * 10 / 1024));
+    snprintf(if_systeme[2].valeur, sizeof if_systeme[2].valeur, TXT("%u Ko", "%u KB"), (unsigned)s.ram_ko);
+    snprintf(if_systeme[3].valeur, sizeof if_systeme[3].valeur, TXT("%u" SEP_DEC "%u Mo", "%u" SEP_DEC "%u MB"),
+                     (unsigned)(s.psram_ko / 1024), (unsigned)(s.psram_ko % 1024 * 10 / 1024));
     snprintf(if_systeme[4].valeur, sizeof if_systeme[4].valeur, "%d °C", s.cpu_temp);
     snprintf(if_systeme[5].valeur, sizeof if_systeme[5].valeur, "%d MHz", s.cpu_mhz); // 31/10 : comme l'ancien dashboard
     snprintf(if_systeme[6].valeur, sizeof if_systeme[6].valeur, "%u ms", (unsigned)ui_diag_boucle_max()); // jamais remplie avant
     if (s.tx_dbm4) // 31/10 : puissance d'émission Wi-Fi (7 dBm en réglage réduit)
-        snprintf(if_systeme[7].valeur, sizeof if_systeme[7].valeur, "%d,%d dBm", s.tx_dbm4 / 4, s.tx_dbm4 % 4 * 25 / 10);
+        snprintf(if_systeme[7].valeur, sizeof if_systeme[7].valeur, "%d" SEP_DEC "%d dBm", s.tx_dbm4 / 4, s.tx_dbm4 % 4 * 25 / 10);
     else
-        snprintf(if_systeme[7].valeur, sizeof if_systeme[7].valeur, "%s", "arrêté");
+        snprintf(if_systeme[7].valeur, sizeof if_systeme[7].valeur, "%s", TXT("arrêté", "off"));
     snprintf(if_systeme[8].valeur, sizeof if_systeme[8].valeur, "%s", s.version);
     snprintf(if_systeme[9].valeur, sizeof if_systeme[9].valeur, "%s", s.ip);
 
@@ -315,7 +344,7 @@ static bool sante()
     if (s.wifi[0])
         snprintf(if_liaisons[0].detail, sizeof if_liaisons[0].detail, "%s · %d dBm", s.wifi, s.rssi);
     else
-        snprintf(if_liaisons[0].detail, sizeof if_liaisons[0].detail, "%s", "déconnecté");
+        snprintf(if_liaisons[0].detail, sizeof if_liaisons[0].detail, "%s", TXT("déconnecté", "disconnected"));
     snprintf(rg_reglages.ssid, sizeof rg_reglages.ssid, "%s", s.wifi);
     snprintf(rg_reglages.ip, sizeof rg_reglages.ip, "%s", s.ip);
     rg_reglages.rssi = s.rssi;
@@ -357,9 +386,9 @@ static void liaison_ha()
     const bool ok = ui_mqtt_dernier_ha && lv_tick_elaps(ui_mqtt_dernier_ha) < HA_SILENCE_MS;
     if_liaisons[1].ok = ok;
     if (!ui_mqtt_dernier_ha)
-        snprintf(if_liaisons[1].detail, sizeof if_liaisons[1].detail, "%s", "rien reçu");
+        snprintf(if_liaisons[1].detail, sizeof if_liaisons[1].detail, "%s", TXT("rien reçu", "no data"));
     else
-        snprintf(if_liaisons[1].detail, sizeof if_liaisons[1].detail, "il y a %u s", (unsigned)(lv_tick_elaps(ui_mqtt_dernier_ha) / 1000));
+        snprintf(if_liaisons[1].detail, sizeof if_liaisons[1].detail, TXT("il y a %u s", "%u s ago"), (unsigned)(lv_tick_elaps(ui_mqtt_dernier_ha) / 1000));
 }
 
 // Rétroéclairage, repris de la production (setBacklight / reduced_power_mode / full_power_mode) :

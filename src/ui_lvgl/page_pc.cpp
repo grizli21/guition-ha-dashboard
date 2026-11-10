@@ -25,7 +25,7 @@ static void virgule(char *b, size_t n, float v, int dec)
     snprintf(b, n, "%.*f", dec, v);
     for (char *p = b; *p; p++)
         if (*p == '.')
-            *p = ',';
+            *p = SEP_CAR;
 }
 
 static lv_obj_t *carte(lv_obj_t *z, lv_coord_t y, lv_coord_t h)
@@ -107,7 +107,7 @@ static void veille_style()
     ui_style_bg_color(o_veille_btn, ui_c(g_confirme_veille ? UI_ROUGE : UI_CARTE), 0);
     ui_style_border_color(o_veille_btn, ui_c(g_confirme_veille ? UI_ROUGE : UI_BORD), 0);
     ui_style_text_color(o_veille_lbl, ui_c(g_confirme_veille ? UI_SUR_ACCENT : UI_TEXTE), 0);
-    ui_label_texte(o_veille_lbl, g_confirme_veille ? "Toucher encore" : "Mettre en veille");
+    ui_label_texte(o_veille_lbl, g_confirme_veille ? TXT("Toucher encore", "Tap again") : TXT("Mettre en veille", "Sleep"));
 }
 
 static void action_cb(lv_event_t *e)
@@ -133,11 +133,11 @@ static void construire_veille(lv_obj_t *z)
     lv_obj_set_flex_align(col, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(col, 12, 0);
     ui_icone(col, &icon_pc, UI_ETEINT); // 64 px : pas de zoom, LVGL 8.4 ne transforme pas les icônes alpha (vu au simulateur)
-    ui_label(col, UI_POLICE_TITRE, UI_TEXTE2, "PC en veille");
+    ui_label(col, UI_POLICE_TITRE, UI_TEXTE2, TXT("PC en veille", "PC asleep"));
     o_veille_txt = ui_label(col, UI_POLICE_PETITE, UI_TEXTE3, "");
     lv_obj_t *b = ui_bouton(col, 240, 56);
     ui_style_ajouter(b, &ui_st_bouton_principal, 0);
-    lv_obj_center(ui_label(b, UI_POLICE_TEXTE, UI_SUR_ACCENT, "Réveiller"));
+    lv_obj_center(ui_label(b, UI_POLICE_TEXTE, UI_SUR_ACCENT, TXT("Réveiller", "Wake")));
     lv_obj_add_event_cb(b, action_cb, LV_EVENT_CLICKED, (void *)PC_REVEILLER);
 }
 
@@ -220,7 +220,7 @@ static void construire_systeme(lv_obj_t *z)
     // mémoire
     c = carte(z, 272, 40);
     lv_obj_align(ui_label(c, UI_POLICE_TEXTE, UI_TEXTE, "RAM"), LV_ALIGN_LEFT_MID, 0, 0);
-    lv_obj_align(ui_valeur_unite(c, UI_POLICE_3X5_P, UI_TEXTE, "Go", &o_ram_val), LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_obj_align(ui_valeur_unite(c, UI_POLICE_3X5_P, UI_TEXTE, TXT("Go", "GB"), &o_ram_val), LV_ALIGN_RIGHT_MID, 0, 0);
     o_ram_barre = barre(c, 120, 10, true);
     lv_obj_align(o_ram_barre, LV_ALIGN_LEFT_MID, 44, 0);
 
@@ -234,7 +234,7 @@ static void construire_systeme(lv_obj_t *z)
         lv_obj_set_x(cc, UI_MARGE + k * (demi + 8));
         lv_obj_set_style_pad_hor(cc, 10, 0);
         lv_obj_set_style_pad_ver(cc, 6, 0);
-        ui_label(cc, UI_POLICE_LEGENDE, UI_TEXTE, k ? "Disque" : "Réseau");
+        ui_label(cc, UI_POLICE_LEGENDE, UI_TEXTE, k ? TXT("Disque", "Disk") : TXT("Réseau", "Network"));
         o_io_val[k] = ui_label(cc, UI_POLICE_LEGENDE, UI_TEXTE, "");
         lv_label_set_recolor(o_io_val[k], true);
         lv_obj_align(o_io_val[k], LV_ALIGN_TOP_RIGHT, 0, 0);
@@ -282,7 +282,8 @@ static void maj_systeme()
     {
         virgule(a, sizeof a, k ? p.disque_l : p.net_bas, 1);
         virgule(b, sizeof b, k ? p.disque_e : p.net_haut, 1);
-        snprintf(t, sizeof t, k ? "#4FC3F7 L %sM#  #FFB547 É %sM#" : "#4FC3F7 ↓ %sM#  #FFB547 ↑ %sM#", a, b);
+        snprintf(t, sizeof t, k ? TXT("#4FC3F7 L %sM#  #FFB547 É %sM#", "#4FC3F7 R %sM#  #FFB547 W %sM#")
+                            : "#4FC3F7 ↓ %sM#  #FFB547 ↑ %sM#", a, b);
         ui_label_texte(o_io_val[k], t);
         const uint8_t *h = k ? p.h_disque : p.h_net;
         for (int i = 0; i < PC_HIST; i++)
@@ -294,7 +295,7 @@ static void maj_systeme()
                 lv_obj_set_pos(o_io_col[k][i], i * (g_io_bl + 2), 80 - hh);
         }
     }
-    ui_label_texte_fmt(o_pied, "allumé depuis %s · swap %d %%", p.allume_depuis, p.swap);
+    ui_label_texte_fmt(o_pied, TXT("allumé depuis %s · swap %d %%", "on since %s · swap %d %%"), p.allume_depuis, p.swap);
 }
 
 // =====================================================================  GPU
@@ -409,7 +410,7 @@ static void maj_gpu()
         ui_label_texte_fmt(o.temp, "%d° · %d W · %s", x.temp, x.puissance, x.ps[0] ? x.ps : "-");
         ui_style_text_color(o.temp, ui_c(x.temp >= 75 ? UI_ROUGE : x.temp >= 65 ? UI_ACCENT : UI_TEXTE2), 0);
         virgule(a, sizeof a, x.vram, 1);
-        ui_label_texte_fmt(o.vram, "%s / %d Go", a, (int)(x.vram_total + 0.5f));
+        ui_label_texte_fmt(o.vram, TXT("%s / %d Go", "%s / %d GB"), a, (int)(x.vram_total + 0.5f));
         // 08/11 (maquette GPU) : fréquence actuelle seule — la fréquence GPU sur la ligne 3, la mémoire sur la ligne 4
         if (o.freq_val[0])
         {
@@ -437,7 +438,7 @@ static void maj_gpu()
             const int l = LV_MIN(i, GPU_LIGNES - 1);
             ui_style_bg_color(o.carre[l], ui_c(groupe ? UI_TEXTE3 : b.couleur), 0);
             if (groupe)
-                ui_label_texte_fmt(o.legende[l], "%d autres", x.nb_blocs - GPU_LIGNES + 1);
+                ui_label_texte_fmt(o.legende[l], TXT("%d autres", "%d more"), x.nb_blocs - GPU_LIGNES + 1);
             else
                 ui_label_texte(o.legende[l], b.nom);
             virgule(a, sizeof a, (groupe ? reste : b.mo) / 1024.0f, 1);
@@ -463,14 +464,14 @@ static int compare(const void *x, const void *y)
 
 static void construire_processus(lv_obj_t *z)
 {
-    lv_obj_t *t = ui_label(z, UI_POLICE_PETITE, UI_TEXTE2, "trié par");
+    lv_obj_t *t = ui_label(z, UI_POLICE_PETITE, UI_TEXTE2, TXT("trié par", "sorted by"));
     lv_obj_set_pos(t, UI_MARGE + 4, 60);
     lv_obj_t *rang = ui_conteneur(z); // pastilles de tri, à droite
     lv_obj_set_size(rang, LV_SIZE_CONTENT, 32);
     lv_obj_align(rang, LV_ALIGN_TOP_RIGHT, -UI_MARGE, 54);
     lv_obj_set_flex_flow(rang, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_column(rang, 6, 0);
-    const char *noms[] = {"CPU", "Mémoire", "VRAM"};
+    const char *noms[] = {"CPU", TXT("Mémoire", "Memory"), "VRAM"};
     for (int i = 0; i < 3; i++)
     {
         lv_obj_t *b = ui_bouton(rang, i == 1 ? 86 : 64, 32);
@@ -541,10 +542,10 @@ static void maj_processus()
         virgule(a, sizeof a, p.cpu, p.cpu < 10 ? 1 : 0);
         ui_label_texte_fmt(o.cpu, "%s %%", a);
         virgule(a, sizeof a, p.mem, p.mem < 10 ? 1 : 0);
-        ui_label_texte_fmt(o.mem, "%s Go", a);
+        ui_label_texte_fmt(o.mem, TXT("%s Go", "%s GB"), a);
         virgule(a, sizeof a, p.vram, p.vram < 10 ? 1 : 0);
         if (p.vram > 0)
-            ui_label_texte_fmt(o.vram, "%s Go", a);
+            ui_label_texte_fmt(o.vram, TXT("%s Go", "%s GB"), a);
         else
             ui_label_texte(o.vram, "–");
     }
@@ -560,7 +561,7 @@ static struct
 
 static void construire_ia(lv_obj_t *z)
 {
-    static const char *const FENETRES[] = {"5 heures", "Semaine"};
+    static const char *const FENETRES[] = {TXT("5 heures", "5 hours"), TXT("Semaine", "Week")};
     for (int i = 0; i < PC_IA; i++)
     {
         lv_obj_t *c = carte(z, 56 + i * 208, 196);
@@ -587,25 +588,25 @@ static void construire_ia(lv_obj_t *z)
 static void dans(char *b, size_t n, int32_t s)
 {
     if (s <= 0)
-        snprintf(b, n, "maintenant");
+        snprintf(b, n, TXT("maintenant", "now"));
     else if (s >= 86400)
-        snprintf(b, n, "dans %d j %d h", (int)(s / 86400), (int)(s % 86400 / 3600));
+        snprintf(b, n, TXT("dans %d j %d h", "in %d d %d h"), (int)(s / 86400), (int)(s % 86400 / 3600));
     else if (s >= 3600)
-        snprintf(b, n, "dans %d h %02d", (int)(s / 3600), (int)(s % 3600 / 60));
+        snprintf(b, n, TXT("dans %d h %02d", "in %d h %02d"), (int)(s / 3600), (int)(s % 3600 / 60));
     else
-        snprintf(b, n, "dans %d min", (int)(s / 60 + 1));
+        snprintf(b, n, TXT("dans %d min", "in %d min"), (int)(s / 60 + 1));
 }
 
 static void maj_ia()
 {
-    static const char *const JOURS[] = {"dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."};
+    static const char *const JOURS[] = {TXT("dim.", "Sun"), TXT("lun.", "Mon"), TXT("mar.", "Tue"), TXT("mer.", "Wed"), TXT("jeu.", "Thu"), TXT("ven.", "Fri"), TXT("sam.", "Sat")};
     const uint32_t maintenant = (uint32_t)time(nullptr);
     for (int i = 0; i < PC_IA; i++)
     {
         auto &o = o_ia[i];
         if (i >= pc_etat.nb_ia)
         {
-            ui_label_texte(o.nom, i ? "" : "en attente de l'agent du PC");
+            ui_label_texte(o.nom, i ? "" : TXT("en attente de l'agent du PC", "waiting for the PC agent"));
             continue;
         }
         const pc_ia_t &a = pc_etat.ia[i];
@@ -617,7 +618,7 @@ static void maj_ia()
         else
         {
             dans(d, sizeof d, age);
-            ui_label_texte_fmt(o.maj, "lu il y a %s", d + 5); // « 3 h 05 » (sans « dans »)
+            ui_label_texte_fmt(o.maj, TXT("lu il y a %s", "read %s ago"), d + 5); // « 3 h 05 » (sans « dans »)
         }
         const int pct[] = {a.h5, a.semaine};
         const uint32_t reset[] = {a.h5_reset, a.semaine_reset};
@@ -628,18 +629,19 @@ static void maj_ia()
             barre_maj(o.barre[k], pct[k], pct[k] >= 90 ? UI_ROUGE : k ? UI_FROID : UI_ACCENT);
             if (!reset[k] || reset[k] <= maintenant)
             {
-                ui_label_texte(o.reset[k], k ? "réinitialisation inconnue" : "pas de fenêtre en cours");
+                ui_label_texte(o.reset[k], k ? TXT("réinitialisation inconnue", "unknown reset") : TXT("pas de fenêtre en cours", "no current session"));
                 continue;
             }
             struct tm lt;
             const time_t tt = reset[k];
             localtime_r(&tt, &lt);
             if (k == 0 || reset[k] - maintenant < 86400)
-                snprintf(t, sizeof t, "%02dh%02d", lt.tm_hour, lt.tm_min);
+                snprintf(t, sizeof t, TXT("%02dh%02d", "%02d:%02d"), lt.tm_hour, lt.tm_min);
             else
-                snprintf(t, sizeof t, "%s %02d/%02d %02dh%02d", JOURS[lt.tm_wday], lt.tm_mday, lt.tm_mon + 1, lt.tm_hour, lt.tm_min);
+                snprintf(t, sizeof t, TXT("%s %02d/%02d %02dh%02d", "%s %02d/%02d %02d:%02d"),
+                     JOURS[lt.tm_wday], lt.tm_mday, lt.tm_mon + 1, lt.tm_hour, lt.tm_min);
             dans(d, sizeof d, (int32_t)(reset[k] - maintenant));
-            ui_label_texte_fmt(o.reset[k], "réinitialisation %s · %s", t, d);
+            ui_label_texte_fmt(o.reset[k], TXT("réinitialisation %s · %s", "reset %s · %s"), t, d);
         }
     }
 }
@@ -666,7 +668,7 @@ static void maj_valeurs()
     if (g_vue == 3) // retenu : aussi PC en veille
         maj_ia();
     else if (pc_etat.en_veille)
-        ui_label_texte_fmt(o_veille_txt, "plus de nouvelles depuis %s", pc_etat.derniere_nouvelle);
+        ui_label_texte_fmt(o_veille_txt, TXT("plus de nouvelles depuis %s", "no news for %s"), pc_etat.derniere_nouvelle);
     else if (g_vue == 0)
         maj_systeme();
     else if (g_vue == 1)
@@ -678,7 +680,7 @@ static void maj_valeurs()
 static void construire()
 {
     lv_obj_clean(g_zone);
-    static const char *const ONGLETS[] = {"Système", "GPU", "Processus", "IA"};
+    static const char *const ONGLETS[] = {TXT("Système", "System"), "GPU", TXT("Processus", "Processes"), TXT("IA", "AI")};
     ui_onglets(g_zone, ONGLETS, 4, g_vue, onglet_cb, nullptr, nullptr);
     if (g_vue == 3)
         construire_ia(g_zone);

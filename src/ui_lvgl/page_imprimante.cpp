@@ -15,7 +15,7 @@ static const struct
 {
     const char *nom;
     int buse, plateau, caisson;
-} PRECHAUFFES[] = {{"Arrêt", 0, 0, 0}, {"PLA", 200, 60, 20}, {"PETG", 235, 70, 30}, {"ABS", 245, 100, 55}};
+} PRECHAUFFES[] = {{TXT("Arrêt", "Off"), 0, 0, 0}, {"PLA", 200, 60, 20}, {"PETG", 235, 70, 30}, {"ABS", 245, 100, 55}};
 
 // 27/10 (retour d'usage) : plus de ligne d'actions en bas du Suivi : l'anneau et la caméra prennent la place, recentrés ;
 // les commandes de la machine (allumer, éteindre, pause, arrêter) passent dans un 4e onglet « Marche » ; « Lancer »
@@ -137,7 +137,7 @@ static void action_cb(lv_event_t *e)
     construire();
 }
 
-static void hhmm(char *b, size_t n, int m) { snprintf(b, n, "%dh%02d", m / 60 % 24, m % 60); }
+static void hhmm(char *b, size_t n, int m) { snprintf(b, n, TXT("%dh%02d", "%02d:%02d"), m / 60 % 24, m % 60); }
 
 static lv_obj_t *bouton(lv_obj_t *parent, lv_coord_t l, lv_coord_t h, const char *txt, int genre)
 {
@@ -195,7 +195,7 @@ static void construire_suivi(lv_obj_t *z)
         }
         else
         {
-            lv_obj_t *n = ui_label(o_anneau, UI_POLICE_PETITE, UI_TEXTE3, p.etat == PR_ETEINTE ? "Imprimante éteinte" : "pas de miniature");
+            lv_obj_t *n = ui_label(o_anneau, UI_POLICE_PETITE, UI_TEXTE3, p.etat == PR_ETEINTE ? TXT("Imprimante éteinte", "Printer off") : TXT("pas de miniature", "no thumbnail"));
             lv_obj_center(n);
         }
         o_pct = ui_label(z, UI_POLICE_TEMP_PETITE, UI_TEXTE, ""); // 27/10 : 37 -> 49 px (retour d'usage « agrandis le pourcentage »)
@@ -205,7 +205,7 @@ static void construire_suivi(lv_obj_t *z)
     // 08/11/2026 : le libellé dit ce que le PROCHAIN appui affiche — c'était déjà ce sens (« Pièce » quand la caméra
     // était affichée). Avec les trois vues : « Caisson » depuis la miniature, « Plateau » depuis le caisson,
     // « Pièce » depuis le plateau. 66 px de large : « Caisson » et « Plateau » mesurent ~48 px en 12 SemiBold.
-    lv_obj_t *cb = bouton(z, 66, 34, g_camera == VUE_STL ? "Caisson" : g_camera == VUE_CAISSON ? "Plateau" : "Pièce", 0);
+    lv_obj_t *cb = bouton(z, 66, 34, g_camera == VUE_STL ? TXT("Caisson", "Enclosure") : g_camera == VUE_CAISSON ? TXT("Plateau", "Bed") : TXT("Pièce", "Part"), 0);
     ui_style_text_font(cb, UI_POLICE_LEGENDE, 0);
     lv_obj_set_pos(cb, (UI_ZONE_L - CAM_L) / 2 + CAM_L - 66 - 10, 50 + 10);
     ui_style_opa(cb, p.etat == PR_ETEINTE ? LV_OPA_40 : LV_OPA_COVER, 0);
@@ -241,7 +241,7 @@ static void construire_suivi(lv_obj_t *z)
     lv_obj_set_pos(r, UI_MARGE, TEMP_Y);
     lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(r, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    const char *noms[] = {"Buse", "Plateau", "Caisson"};
+    const char *noms[] = {TXT("Buse", "Nozzle"), TXT("Plateau", "Bed"), TXT("Caisson", "Enclosure")};
     for (int i = 0; i < 3; i++)
     {
         lv_obj_t *c = ui_conteneur(r);
@@ -269,19 +269,20 @@ static uint32_t detail(char *t, size_t n)
     if (p.etat == PR_IMPRESSION)
     {
         hhmm(h, sizeof h, p.fin_minute);
-        snprintf(t, n, "Couche %d / %d · reste %d h %02d · fin %s", p.couche, p.couches, p.reste_min / 60, p.reste_min % 60, h);
+        snprintf(t, n, TXT("Couche %d / %d · reste %d h %02d · fin %s", "Layer %d / %d · %d h %02d left · ends %s"),
+             p.couche, p.couches, p.reste_min / 60, p.reste_min % 60, h);
     }
     else if (p.etat == PR_PAUSE)
     {
-        snprintf(t, n, "En pause · couche %d / %d", p.couche, p.couches);
+        snprintf(t, n, TXT("En pause · couche %d / %d", "Paused · layer %d / %d"), p.couche, p.couches);
         return UI_ACCENT;
     }
     else if (p.etat == PR_PRETE && f)
-        snprintf(t, n, "Prête · %s · %d h %02d", f->matiere, f->minutes / 60, f->minutes % 60);
+        snprintf(t, n, TXT("Prête · %s · %d h %02d", "Ready · %s · %d h %02d"), f->matiere, f->minutes / 60, f->minutes % 60);
     else if (p.etat == PR_PRETE)
-        snprintf(t, n, "Prête");
+        snprintf(t, n, TXT("Prête", "Ready"));
     else
-        snprintf(t, n, "Klipper, caméra et Pi arrêtés");
+        snprintf(t, n, TXT("Klipper, caméra et Pi arrêtés", "Klipper, camera and Pi off"));
     return UI_TEXTE2;
 }
 
@@ -297,7 +298,7 @@ static void maj_suivi()
         if (p.pm1 < 0)
             ui_label_texte(o_pm, "--"); // la police 3x5 n'a pas de « – »
         else if (p.pm1 < 10)
-            ui_label_texte_fmt(o_pm, "%d,%d", (int)p.pm1, (int)(p.pm1 * 10) % 10); // virgule à la française
+            ui_label_texte_fmt(o_pm, "%d" SEP_DEC "%d", (int)p.pm1, (int)(p.pm1 * 10) % 10); // virgule à la française
         else
             ui_label_texte_fmt(o_pm, "%d", (int)lroundf(p.pm1));
     }
@@ -313,7 +314,7 @@ static void maj_suivi()
         if (en_cours)
             ui_label_texte_fmt(o_pct, "%d%%", p.progression);
         else
-            ui_label_texte(o_pct, p.etat == PR_ETEINTE ? "OFF" : "PRÊTE");
+            ui_label_texte(o_pct, p.etat == PR_ETEINTE ? "OFF" : TXT("PRÊTE", "READY"));
         ui_style_text_color(o_pct, ui_c(p.etat == PR_PAUSE ? UI_TEXTE2 : en_cours ? UI_TEXTE : UI_TEXTE3), 0);
         ui_aligner(o_pct, LV_ALIGN_TOP_MID, 0, ANNEAU_Y + ANNEAU - 48);
     }
@@ -326,7 +327,7 @@ static void maj_suivi()
             lv_obj_invalidate(o_anneau);
         }
     }
-    ui_label_texte(o_titre_f, p.etat == PR_ETEINTE ? "Éteinte" : f ? f->nom : "Prête");
+    ui_label_texte(o_titre_f, p.etat == PR_ETEINTE ? TXT("Éteinte", "Off") : f ? f->nom : TXT("Prête", "Ready"));
     const uint32_t cd = detail(t, sizeof t);
     ui_label_texte(o_detail, t);
     ui_style_text_color(o_detail, ui_c(cd), 0);
@@ -345,7 +346,7 @@ static void maj_suivi()
         if (cons[i] > 0)
             ui_label_texte_fmt(o_t_cons[i], "→ %d°", cons[i]);
         else
-            ui_label_texte(o_t_cons[i], "arrêt");
+            ui_label_texte(o_t_cons[i], TXT("arrêt", "off"));
         ui_aligner(o_t_cons[i], LV_ALIGN_BOTTOM_RIGHT, 0, -2);
     }
 }
@@ -411,7 +412,7 @@ static void construire_reglages(lv_obj_t *z)
     lv_obj_set_style_pad_column(page, 6, 0);
     ui_style_opa(page, off ? LV_OPA_50 : LV_OPA_COVER, 0);
 
-    ui_titre_section(page, "PRÉCHAUFFE");
+    ui_titre_section(page, TXT("PRÉCHAUFFE", "PREHEAT"));
     lv_obj_set_width(lv_obj_get_child(page, 0), lv_pct(100));
     for (int i = 0; i < 4; i++)
     {
@@ -426,7 +427,7 @@ static void construire_reglages(lv_obj_t *z)
         if (i)
             ui_label_texte_fmt(s, "%d / %d / %d", PRECHAUFFES[i].buse, PRECHAUFFES[i].plateau, PRECHAUFFES[i].caisson);
         else
-            ui_label_texte(s, "tout couper");
+            ui_label_texte(s, TXT("tout couper", "turn all off"));
         lv_obj_add_event_cb(b, prechauffe_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
     }
 
@@ -436,7 +437,7 @@ static void construire_reglages(lv_obj_t *z)
     lv_obj_set_style_pad_ver(c, 0, 0);
     lv_obj_set_style_pad_right(c, 12, 0);
     lv_obj_set_flex_flow(c, LV_FLEX_FLOW_COLUMN);
-    const char *noms[] = {"Buse", "Plateau", "Caisson"};
+    const char *noms[] = {TXT("Buse", "Nozzle"), TXT("Plateau", "Bed"), TXT("Caisson", "Enclosure")};
     for (int i = 0; i < 3; i++)
     {
         lv_obj_t *r = ui_conteneur(c);
@@ -463,9 +464,9 @@ static void construire_reglages(lv_obj_t *z)
         lv_obj_add_event_cb(moins, consigne_cb, LV_EVENT_CLICKED, (void *)(intptr_t)(i * 2));
     }
 
-    ui_titre_section(page, "CAISSON");
+    ui_titre_section(page, TXT("CAISSON", "ENCLOSURE"));
     lv_obj_set_width(lv_obj_get_child(page, lv_obj_get_child_cnt(page) - 1), lv_pct(100));
-    const char *inters[] = {"Lumière", "Filtration", "Chauffage", "Carte mère"};
+    const char *inters[] = {TXT("Lumière", "Light"), TXT("Filtration", "Filtration"), TXT("Chauffage", "Heating"), TXT("Carte mère", "Mainboard")};
     for (int i = 0; i < 4; i++)
     {
         lv_obj_t *b = ui_bouton(page, (UI_ZONE_L - 2 * UI_MARGE - 8) / 2, 56);
@@ -484,7 +485,7 @@ static void construire_reglages(lv_obj_t *z)
     lv_obj_set_width(lv_obj_get_child(page, lv_obj_get_child_cnt(page) - 1), lv_pct(100));
     const bool possible = p.etat == PR_PRETE;
     lv_obj_t *o = bouton(page, UI_ZONE_L - 2 * UI_MARGE, 52,
-                         possible ? "Mise à l'origine des axes" : off ? "Mise à l'origine (imprimante éteinte)" : "Mise à l'origine (impression en cours)", 0);
+                         possible ? TXT("Mise à l'origine des axes", "Home all axes") : off ? TXT("Mise à l'origine (imprimante éteinte)", "Home axes (printer off)") : TXT("Mise à l'origine (impression en cours)", "Home axes (printing)"), 0);
     ui_style_text_color(o, ui_c(possible ? UI_TEXTE : UI_TEXTE3), 0);
     lv_obj_add_event_cb(o, origine_cb, LV_EVENT_CLICKED, NULL);
 }
@@ -520,9 +521,9 @@ static void maj_reglages()
     for (int i = 0; i < 3; i++)
     {
         if (p.etat == PR_ETEINTE)
-            ui_label_texte(o_r_act[i], "actuel –");
+            ui_label_texte(o_r_act[i], TXT("actuel –", "now –"));
         else
-            ui_label_texte_fmt(o_r_act[i], "actuel %d°", act[i]);
+            ui_label_texte_fmt(o_r_act[i], TXT("actuel %d°", "now %d°"), act[i]);
         ui_aligner(o_r_act[i], LV_ALIGN_BOTTOM_LEFT, 0, -9);
     }
 }
@@ -599,7 +600,7 @@ static void construire_apercu(lv_obj_t *z)
 {
     const pr_etat_imp_t &p = pr_etat;
     const pr_fichier_t &f = p.fichiers[g_apercu];
-    lv_obj_t *r = bouton(z, 110, 36, "← Fichiers", 0); // « ← » : dans la police 16 (pas les symboles de LVGL)
+    lv_obj_t *r = bouton(z, 110, 36, TXT("← Fichiers", "← Files"), 0); // « ← » : dans la police 16 (pas les symboles de LVGL)
     lv_obj_set_pos(r, UI_MARGE, 54);
     lv_obj_add_event_cb(r, retour_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *n = ui_label(z, UI_POLICE_TITRE, UI_TEXTE, f.nom);
@@ -619,7 +620,7 @@ static void construire_apercu(lv_obj_t *z)
         lv_obj_center(v);
     }
     else
-        lv_obj_center(ui_label(c, UI_POLICE_PETITE, UI_TEXTE3, "pas de miniature"));
+        lv_obj_center(ui_label(c, UI_POLICE_PETITE, UI_TEXTE3, TXT("pas de miniature", "no thumbnail")));
 
     // détails : matière et poids, durée, date de tranchage
     lv_obj_t *d = ui_conteneur(z);
@@ -629,7 +630,7 @@ static void construire_apercu(lv_obj_t *z)
     lv_obj_set_flex_align(d, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     char duree[16];
     snprintf(duree, sizeof duree, "%d h %02d", f.minutes / 60, f.minutes % 60);
-    const char *val[] = {f.matiere, duree, f.date}, *leg[] = {"matière", "durée", "tranché le"};
+    const char *val[] = {f.matiere, duree, f.date}, *leg[] = {TXT("matière", "material"), TXT("durée", "duration"), TXT("tranché le", "sliced")};
     for (int i = 0; i < 3; i++)
     {
         lv_obj_t *k = ui_conteneur(d);
@@ -642,7 +643,7 @@ static void construire_apercu(lv_obj_t *z)
 
     const bool lancable = p.etat == PR_PRETE;
     lv_obj_t *b = bouton(z, UI_ZONE_L - 2 * UI_MARGE, 56,
-                         lancable ? "Lancer l'impression" : p.etat == PR_ETEINTE ? "Allumer l'imprimante d'abord (Marche)" : "Une impression est en cours",
+                         lancable ? TXT("Lancer l'impression", "Start print") : p.etat == PR_ETEINTE ? TXT("Allumer l'imprimante d'abord (Marche)", "Turn printer on first (Power)") : TXT("Une impression est en cours", "A print is running"),
                          lancable ? 1 : 0);
     if (!lancable)
         ui_style_text_color(b, ui_c(UI_TEXTE3), 0);
@@ -661,7 +662,10 @@ static void construire_marche(lv_obj_t *z)
     lv_obj_set_size(c, UI_ZONE_L - 2 * UI_MARGE, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_bottom(c, 14, 0);
     lv_obj_set_pos(c, UI_MARGE, 56);
-    const char *etat = p.etat == PR_ETEINTE ? "Éteinte" : p.etat == PR_PRETE ? "Allumée, prête" : p.etat == PR_PAUSE ? "En pause" : "Impression en cours";
+    const char *etat = p.etat == PR_ETEINTE ? TXT("Éteinte", "Off")
+                       : p.etat == PR_PRETE  ? TXT("Allumée, prête", "On, ready")
+                       : p.etat == PR_PAUSE  ? TXT("En pause", "Paused")
+                                             : TXT("Impression en cours", "Printing");
     const uint32_t couleur = p.etat == PR_ETEINTE ? UI_TEXTE3 : p.etat == PR_PAUSE ? UI_ACCENT : UI_VERT;
     lv_obj_t *pt = ui_conteneur(c);
     lv_obj_set_size(pt, 12, 12);
@@ -690,15 +694,15 @@ static void construire_marche(lv_obj_t *z)
     const char *a = "", *b = nullptr;
     int ga = 0, gb = 0;
     if (g_confirme)
-        a = "Annuler", b = "Confirmer l'arrêt", gb = 3;
+        a = TXT("Annuler", "Cancel"), b = TXT("Confirmer l'arrêt", "Confirm stop"), gb = 3;
     else if (p.etat == PR_IMPRESSION)
-        a = "Pause", b = "Arrêter l'impression", gb = 2;
+        a = TXT("Pause", "Pause"), b = TXT("Arrêter l'impression", "Stop print"), gb = 2;
     else if (p.etat == PR_PAUSE)
-        a = "Reprendre", ga = 1, b = "Arrêter l'impression", gb = 2;
+        a = TXT("Reprendre", "Resume"), ga = 1, b = TXT("Arrêter l'impression", "Stop print"), gb = 2;
     else if (p.etat == PR_PRETE)
-        a = "Éteindre l'imprimante";
+        a = TXT("Éteindre l'imprimante", "Turn printer off");
     else
-        a = "Allumer l'imprimante", ga = 1;
+        a = TXT("Allumer l'imprimante", "Turn printer on"), ga = 1;
     lv_obj_add_event_cb(bouton(z, UI_ZONE_L - 2 * UI_MARGE, 64, a, ga), action_cb, LV_EVENT_CLICKED, (void *)0);
     lv_obj_set_pos(lv_obj_get_child(z, lv_obj_get_child_cnt(z) - 1), UI_MARGE, 176);
     if (b)
@@ -766,7 +770,7 @@ static void construire()
     memset(o_pre, 0, sizeof o_pre);
     memset(o_cons, 0, sizeof o_cons);
     memset(o_sw, 0, sizeof o_sw);
-    static const char *const ONGLETS[] = {"Suivi", "Réglages", "Fichiers", "Marche"};
+    static const char *const ONGLETS[] = {TXT("Suivi", "Status"), TXT("Réglages", "Settings"), TXT("Fichiers", "Files"), TXT("Marche", "Power")};
     ui_onglets(g_zone, ONGLETS, 4, g_vue, onglet_cb, nullptr, nullptr);
     if (g_apercu >= pr_etat.nb_fichiers) // la liste a changé sous l'aperçu
         g_apercu = -1;

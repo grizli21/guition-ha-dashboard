@@ -2,6 +2,7 @@
 // Toutes les pages prennent leurs couleurs, polices et styles ICI : aucune couleur posée à la main ailleurs.
 #pragma once
 #include <lvgl.h>
+#include "ui_langue.h" // 10/11/2026 : TXT(fr, en) et SEP_DEC — voir ce fichier
 
 // --- Couleurs (0xRRGGBB) ---
 #define UI_FOND 0x0F1216        // fond de page

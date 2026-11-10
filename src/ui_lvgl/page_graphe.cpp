@@ -107,9 +107,9 @@ static lv_obj_t *o_couches[NB_COUCHES];
 
 static void fmt1(char *buf, size_t n, int16_t v10)
 {
-    snprintf(buf, n, "%d,%d", v10 / 10, abs(v10 % 10));
+    snprintf(buf, n, "%d" SEP_DEC "%d", v10 / 10, abs(v10 % 10));
     if (v10 < 0 && v10 > -10)
-        snprintf(buf, n, "-0,%d", -v10);
+        snprintf(buf, n, "-0" SEP_DEC "%d", -v10);
 }
 
 // 07/11 (retour d'usage : « la ligne Consigne affiche une valeur absurde ») : la bulle imprimait la SENTINELLE telle
@@ -367,13 +367,13 @@ static void rafraichir()
     {
         fmt1(v, sizeof v, h.temp[imin]);
         texte_heure(t, sizeof t, imin);
-        ui_label_texte_fmt(o_min, "min %s° à %s", v, t);
+        ui_label_texte_fmt(o_min, TXT("min %s° à %s", "min %s° at %s"), v, t);
         fmt1(v, sizeof v, h.temp[imax]);
         texte_heure(t, sizeof t, imax);
-        ui_label_texte_fmt(o_max, "max %s° à %s", v, t);
+        ui_label_texte_fmt(o_max, TXT("max %s° à %s", "max %s° at %s"), v, t);
     }
 
-    ui_label_texte_fmt(o_hum_txt, "Humidité %d %%", h.hum[i]);
+    ui_label_texte_fmt(o_hum_txt, TXT("Humidité %d %%", "Humidity %d %%"), h.hum[i]);
 
     // Bulle pendant la lecture au doigt
     if (g_scrub >= 0)
@@ -384,8 +384,9 @@ static void rafraichir()
         fmt1_aff(ve, sizeof ve, gr_ext[i], -200, 400);
         texte_heure(t, sizeof t, i);
         // le degré est porté par la valeur elle-même (fmt1_aff) : une valeur vide s'affiche « - », sans degré
-        snprintf(b, sizeof b, "%s\n#FFB547 Pièce %s%s#\nConsigne %s\n#7CC4F2 Extérieur %s#", t, vt,
-                 gr_chauffe(h, i) ? " (chauffe)" : "", vc, ve);
+        snprintf(b, sizeof b, TXT("%s\n#FFB547 Pièce %s%s#\nConsigne %s\n#7CC4F2 Extérieur %s#",
+                            "%s\n#FFB547 Room %s%s#\nSetpoint %s\n#7CC4F2 Outside %s#"), t, vt,
+                 gr_chauffe(h, i) ? TXT(" (chauffe)", " (heating)") : "", vc, ve);
         ui_label_texte(o_bulle_txt, b);
         lv_area_t z;
         lv_obj_get_coords(lv_obj_get_parent(o_bulle), &z);
@@ -457,7 +458,7 @@ static void rafraichir_scrub(int i_avant)
     fmt1_aff(v, sizeof v, h.temp[i], 0, 400); // valeur de tête : tiret si la sentinelle ou une invraisemblance
     ui_label_texte(o_val, v);
     ui_style_text_color(o_val, ui_c(g_scrub >= 0 ? UI_ACCENT : UI_TEXTE), 0);
-    ui_label_texte_fmt(o_hum_txt, "Humidité %d %%", h.hum[i]);
+    ui_label_texte_fmt(o_hum_txt, TXT("Humidité %d %%", "Humidity %d %%"), h.hum[i]);
     if (g_scrub >= 0)
     {
         char vt[12], vc[12], ve[12];
@@ -466,8 +467,9 @@ static void rafraichir_scrub(int i_avant)
         fmt1_aff(ve, sizeof ve, gr_ext[i], -200, 400);
         texte_heure(t, sizeof t, i);
         // le degré est porté par la valeur elle-même (fmt1_aff) : une valeur vide s'affiche « - », sans degré
-        snprintf(b, sizeof b, "%s\n#FFB547 Pièce %s%s#\nConsigne %s\n#7CC4F2 Extérieur %s#", t, vt,
-                 gr_chauffe(h, i) ? " (chauffe)" : "", vc, ve);
+        snprintf(b, sizeof b, TXT("%s\n#FFB547 Pièce %s%s#\nConsigne %s\n#7CC4F2 Extérieur %s#",
+                            "%s\n#FFB547 Room %s%s#\nSetpoint %s\n#7CC4F2 Outside %s#"), t, vt,
+                 gr_chauffe(h, i) ? TXT(" (chauffe)", " (heating)") : "", vc, ve);
         lv_area_t avant_bulle;
         lv_obj_get_coords(o_bulle, &avant_bulle);
         const bool etait_visible = !lv_obj_has_flag(o_bulle, LV_OBJ_FLAG_HIDDEN);
@@ -629,7 +631,7 @@ void page_graphe_creer(lv_obj_t *zone)
     o_bulle = uc_bulle(zone, &o_bulle_txt);
 
     // Pastilles de couches
-    static const char *noms[NB_COUCHES] = {"Consigne", "Extérieur", "Chauffe", "Humidité"};
+    static const char *noms[NB_COUCHES] = {TXT("Consigne", "Setpoint"), TXT("Extérieur", "Outside"), TXT("Chauffe", "Heating"), TXT("Humidité", "Humidity")};
     static const uint32_t coul[NB_COUCHES] = {C_CONS, C_EXT, C_CHAUFFE, UI_HUMIDITE};
     lv_obj_t *rang = ui_conteneur(zone);
     lv_obj_set_size(rang, UI_ZONE_L - 2 * UI_MARGE, 52);

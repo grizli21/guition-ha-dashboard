@@ -680,9 +680,9 @@ static void synchro(bool entree)
             mu_etat.lecteurs[i].en_ligne = false;
     if (g_attente_t) // la lecture attend piCore : on le dit à la place de « Rien en lecture »
     {
-        snprintf(mu_etat.titre, sizeof mu_etat.titre, "%s", "piCore démarre…");
+        snprintf(mu_etat.titre, sizeof mu_etat.titre, "%s", TXT("piCore démarre…", "piCore starting…"));
         mu_etat.artiste[0] = 0; // pas d'artiste : la page ne le prend pas pour une radio
-        snprintf(mu_etat.album, sizeof mu_etat.album, "%s", "la lecture partira toute seule"); // écrit sur la pochette dessinée
+        snprintf(mu_etat.album, sizeof mu_etat.album, "%s", TXT("la lecture partira toute seule", "playback will start on its own")); // écrit sur la pochette dessinée
     }
     empreinte(apres, sizeof apres);
     if (strcmp(avant, apres))

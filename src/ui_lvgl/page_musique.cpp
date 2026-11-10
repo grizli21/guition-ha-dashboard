@@ -99,7 +99,7 @@ static void rafraichir_lecture()
     if (!m.duree && !radio)
         t[0] = 0;
     else if (radio)
-        snprintf(t, sizeof t, "%s · en direct", m.artiste);
+        snprintf(t, sizeof t, TXT("%s · en direct", "%s · live"), m.artiste);
     else if (m.nb_file)
         snprintf(t, sizeof t, "%s · %s · %d / %d", m.artiste, m.album, m.premiere + m.piste + 1, LV_MAX(m.nb_total, m.nb_file));
     else
@@ -129,7 +129,7 @@ static void rafraichir_lecture()
     lv_arc_set_value(o_prog, radio ? 1000 : (int16_t)(m.duree ? m.position * 1000 / m.duree : 0));
     ui_style_arc_color(o_prog, ui_c(radio ? UI_ETEINT : m.lecture ? UI_TEXTE : UI_TEXTE2), LV_PART_INDICATOR);
     if (radio)
-        ui_label_texte(o_temps, "DIRECT");
+        ui_label_texte(o_temps, TXT("DIRECT", "LIVE"));
     else if (!m.duree)
         ui_label_texte(o_temps, "");
     else
@@ -334,14 +334,14 @@ static void construire_lecture(lv_obj_t *z)
     // volume en haut à gauche, sortie en face à droite
     o_vol_val = ui_label(z, UI_POLICE_3X5_M, UI_TEXTE, "");
     lv_obj_set_pos(o_vol_val, UI_MARGE, 54);
-    lv_obj_set_pos(ui_label(z, UI_POLICE_LEGENDE, UI_TEXTE2, "volume"), UI_MARGE, 92);
+    lv_obj_set_pos(ui_label(z, UI_POLICE_LEGENDE, UI_TEXTE2, TXT("volume", "volume")), UI_MARGE, 92);
     lv_obj_t *sb = lv_btn_create(z);
     lv_obj_remove_style_all(sb);
     lv_obj_set_size(sb, 110, 58);
     lv_obj_align(sb, LV_ALIGN_TOP_RIGHT, -UI_MARGE, 50);
     o_sortie = ui_label(sb, UI_POLICE_TEXTE_22, UI_TEXTE, "");
     lv_obj_align(o_sortie, LV_ALIGN_TOP_RIGHT, 0, 4);
-    lv_obj_align(ui_label(sb, UI_POLICE_LEGENDE, UI_TEXTE2, "sortie"), LV_ALIGN_TOP_RIGHT, 0, 40);
+    lv_obj_align(ui_label(sb, UI_POLICE_LEGENDE, UI_TEXTE2, TXT("sortie", "output")), LV_ALIGN_TOP_RIGHT, 0, 40);
     lv_obj_add_event_cb(sb, bouton_cb, LV_EVENT_CLICKED, (void *)6);
     // l'anneau passe devant le bouton de sortie (la poignée, volume haut, était dessous) et devant la pochette (son carré
     // attrape le doigt) ; 25/10 : le temps repasse devant l'anneau (son segment du bas le recouvrait)
@@ -474,9 +474,9 @@ static void actions_file_cb(lv_event_t *e)
 
 static void construire_playlist(lv_obj_t *z)
 {
-    lv_obj_t *t = ui_label(z, UI_POLICE_TITRE, UI_TEXTE, "Playlist");
+    lv_obj_t *t = ui_label(z, UI_POLICE_TITRE, UI_TEXTE, TXT("Playlist", "Playlist"));
     lv_obj_set_pos(t, UI_MARGE + 2, 58);
-    const char *noms[] = {LV_SYMBOL_SHUFFLE " Aléatoire", LV_SYMBOL_LOOP " Répéter"};
+    const char *noms[] = {LV_SYMBOL_SHUFFLE " " TXT("Aléatoire", "Shuffle"), LV_SYMBOL_LOOP " " TXT("Répéter", "Repeat")};
     const bool etats[] = {mu_etat.alea, mu_etat.repete};
     for (int k = 0; k < 2; k++)
     {
@@ -505,7 +505,9 @@ static void construire_playlist(lv_obj_t *z)
             ui_style_text_font(num, UI_POLICE_TEXTE, 0);
         lv_obj_align(num, LV_ALIGN_LEFT_MID, -28, 0);
     }
-    barre_actions(z, LV_SYMBOL_LEFT " Lecture", g_vider ? "Toucher encore : vider" : "Vider…", true, actions_file_cb);
+    barre_actions(z, LV_SYMBOL_LEFT " " TXT("Lecture", "Play"),
+                  g_vider ? TXT("Toucher encore : vider", "Tap again to clear") : TXT("Vider…", "Clear…"),
+                  true, actions_file_cb);
 }
 
 // --- Biblio ---
@@ -670,9 +672,10 @@ static void construire_biblio(lv_obj_t *z)
     {
         lv_obj_t *titre = ui_label(z, UI_POLICE_TEXTE, UI_TEXTE, "");
         if (mu_etat.nb_artistes)
-            ui_label_texte_fmt(titre, "%c  ·  %d artiste%s", mu_etat.lettre, mu_etat.nb_artistes, mu_etat.nb_artistes > 1 ? "s" : "");
+            ui_label_texte_fmt(titre, TXT("%c  ·  %d artiste%s", "%c  ·  %d artist%s"), mu_etat.lettre, mu_etat.nb_artistes,
+                             mu_etat.nb_artistes > 1 ? "s" : "");
         else
-            ui_label_texte_fmt(titre, "%c  ·  chargement…", mu_etat.lettre);
+            ui_label_texte_fmt(titre, TXT("%c  ·  chargement…", "%c  ·  loading…"), mu_etat.lettre);
         lv_obj_set_pos(titre, UI_MARGE + 4, 58);
 
         o_liste = liste(z, BANDE_Y, UI_ZONE_H - BANDE_Y, false);
@@ -765,7 +768,7 @@ static void construire_biblio(lv_obj_t *z)
         lv_obj_set_pos(n, 0, c + 4);
         lv_obj_set_pos(ui_label(b, UI_POLICE_LEGENDE, UI_TEXTE3, a.detail), 0, c + 19);
     }
-    barre_actions(z, "Lire l'album", "Ajouter à la file", false, actions_album_cb);
+    barre_actions(z, TXT("Lire l'album", "Play Album"), TXT("Ajouter à la file", "Add to Queue"), false, actions_album_cb);
 }
 
 // --- Radios ---
@@ -799,16 +802,16 @@ static void construire_radios(lv_obj_t *z)
 {
     lv_obj_t *titre = ui_label(z, UI_POLICE_TEXTE, UI_TEXTE, "");
     if (mu_etat.nb_radios)
-        ui_label_texte_fmt(titre, "Radios favorites  ·  %d", mu_etat.nb_radios);
+        ui_label_texte_fmt(titre, TXT("Radios favorites  ·  %d", "Favorite radios  ·  %d"), mu_etat.nb_radios);
     else
-        ui_label_texte(titre, "Pas de radio favorite dans Music Assistant");
+        ui_label_texte(titre, TXT("Pas de radio favorite dans Music Assistant", "No favorite radios in Music Assistant"));
     lv_obj_set_pos(titre, UI_MARGE + 4, 58);
     o_liste = liste(z, 88, UI_ZONE_H - 88, false);
     for (int i = 0; i < mu_etat.nb_radios; i++)
     {
         const mu_element_t &r = mu_etat.radios[i];
         const bool joue = mu_etat.duree == 0 && !strcmp(mu_etat.artiste, r.nom);
-        lv_obj_t *b = ligne(o_liste, r.nom, "", joue ? "EN COURS" : "", joue, radio_cb, i);
+        lv_obj_t *b = ligne(o_liste, r.nom, "", joue ? TXT("EN COURS", "PLAYING") : "", joue, radio_cb, i);
         lv_obj_set_height(b, 46);
         lv_obj_set_style_pad_left(b, 6, 0);
         lv_obj_t *t = lv_obj_get_child(b, 0);
@@ -897,7 +900,8 @@ static lv_obj_t *interrupteur(lv_obj_t *parent, bool on)
 
 static void construire_sortie(lv_obj_t *z)
 {
-    lv_obj_t *aide = ui_label(z, UI_POLICE_LEGENDE, UI_TEXTE2, "un tap = écouter sur ce lecteur · « + » = joue aussi en même temps");
+    lv_obj_t *aide = ui_label(z, UI_POLICE_LEGENDE, UI_TEXTE2, TXT("un tap = écouter sur ce lecteur · « + » = joue aussi en même temps",
+          "tap = play on this player · « + » = play along too"));
     lv_obj_align(aide, LV_ALIGN_TOP_MID, 0, 52);
     o_liste = liste(z, 72, 212, false);
     lv_obj_set_style_pad_row(o_liste, 6, 0);
@@ -908,14 +912,14 @@ static void construire_sortie(lv_obj_t *z)
         const bool actif = i == m.lecteur;
         char etat[64];
         if (i == 0 && !l.en_ligne) // le Salon : l'état de la chaîne piCore
-            snprintf(etat, sizeof etat, "%s", m.chaine == MU_CH_ETEINTE ? "chaîne éteinte · une lecture l'allume"
-                                              : m.chaine == MU_CH_ARRET ? "s'éteint…" : "démarre…");
+            snprintf(etat, sizeof etat, "%s", m.chaine == MU_CH_ETEINTE ? TXT("chaîne éteinte · une lecture l'allume", "chain off · playing turns it on")
+                                              : m.chaine == MU_CH_ARRET ? TXT("s'éteint…", "turning off…") : TXT("démarre…", "starting…"));
         else if (actif)
-            snprintf(etat, sizeof etat, m.lecture ? "joue : %s" : "en pause", m.titre);
+            snprintf(etat, sizeof etat, m.lecture ? TXT("joue : %s", "playing: %s") : TXT("en pause", "paused"), m.titre);
         else if (l.groupe)
-            snprintf(etat, sizeof etat, "synchronisé avec %s", m.lecteurs[m.lecteur].nom);
+            snprintf(etat, sizeof etat, TXT("synchronisé avec %s", "synced with %s"), m.lecteurs[m.lecteur].nom);
         else
-            snprintf(etat, sizeof etat, "%s", l.en_ligne ? "libre" : "hors ligne");
+            snprintf(etat, sizeof etat, "%s", l.en_ligne ? TXT("libre", "free") : TXT("hors ligne", "offline"));
         lv_obj_t *b = ligne(o_liste, l.nom, etat, "", actif, lecteur_cb, i * 2);
         lv_obj_set_height(b, 60);
         ui_style_text_color(lv_obj_get_child(b, 1), ui_c(actif ? UI_ACCENT : l.groupe ? UI_VERT : UI_TEXTE3), 0);
@@ -937,7 +941,7 @@ static void construire_sortie(lv_obj_t *z)
 
     // chaîne piCore : état venu de HA ; marche / arrêt (pause, ampli, prise)
     // 26/10 : piCore apparaît dans MA 25 s après l'allumage (moOde : 65 à 90 s)
-    static const char *const ETATS[] = {"éteinte", "s'éteint…", "démarre… (30 s environ)", "prête"};
+    static const char *const ETATS[] = {TXT("éteinte", "off"), TXT("s'éteint…", "turning off…"), TXT("démarre… (30 s environ)", "starting… (about 30 s)"), TXT("prête", "ready")};
     const bool allumee = m.chaine == MU_CH_DEMARRAGE || m.chaine == MU_CH_PRETE;
     lv_obj_t *c = ui_bouton(z, UI_ZONE_L - 2 * UI_MARGE, 56); // ligne à interrupteur : 56 px partout (harmonie)
     lv_obj_set_pos(c, UI_MARGE, 290);
@@ -947,9 +951,9 @@ static void construire_sortie(lv_obj_t *z)
         ui_style_bg_color(c, ui_c(0x2A1717), 0);
         ui_style_border_color(c, ui_c(UI_ROUGE), 0);
     }
-    lv_obj_align(ui_label(c, UI_POLICE_TEXTE, UI_TEXTE, "Chaîne piCore"), LV_ALIGN_TOP_LEFT, 0, 8);
+    lv_obj_align(ui_label(c, UI_POLICE_TEXTE, UI_TEXTE, TXT("Chaîne piCore", "piCore chain")), LV_ALIGN_TOP_LEFT, 0, 8);
     lv_obj_align(ui_label(c, UI_POLICE_LEGENDE, g_eteindre ? UI_ROUGE : m.chaine == MU_CH_PRETE ? UI_VERT : m.chaine == MU_CH_ETEINTE ? UI_TEXTE3 : UI_ACCENT,
-                          g_eteindre ? "toucher encore : éteindre" : ETATS[m.chaine]),
+                          g_eteindre ? TXT("toucher encore : éteindre", "tap again: turn off") : ETATS[m.chaine]),
                  LV_ALIGN_BOTTOM_LEFT, 0, -8);
     lv_obj_align(interrupteur(c, allumee), LV_ALIGN_RIGHT_MID, 0, 0);
     ui_style_opa(c, m.chaine == MU_CH_ARRET ? LV_OPA_50 : LV_OPA_COVER, 0);
@@ -966,8 +970,8 @@ static void construire_sortie(lv_obj_t *z)
     lv_obj_remove_style_all(l); // avant la taille : elle est elle-même un style
     lv_obj_set_size(l, lv_pct(100), 56);
     lv_obj_set_style_pad_hor(l, 14, 0);
-    lv_obj_align(ui_label(l, UI_POLICE_TEXTE, UI_TEXTE, "Ampli"), LV_ALIGN_TOP_LEFT, 0, 8);
-    lv_obj_align(ui_label(l, UI_POLICE_LEGENDE, UI_TEXTE2, !allumee ? "éteint avec la chaîne" : m.ampli ? "allumé" : "éteint"),
+    lv_obj_align(ui_label(l, UI_POLICE_TEXTE, UI_TEXTE, TXT("Ampli", "Amp")), LV_ALIGN_TOP_LEFT, 0, 8);
+    lv_obj_align(ui_label(l, UI_POLICE_LEGENDE, UI_TEXTE2, !allumee ? TXT("éteint avec la chaîne", "off with chain") : m.ampli ? TXT("allumé", "on") : TXT("éteint", "off")),
                  LV_ALIGN_BOTTOM_LEFT, 0, -6);
     lv_obj_align(interrupteur(l, m.ampli && allumee), LV_ALIGN_RIGHT_MID, 0, 0);
     lv_obj_add_event_cb(l, ampli_cb, LV_EVENT_CLICKED, NULL);
@@ -1050,7 +1054,7 @@ static void construire()
     o_vol_arc = nullptr;
     memset(o_cases, 0, sizeof o_cases);
     memset(o_logos, 0, sizeof o_logos);
-    static const char *const ONGLETS[] = {"Lecture", "Biblio", "Radios", "Sortie"};
+    static const char *const ONGLETS[] = {TXT("Lecture", "Play"), TXT("Biblio", "Library"), TXT("Radios", "Radios"), TXT("Sortie", "Output")};
     static const int VUES[] = {0, 2, 3, 4};
     int choisi = 0; // la playlist (vue 1) fait partie de Lecture
     for (int i = 0; i < 4; i++)

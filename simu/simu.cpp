@@ -661,12 +661,35 @@ int main()
     lv_indev_set_display(indev, lv_display_get_default());
 
     ui_theme_init();
-    donnees_fictives();
+    // SIMU_VIDE=1 ./simu : écran sans aucune donnée (ni MQTT ni Home Assistant) : chaque page est ouverte, tapée au
+    // hasard et capturée (captures/vide_*.png). Rien ne doit planter : à passer sous make asan (10/11 : 0 erreur).
+    const bool vide = getenv("SIMU_VIDE") != nullptr;
+    if (!vide) donnees_fictives();
     page_graphe_preparer();
-    historique_fictif();
+    if (!vide) historique_fictif();
     th_commande = commande_fictive;
     ui_shell_creer(pages, sizeof(pages) / sizeof(pages[0]), 0);
     avancer(600);
+    if (vide)
+    {
+        const int n = (int)(sizeof(pages) / sizeof(pages[0]));
+        for (int i = 0; i < n; i++)
+        {
+            ui_shell_aller(i);
+            avancer(1500);
+            char nom[32];
+            snprintf(nom, sizeof nom, "vide_%02d", i);
+            capture(nom);
+            for (int y = 60; y < 480; y += 70) // quelques appuis au hasard : boutons et onglets sans données
+                for (int x = 40; x < 400; x += 90) { toucher(x, y); lacher(); avancer(120); }
+            avancer(600);
+            snprintf(nom, sizeof nom, "vide_%02d_apres", i);
+            capture(nom);
+            printf("[vide] page %d (%s) ok\n", i, pages[i].nom);
+        }
+        printf("[vide] fin\n");
+        return 0;
+    }
 
 #ifdef PAGES_BANC
     // banc du scroll par bande : le scénario de capture n'est pas joué (compteurs, pas images)
@@ -859,20 +882,21 @@ int main()
     capture("13_reglages_bas");
 
     // --- Informations : haut, bas, puis remise à zéro (confirmation sur place) ---
-    const char *sys[] = {"2 j 04 h", "mise sous tension", "221 Ko", "6,1 Mo", "36 °C", "240 MHz", "312 ms", "19,5 dBm", "94bbeaf (21/10)", "192.168.1.43"};
+    const char *sys[] = {TXT("2 j 04 h", "2 d 04 h"), TXT("mise sous tension", "power-on"), TXT("221 Ko", "221 KB"), TXT("6" SEP_DEC "1 Mo", "6" SEP_DEC "1 MB"),
+                       "36 °C", "240 MHz", "312 ms", TXT("19" SEP_DEC "5 dBm", "19" SEP_DEC "5 dBm"), "94bbeaf (21/10)", "192.168.1.43"};
     for (int i = 0; i < IF_NB_SYSTEME; i++)
         snprintf(if_systeme[i].valeur, sizeof if_systeme[i].valeur, "%s", sys[i]);
-    const char *det[] = {"Maison  -60 dBm", "reçu il y a 2 s", "motionEye", "hors ligne"};
+    const char *det[] = {"Maison  -60 dBm", TXT("reçu il y a 2 s", "received 2 s ago"), "motionEye", TXT("hors ligne", "offline")};
     for (int i = 0; i < IF_NB_LIAISONS; i++)
     {
         snprintf(if_liaisons[i].detail, sizeof if_liaisons[i].detail, "%s", det[i]);
         if_liaisons[i].ok = i < 3;
     }
-    if_journal_ajouter("hier", "Redémarrage : mise sous tension", false);
-    if_journal_ajouter("07:02", "Coupure MQTT 14 s", true);
-    if_journal_ajouter("19:40", "Retour à l'accueil", false);
+    if_journal_ajouter("hier", TXT("Redémarrage : mise sous tension", "Startup: power-on"), false);
+    if_journal_ajouter("07:02", TXT("Coupure MQTT 14 s", "MQTT down 14 s"), true);
+    if_journal_ajouter("19:40", TXT("Retour à l'accueil", "Back to home"), false);
     if_journal_ajouter("21:12", "Wi-Fi Maison -60 dBm", false);
-    if_journal_ajouter("21:12", "MQTT connecté en 2,3 s", false);
+    if_journal_ajouter("21:12", TXT("MQTT connecté en 2" SEP_DEC "3 s", "MQTT connected in 2" SEP_DEC "3 s"), false);
     aller("Informations");
     avancer(600);
     capture("14_infos");
@@ -957,7 +981,7 @@ int main()
         p.pm25 = p.hist[AQ_HIST - 1];
     }
     snprintf(aq_purificateurs[0].info, 32, "COV 112 · 24 h");
-    snprintf(aq_purificateurs[1].info, 32, "Filtre 63 %% · 24 h");
+    snprintf(aq_purificateurs[1].info, 32, TXT("Filtre 63 %% · 24 h", "Filter 63 %% · 24 h"));
     aq_purificateurs[0].mode = 2;
     aq_purificateurs[1].mode = 1;
     aller("Qualité de l'air");
@@ -2102,14 +2126,14 @@ int main()
         capture("115_maquette_luminosites");
         // Maquette du journal (24/10) : lignes produites par ui_journal (l'heure = celle du PC)
         if_journal_effacer();
-        ui_journal(false, "Démarrage (mise sous tension) · données en 4,2 s");
+        ui_journal(false, TXT("Démarrage (mise sous tension) · données en 4" SEP_DEC "2 s", "Startup (power-on) · data in 4" SEP_DEC "2 s"));
         ui_journal(false, "Wi-Fi Maison · -61 dBm");
-        ui_journal(false, "MQTT connecté en 0,8 s");
-        ui_journal(true, "Wi-Fi perdu");
+        ui_journal(false, TXT("MQTT connecté en 0" SEP_DEC "8 s", "MQTT connected in 0" SEP_DEC "8 s"));
+        ui_journal(true, TXT("Wi-Fi perdu", "Wi-Fi lost"));
         ui_journal(false, "Wi-Fi Maison · -64 dBm");
-        ui_journal(false, "MQTT connecté en 1,3 s");
-        ui_journal(true, "Home Assistant muet depuis 3 min");
-        ui_journal(false, "Home Assistant répond de nouveau");
+        ui_journal(false, TXT("MQTT connecté en 1" SEP_DEC "3 s", "MQTT connected in 1" SEP_DEC "3 s"));
+        ui_journal(true, TXT("Home Assistant muet depuis 3 min", "Home Assistant silent for 3 min"));
+        ui_journal(false, TXT("Home Assistant répond de nouveau", "Home Assistant responding again"));
         aller("Informations");
         avancer(300);
         for (int k = 0; k < 4; k++)
@@ -2251,7 +2275,7 @@ int main()
 
     // 24/10 : écran de démarrage (comme la production), pendant la synchronisation avec HA, puis effacé
     ui_demarrage_creer("Cuisine");
-    ui_demarrage_etape("Synchronisation avec Home Assistant…", 65);
+    ui_demarrage_etape(TXT("Synchronisation avec Home Assistant…", "Synchronizing with Home Assistant…"), 65);
     avancer(400);
     capture("123_demarrage");
     ui_demarrage_etape("Bibliothèque musicale…", 85);
@@ -2307,7 +2331,7 @@ int main()
         memcpy(rd_etat.detection, D, 16);
         memcpy(rd_etat.maintien, M, 16);
         memcpy(rd_etat.energie, S, 16);
-        rd_envoyer = []() { snprintf(rd_etat.message, sizeof rd_etat.message, "seuils envoyés au radar"); printf("[radar] envoyer\n"); };
+        rd_envoyer = []() { snprintf(rd_etat.message, sizeof rd_etat.message, TXT("seuils envoyés au radar", "thresholds sent")); printf("[radar] envoyer\n"); };
         toucher(200, 24); // 31/10 : onglet Radar
         lacher();
         avancer(300);

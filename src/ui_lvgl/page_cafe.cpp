@@ -43,19 +43,20 @@ static void rafraichir()
     // prochaine occurrence de l'heure choisie
     const bool demain = p.minute <= cf_maintenant;
     const int delta = (demain ? 1440 : 0) + p.minute - cf_maintenant;
-    const char *jour = demain ? "demain" : "aujourd'hui";
+    const char *jour = demain ? TXT("demain", "tomorrow") : TXT("aujourd'hui", "today");
     if (p.actif)
     {
         if (bouil)
-            ui_label_texte_fmt(o_titre, "Eau à %d °C %s à", CF_TEMPERATURES[cf_temp], jour);
+            ui_label_texte_fmt(o_titre, TXT("Eau à %d °C %s à", "Water at %d °C %s at"), CF_TEMPERATURES[cf_temp], jour);
         else
-            ui_label_texte_fmt(o_titre, "Café prêt %s à", jour);
-        ui_label_texte_fmt(o_restant, "dans %d h %02d", delta / 60, delta % 60);
+            ui_label_texte_fmt(o_titre, TXT("Café prêt %s à", "Coffee ready %s at"), jour);
+        ui_label_texte_fmt(o_restant, TXT("dans %d h %02d", "in %d h %02d"), delta / 60, delta % 60);
     }
     else
     {
-        ui_label_texte_fmt(o_titre, bouil ? "Programmer la bouilloire %s à" : "Programmer un café %s à", jour);
-        ui_label_texte(o_restant, "Non programmé");
+        ui_label_texte_fmt(o_titre, bouil ? TXT("Programmer la bouilloire %s à", "Schedule kettle %s at")
+                        : TXT("Programmer un café %s à", "Schedule coffee %s at"), jour);
+        ui_label_texte(o_restant, TXT("Non programmé", "Not scheduled"));
     }
     hhmm(h, sizeof h, p.minute);
     ui_label_texte(o_heure, h);
@@ -83,7 +84,7 @@ static void rafraichir()
         {
             int m = i == 0 ? dans_15_min() : cf_recentes[i - 1];
             if (i == 0)
-                ui_label_texte(o_puces_txt[i], "Dans 15 min");
+                ui_label_texte(o_puces_txt[i], TXT("Dans 15 min", "In 15 min"));
             else if (m < 0)
                 ui_label_texte(o_puces_txt[i], "–");
             else
@@ -99,7 +100,7 @@ static void rafraichir()
         ui_style_text_color(o_puces_txt[i], ui_c(choisie ? UI_TEXTE : UI_TEXTE2), 0);
     }
 
-    ui_label_texte(o_prog_txt, p.actif ? "Annuler la programmation" : "Programmer");
+    ui_label_texte(o_prog_txt, p.actif ? TXT("Annuler la programmation", "Cancel") : TXT("Programmer", "Schedule"));
     if (p.actif)
         ui_style_retirer(o_prog, &ui_st_bouton_principal, 0);
     else
@@ -108,11 +109,11 @@ static void rafraichir()
 
     const bool chauffe = bouil && cf_bouilloire_chauffe;
     if (!bouil)
-        ui_label_texte(o_direct_txt, "Lancer un café maintenant");
+        ui_label_texte(o_direct_txt, TXT("Lancer un café maintenant", "Start coffee now"));
     else if (chauffe)
-        ui_label_texte_fmt(o_direct_txt, "Arrêter (en chauffe, %d °C)", CF_TEMPERATURES[cf_temp]);
+        ui_label_texte_fmt(o_direct_txt, TXT("Arrêter (en chauffe, %d °C)", "Stop (heating, %d °C)"), CF_TEMPERATURES[cf_temp]);
     else
-        ui_label_texte_fmt(o_direct_txt, "Chauffer à %d °C maintenant", CF_TEMPERATURES[cf_temp]);
+        ui_label_texte_fmt(o_direct_txt, TXT("Chauffer à %d °C maintenant", "Heat to %d °C now"), CF_TEMPERATURES[cf_temp]);
     ui_style_bg_color(o_direct, ui_c(chauffe ? 0x2A1A12 : UI_CARTE), 0);
     ui_style_border_color(o_direct, ui_c(chauffe ? UI_CHAUFFE : UI_BORD), 0);
     ui_style_text_color(o_direct_txt, ui_c(chauffe ? UI_CHAUFFE : UI_TEXTE), 0);
@@ -212,7 +213,7 @@ static lv_obj_t *bouton_carre(lv_obj_t *parent, const char *txt, int pas)
 void page_cafe_creer(lv_obj_t *zone)
 {
     // sélecteur Café | Bouilloire (24/10 : segment choisi en gris clair comme les autres onglets ; l'ambre reste aux actions)
-    static const char *const ONGLETS[] = {"Café", "Bouilloire"};
+    static const char *const ONGLETS[] = {TXT("Café", "Coffee"), TXT("Bouilloire", "Kettle")};
     ui_onglets(zone, ONGLETS, 2, -1, onglet_cb, nullptr, o_onglets);
 
     // carte de l'heure : - HH:MM +

@@ -101,28 +101,28 @@ static void rafraichir()
             lv_obj_clear_state(o_onglets[i], LV_STATE_CHECKED);
     ui_style_bg_color(o_point, ui_c(rd_etat.presence ? UI_VERT : UI_TEXTE3), 0);
     if (!rd_etat.present)
-        ui_label_texte(o_presence, "Radar muet");
+        ui_label_texte(o_presence, TXT("Radar muet", "Radar silent"));
     else if (rd_etat.auto_en_cours)
-        ui_label_texte_fmt(o_presence, "Réglage auto : %d %%", (int)rd_etat.progression);
+        ui_label_texte_fmt(o_presence, TXT("Réglage auto : %d %%", "Auto-tune: %d %%"), (int)rd_etat.progression);
     else if (rd_etat.presence)
-        ui_label_texte_fmt(o_presence, "Présence à %d,%02d m", rd_etat.distance / 100, rd_etat.distance % 100);
+        ui_label_texte_fmt(o_presence, TXT("Présence à %d" SEP_DEC "%02d m", "Presence at %d" SEP_DEC "%02d m"), rd_etat.distance / 100, rd_etat.distance % 100);
     else
-        ui_label_texte(o_presence, "Personne");
+        ui_label_texte(o_presence, TXT("Personne", "No one"));
     if (g_confirme_auto) // 28/10 : l'explication ici, le bouton garde un mot court (« Pièce vide ? toucher » débordait)
-        ui_label_texte_fmt(o_aide, "retoucher : 30 s pour sortir · marge +%u dB", (unsigned)rd_etat.marge);
+        ui_label_texte_fmt(o_aide, TXT("retoucher : 30 s pour sortir · marge +%u dB", "tap again: 30 s to exit · margin +%u dB"), (unsigned)rd_etat.marge);
     else
         ui_label_texte(o_aide, rd_etat.message[0] ? rd_etat.message
-                               : g_vue ? "colonne = seuil pour rester « présent » · trait = signal mesuré"
-                                       : "colonne = seuil pour détecter · trait = signal (vert : détecte)");
-    ui_label_texte_fmt(o_zone, "Zone %d", g_choisie);
-    ui_label_texte_fmt(o_plage, "%d,%d – %d,%d m", g_choisie * 7 / 10, g_choisie * 7 % 10, (g_choisie + 1) * 7 / 10,
+                               : g_vue ? TXT("colonne = seuil pour rester « présent » · trait = signal mesuré", "column = threshold to stay present · bar = measured signal")
+                                       : TXT("colonne = seuil pour détecter · trait = signal (vert : détecte)", "column = detect threshold · bar = signal (green: detects)"));
+    ui_label_texte_fmt(o_zone, TXT("Zone %d", "Zone %d"), g_choisie);
+    ui_label_texte_fmt(o_plage, TXT("%d" SEP_DEC "%d – %d" SEP_DEC "%d m", "%d" SEP_DEC "%d – %d" SEP_DEC "%d m"), g_choisie * 7 / 10, g_choisie * 7 % 10, (g_choisie + 1) * 7 / 10,
                        (g_choisie + 1) * 7 % 10); // 0,7 m par zone (Hi-Link)
     if (rd_etat.pc)
-        ui_label_texte_fmt(o_info, "signal %d dB", rd_etat.energie[g_choisie]);
+        ui_label_texte_fmt(o_info, TXT("signal %d dB", "signal %d dB"), rd_etat.energie[g_choisie]);
     else
-        ui_label_texte(o_info, "signal : trames PC désactivées");
+        ui_label_texte(o_info, TXT("signal : trames PC désactivées", "signal: PC frames off"));
     ui_label_texte_fmt(o_val, "%d", seuils()[g_choisie]);
-    ui_label_texte(o_auto_txt, rd_etat.depart_s ? "Annuler" : g_confirme_auto ? "Confirmer" : "Réglage auto");
+    ui_label_texte(o_auto_txt, rd_etat.depart_s ? TXT("Annuler", "Cancel") : g_confirme_auto ? TXT("Confirmer", "Confirm") : TXT("Réglage auto", "Auto-tune"));
     // le graphe : seulement si ce qu'il montre a changé
     uint8_t d[sizeof g_dessine];
     for (int i = 0; i < RD_ZONES; i++)
@@ -198,7 +198,7 @@ static void pas_cb(lv_event_t *e)
     // 26/10 : firmware 1.1.1 du capteur (manuel Hi-Link V1.04) : les 16 zones ont un seuil absolu de 10 à 95 dB
     // (le rapport signal / bruit 5-63 des zones 8-15 de la page de la production venait du manuel V1.2, plus ancien)
     v = (uint8_t)LV_CLAMP(10, v + pas, 95);
-    snprintf(rd_etat.message, sizeof rd_etat.message, "modifié, à envoyer au radar");
+    snprintf(rd_etat.message, sizeof rd_etat.message, TXT("modifié, à envoyer au radar", "changed, send to radar"));
     rafraichir();
 }
 
@@ -254,7 +254,7 @@ void page_radar_creer(lv_obj_t *zone)
     lv_obj_set_style_radius(sel, 10, 0);
     lv_obj_set_style_pad_all(sel, 3, 0);
     lv_obj_set_flex_flow(sel, LV_FLEX_FLOW_ROW);
-    static const char *const NOMS[] = {"Détection", "Maintien"};
+    static const char *const NOMS[] = {TXT("Détection", "Detection"), TXT("Maintien", "Hold")};
     for (int i = 0; i < 2; i++)
     {
         lv_obj_t *b = o_onglets[i] = ui_bouton(sel, 92, 28);
@@ -301,7 +301,7 @@ void page_radar_creer(lv_obj_t *zone)
     lv_obj_align(moins, LV_ALIGN_RIGHT_MID, -116, 0);
     lv_obj_add_event_cb(moins, pas_cb, LV_EVENT_CLICKED, (void *)(intptr_t)-1);
 
-    const char *act[] = {"Lire le radar", "Envoyer au radar", "Réglage auto"};
+    const char *act[] = {TXT("Lire le radar", "Read radar"), TXT("Envoyer au radar", "Send to radar"), TXT("Réglage auto", "Auto-tune")};
     const lv_coord_t l = (UI_ZONE_L - 2 * UI_MARGE - 16) / 3;
     for (int i = 0; i < 3; i++)
     {

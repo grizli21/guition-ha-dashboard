@@ -9,8 +9,8 @@ rg_reglages_t rg_reglages = {75, 40, 1, 0, 1, true, true, true, "", {}, 0, 50, "
 void (*rg_commande)(const char *quoi) = nullptr;
 void (*rg_apercu)(int pct, bool fin) = nullptr;
 
-static const char *VEILLES[] = {"30 s", "1 min", "5 min", "Jamais"};
-static const char *RETOURS[] = {"après 30 s", "après 60 s", "après 2 min", "jamais"};
+static const char *VEILLES[] = {TXT("30 s", "30 s"), TXT("1 min", "1 min"), TXT("5 min", "5 min"), TXT("Jamais", "Never")};
+static const char *RETOURS[] = {TXT("après 30 s", "after 30 s"), TXT("après 60 s", "after 60 s"), TXT("après 2 min", "after 2 min"), TXT("jamais", "never")};
 
 // Pointeurs valides seulement quand la page est affichée (remis à nullptr par page_reglages_quitter)
 static lv_obj_t *o_page, *o_lum_jour_v, *o_lum_nuit_v, *o_lum_jour_r_v, *o_lum_nuit_r_v, *o_lum_s[4], *o_volume_v, *o_veilles[4], *o_piece_v, *o_retour_v;
@@ -54,7 +54,7 @@ static void rafraichir()
     inter_etat(o_ecl_mouv, r.terrasse_mouvement);
 
     bool connecte = r.ssid[0] != 0;
-    ui_label_texte(o_ssid, connecte ? r.ssid : "Wi-Fi déconnecté");
+    ui_label_texte(o_ssid, connecte ? r.ssid : TXT("Wi-Fi déconnecté", "Wi-Fi disconnected"));
     if (connecte)
         ui_label_texte_fmt(o_ip, "%s · %d dBm", r.ip, r.rssi);
     else
@@ -237,7 +237,7 @@ static lv_obj_t *ligne_inter(lv_obj_t *c, const char *txt, const char *detail, b
 // --- Construction ---
 void page_reglages_creer(lv_obj_t *zone)
 {
-    lv_obj_t *titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, "Réglages");
+    lv_obj_t *titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, TXT("Réglages", "Settings"));
     lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 2);
 
     o_page = ui_conteneur(zone);
@@ -254,16 +254,16 @@ void page_reglages_creer(lv_obj_t *zone)
     lv_obj_set_style_pad_row(o_page, 10, 0);
 
     // ÉCRAN
-    ui_titre_section(o_page, "ÉCRAN");
+    ui_titre_section(o_page, TXT("ÉCRAN", "SCREEN"));
     lv_obj_t *c = carte(o_page, 12);
-    ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, "LE JOUR");
-    o_lum_s[0] = curseur(c, "En service", &rg_reglages.lum_jour, 5, &o_lum_jour_v);
-    o_lum_s[1] = curseur(c, "Au repos, après la veille", &rg_reglages.lum_jour_repos, 0, &o_lum_jour_r_v);
-    ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, "LA NUIT");
-    o_lum_s[2] = curseur(c, "En service", &rg_reglages.lum_nuit, 5, &o_lum_nuit_v);
-    o_lum_s[3] = curseur(c, "Au repos, après la veille", &rg_reglages.lum_nuit_repos, 0, &o_lum_nuit_r_v);
+    ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, TXT("LE JOUR", "DAY"));
+    o_lum_s[0] = curseur(c, TXT("En service", "Active"), &rg_reglages.lum_jour, 5, &o_lum_jour_v);
+    o_lum_s[1] = curseur(c, TXT("Au repos, après la veille", "Idle, after sleep"), &rg_reglages.lum_jour_repos, 0, &o_lum_jour_r_v);
+    ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, TXT("LA NUIT", "NIGHT"));
+    o_lum_s[2] = curseur(c, TXT("En service", "Active"), &rg_reglages.lum_nuit, 5, &o_lum_nuit_v);
+    o_lum_s[3] = curseur(c, TXT("Au repos, après la veille", "Idle, after sleep"), &rg_reglages.lum_nuit_repos, 0, &o_lum_nuit_r_v);
     lv_obj_t *r = rangee(c, 40);
-    ui_label(r, UI_POLICE_TEXTE, UI_TEXTE, "Veille après");
+    ui_label(r, UI_POLICE_TEXTE, UI_TEXTE, TXT("Veille après", "Sleep after"));
     lv_obj_t *puces = ui_conteneur(r);
     lv_obj_set_size(puces, LV_SIZE_CONTENT, 40);
     lv_obj_set_flex_flow(puces, LV_FLEX_FLOW_ROW);
@@ -281,29 +281,29 @@ void page_reglages_creer(lv_obj_t *zone)
     }
 
     // ACCUEIL
-    ui_titre_section(o_page, "ACCUEIL");
+    ui_titre_section(o_page, TXT("ACCUEIL", "HOME"));
     c = carte(o_page, 0);
     lv_obj_set_style_pad_row(c, 0, 0);
-    o_piece_v = ligne_choix(c, "Pièce de cet écran", "piece", true);
-    o_retour_v = ligne_choix(c, "Retour à l'accueil", "retour", false);
+    o_piece_v = ligne_choix(c, TXT("Pièce de cet écran", "This screen's room"), "piece", true);
+    o_retour_v = ligne_choix(c, TXT("Retour à l'accueil", "Return home"), "retour", false);
 
     // MAISON
-    ui_titre_section(o_page, "MAISON");
+    ui_titre_section(o_page, TXT("MAISON", "HOUSE"));
     c = carte(o_page, 0);
     lv_obj_set_style_pad_row(c, 0, 0);
-    o_cam = ligne_inter(c, "Caméra à la sonnette", "Affiche l'entrée quand on sonne", &rg_reglages.camera);
-    o_ecl_porte = ligne_inter(c, "Terrasse : porte", "Allume à l'ouverture de la porte, la nuit", &rg_reglages.terrasse_porte);
-    o_ecl_mouv = ligne_inter(c, "Terrasse : mouvement", "Allume sur mouvement, la nuit", &rg_reglages.terrasse_mouvement);
-    o_melodie_v = ligne_choix(c, "Sonnerie du carillon", "melodie", true);
+    o_cam = ligne_inter(c, TXT("Caméra à la sonnette", "Doorbell camera"), TXT("Affiche l'entrée quand on sonne", "Shows the entrance when ringing"), &rg_reglages.camera);
+    o_ecl_porte = ligne_inter(c, TXT("Terrasse : porte", "Patio door"), TXT("Allume à l'ouverture de la porte, la nuit", "Turns on when the door opens, at night"), &rg_reglages.terrasse_porte);
+    o_ecl_mouv = ligne_inter(c, TXT("Terrasse : mouvement", "Patio motion"), TXT("Allume sur mouvement, la nuit", "Turns on on motion, at night"), &rg_reglages.terrasse_mouvement);
+    o_melodie_v = ligne_choix(c, TXT("Sonnerie du carillon", "Chime melody"), "melodie", true);
     lv_obj_t *vol = ui_conteneur(c);
     lv_obj_set_size(vol, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(vol, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(vol, 10, 0);
     lv_obj_set_style_pad_ver(vol, 12, 0);
-    curseur(vol, "Volume du carillon", &rg_reglages.volume, 0, &o_volume_v);
+    curseur(vol, TXT("Volume du carillon", "Chime volume"), &rg_reglages.volume, 0, &o_volume_v);
 
     // RÉSEAU
-    ui_titre_section(o_page, "RÉSEAU");
+    ui_titre_section(o_page, TXT("RÉSEAU", "NETWORK"));
     c = carte(o_page, 12);
     r = rangee(c, LV_SIZE_CONTENT);
     lv_obj_t *col = ui_conteneur(r);

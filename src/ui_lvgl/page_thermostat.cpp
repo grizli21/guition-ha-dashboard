@@ -23,18 +23,18 @@
 #define ROUGE_CHAUD 0xFF5B4B
 
 th_piece_t th_pieces[TH_NB_PIECES] = {
-    {"Cuisine", 0, 15, TH_ARRET, false, 0, 100, 255},
-    {"Séjour", 0, 15, TH_ARRET, false, 0, 100, 255},
-    {"Chambre 1", 0, 15, TH_ARRET, false, 0, 100, 255},
-    {"Chambre 2", 0, 15, TH_ARRET, false, 0, 100, 255},
-    {"Salle de bain", 0, 20, TH_ARRET, false, 0, 100, 255},
+    {TXT("Cuisine", "Kitchen"), 0, 15, TH_ARRET, false, 0, 100, 255},
+    {TXT("Séjour", "Living Room"), 0, 15, TH_ARRET, false, 0, 100, 255},
+    {TXT("Chambre 1", "Bedroom 1"), 0, 15, TH_ARRET, false, 0, 100, 255},
+    {TXT("Chambre 2", "Bedroom 2"), 0, 15, TH_ARRET, false, 0, 100, 255},
+    {TXT("Salle de bain", "Bathroom"), 0, 20, TH_ARRET, false, 0, 100, 255},
 };
 int th_piece_affichee = 0;
 float th_ext_temp = 0;
 int th_ext_hum = 0;
 void (*th_commande)(int piece, th_mode_t mode, float consigne) = nullptr;
 
-static const char *NOMS_MODE[] = {"Arrêt", "Hors-gel", "Éco", "Confort", "Manuel"};
+static const char *NOMS_MODE[] = {TXT("Arrêt", "Off"), TXT("Hors-gel", "Frost"), TXT("Éco", "Eco"), TXT("Confort", "Comfort"), TXT("Manuel", "Manual")};
 static const float CONSIGNE_MODE[] = {0, 8, 16, 20, 0};
 
 // Pointeurs valides seulement quand la page est affichée (remis à nullptr par page_thermostat_quitter)
@@ -55,7 +55,7 @@ static void fmt1(char *buf, size_t n, float v)
     snprintf(buf, n, "%.1f", v);
     for (char *p = buf; *p; p++)
         if (*p == '.')
-            *p = ',';
+            *p = SEP_CAR;
 }
 
 static th_mode_t mode_de_consigne(float c)

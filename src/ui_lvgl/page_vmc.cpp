@@ -3,12 +3,12 @@
 #include "icones_ventilo_rgb.h" // en COULEUR : LVGL 8.4 ne fait tourner que les images couleur (pas les alpha 4/8 bits : rien ne s'affiche, vu au simulateur)
 
 vmc_zone_t vmc_zones[VMC_NB] = {
-    {"Maison", 1, 0, "salle de bain", 80, false},
-    {"Sous-sol", 0, 0, "sous-sol", 0, false}, // fan.vmc_sous_sol ; pas d'automatisme humidité (22/10)
+    {TXT("Maison", "House"), 1, 0, TXT("salle de bain", "bathroom"), 80, false},
+    {TXT("Sous-sol", "Basement"), 0, 0, TXT("sous-sol", "basement"), 0, false}, // fan.vmc_sous_sol ; pas d'automatisme humidité (22/10)
 };
 void (*vmc_commande)(int zone, int vitesse) = nullptr;
 
-static const char *NOMS_VITESSE[] = {"Arrêt", "Petite", "Grande"};
+static const char *NOMS_VITESSE[] = {TXT("Arrêt", "Off"), TXT("Petite", "Low"), TXT("Grande", "High")};
 static const uint32_t TOUR_MS[] = {0, 2400, 900}; // durée d'un tour de l'hélice selon la vitesse
 
 #define CARTE_H 196
@@ -51,11 +51,12 @@ static void rafraichir()
         ui_style_text_color(c.hum, ui_c(forte ? UI_FROID : UI_TEXTE), 0);
 
         if (!v.seuil)
-            ui_label_texte(c.auto_txt, "Pas de grande vitesse automatique");
+            ui_label_texte(c.auto_txt, TXT("Pas de grande vitesse automatique", "No automatic high speed"));
         else if (v.auto_en_cours) // humidité au-dessus du seuil OU boost douche / toilettes (input_boolean.vmc_maison_forcee)
-            ui_label_texte(c.auto_txt, "Grande vitesse automatique en cours");
+            ui_label_texte(c.auto_txt, TXT("Grande vitesse automatique en cours", "Automatic high speed active"));
         else
-            ui_label_texte_fmt(c.auto_txt, "Grande vitesse automatique au-dessus de %d %% d'humidité", v.seuil);
+            ui_label_texte_fmt(c.auto_txt, TXT("Grande vitesse automatique au-dessus de %d %% d'humidité",
+                                "Automatic high speed above %d %% humidity"), v.seuil);
         ui_style_text_color(c.auto_txt, ui_c(v.auto_en_cours ? UI_FROID : UI_TEXTE2), 0);
 
         for (int s = 0; s < 3; s++)
@@ -126,7 +127,7 @@ static void creer_carte(lv_obj_t *zone, int z, lv_coord_t y)
 
 void page_vmc_creer(lv_obj_t *zone)
 {
-    lv_obj_t *titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, "VMC");
+    lv_obj_t *titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, TXT("VMC", "Ventilation"));
     lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 2);
     creer_carte(zone, 0, 50);
     creer_carte(zone, 1, 50 + CARTE_H + 10);
