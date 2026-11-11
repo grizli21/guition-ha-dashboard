@@ -10,7 +10,7 @@ Code in this repository: **MIT** ([LICENSE](../../LICENSE)). Exception: the 3D f
 | Library | License |
 |---|---|
 | [LVGL 9.6.0](https://lvgl.io) (vendored, patched) | MIT |
-| [LovyanGFX 1.2.19](https://github.com/lovyan03/LovyanGFX) (vendored, modified: double screen buffering, [patch](../patches/lovyangfx_double_tampon_1.2.19.patch); CJK fonts removed) | FreeBSD 2-clause (read in `license.txt`) |
+| [LovyanGFX 1.3.0](https://github.com/lovyan03/LovyanGFX) (vendored, modified: double screen buffering, [patch](../patches/lovyangfx_double_tampon_1.3.0.patch); CJK fonts removed, [patch](../patches/lovyangfx_polices_cjk_1.3.0.patch)) | FreeBSD 2-clause (read in `license.txt`) |
 | [ArduinoJson 7.4.2](https://arduinojson.org) | MIT |
 | [PubSubClient](https://pubsubclient.knolleary.net) | MIT |
 | [ESP32Ping](https://github.com/marian-craciunescu/ESP32Ping) | LGPL 2.1 |

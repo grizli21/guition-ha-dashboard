@@ -21,7 +21,7 @@ public repository.
   frames / 3,712,609 px of orphaned pixels.
 - **Rotation 0, two image buffers in PSRAM.** The whole production runs at rotation 0: the
   LovyanGFX driver, **modified** for the purpose (it originally has a single image buffer: see
-  [lovyangfx_double_tampon_1.2.19.patch](../patches/lovyangfx_double_tampon_1.2.19.patch)), allocates two
+  [lovyangfx_double_tampon_1.3.0.patch](../patches/lovyangfx_double_tampon_1.3.0.patch)), allocates two
   full-screen imagebuffers, LVGL draws into the one that is not shown, the panel flips at VSYNC — no
   more copy to the panel (measured: 51 ms, worst 81, Info page) and **77 kB of internal RAM given
   back** ([src/ecran/ecran.cpp](../../src/ecran/ecran.cpp)). It is the condition for the fast path: with

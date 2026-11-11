@@ -21,7 +21,7 @@ public.
   3 712 609 px de pixels orphelins.
 - **Rotation 0, deux mémoires d'image en PSRAM.** Toute la production tourne en rotation 0 : le pilote
   LovyanGFX, **modifié** pour l'occasion (il n'a d'origine qu'une mémoire d'image : voir
-  [lovyangfx_double_tampon_1.2.19.patch](patches/lovyangfx_double_tampon_1.2.19.patch)), alloue deux imagebuffers plein
+  [lovyangfx_double_tampon_1.3.0.patch](patches/lovyangfx_double_tampon_1.3.0.patch)), alloue deux imagebuffers plein
   écran, LVGL dessine dans celui qui n'est pas montré, la
   dalle bascule au VSYNC — plus de copie vers la dalle (mesuré : 51 ms, pire 81, page Informations)
   et **77 ko de RAM interne rendus** ([src/ecran/ecran.cpp](../src/ecran/ecran.cpp)). C'est la condition

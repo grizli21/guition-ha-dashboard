@@ -10,7 +10,7 @@ Code de ce dépôt : **MIT** ([LICENSE](../LICENSE)). Exception : les fichiers 3
 | Bibliothèque | Licence |
 |---|---|
 | [LVGL 9.6.0](https://lvgl.io) (vendorisée, patchée) | MIT |
-| [LovyanGFX 1.2.19](https://github.com/lovyan03/LovyanGFX) (vendorisée, modifiée : double tampon de l'écran, [patch](patches/lovyangfx_double_tampon_1.2.19.patch) ; polices CJK retirées) | FreeBSD 2 clauses (lu dans `license.txt`) |
+| [LovyanGFX 1.3.0](https://github.com/lovyan03/LovyanGFX) (vendorisée, modifiée : double tampon de l'écran, [patch](patches/lovyangfx_double_tampon_1.3.0.patch) ; polices CJK retirées, [patch](patches/lovyangfx_polices_cjk_1.3.0.patch)) | FreeBSD 2 clauses (lu dans `license.txt`) |
 | [ArduinoJson 7.4.2](https://arduinojson.org) | MIT |
 | [PubSubClient](https://pubsubclient.knolleary.net) | MIT |
 | [ESP32Ping](https://github.com/marian-craciunescu/ESP32Ping) | LGPL 2.1 |
