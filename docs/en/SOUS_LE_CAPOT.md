@@ -27,6 +27,18 @@ public repository.
   back** ([src/ecran/ecran.cpp](../../src/ecran/ecran.cpp)). It is the condition for the fast path: with
   no memory to offset, nothing to offset. The direct mode with a single buffer was tried and rejected
   in use (flicker and tearing).
+- **Panel at 17 MHz (60 frames/s): XIP is what holds it.** Flash and PSRAM share the same bus.
+  Without XIP, every flash write (Wi-Fi, settings, OTA) briefly cuts PSRAM off, and code fetched from flash
+  (4 lines) keeps that bus busy longer than if it were fetched from PSRAM (8 lines). The screen's DMA reads
+  PSRAM continuously: it runs short of data and the picture drifts or jumps. With XIP
+  (`CONFIG_SPIRAM_XIP_FROM_PSRAM`, `FETCH_INSTRUCTIONS`, `RODATA` in [platformio.ini](../../platformio.ini)),
+  the program is copied to PSRAM at boot and the problem goes away — the fix recommended by
+  [Espressif](https://docs.espressif.com/projects/esp-faq/en/latest/software-framework/peripherals/lcd.html).
+  A/B test at 17 MHz, XIP being the only change: without XIP the picture jumps badly, with XIP it is clean.
+  Measured cost: **2.55 MB of PSRAM** (heap 8.39 → 5.83 MB). At 12 MHz without XIP the picture already held,
+  but from 14 MHz on it drifted. On top of that, LVGL is synced to the screen's buffer swap
+  (`LV_DEF_REFR_PERIOD 2`, touch read every 10 ms, I2C at 400 kHz): at 20 ms its pace fell on the panel's
+  (20.3 ms at 14 MHz) and made the picture stutter — a real effect, but small next to XIP.
 - **The thermostat ring: 75 → 24 ms per step.** The ring is described element by element (135
   segments of 2°, faded, rounded ends, the room dot), each with its own impact rectangle;
   only the area that changes is invalidated (`anneau_invalider`). Measured on the screen in A-B-A

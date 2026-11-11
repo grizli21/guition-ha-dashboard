@@ -127,6 +127,10 @@ flowchart LR
 - **Recompiled Wi-Fi for the camera** (`custom_sdkconfig`): the precompiled version throttled the video stream.
   With a larger TCP window and a few stream tweaks, the camera goes from 11-12 to 15-16 frames/s.
   In exchange, Wi-Fi takes up more internal RAM.
+- **Program in PSRAM (XIP)**: without it, the 17 MHz screen jumps as soon as the flash is busy (Wi-Fi,
+  settings). It costs 2.55 MB of PSRAM ([details](docs/en/SOUS_LE_CAPOT.md)).
+- **`upload_port` is required** in `platformio.ini`, even just to build: without an address, the
+  library rebuild silently stops halfway. Put your screen's IP there.
 - The `include/version_git.h` file (commit shown on the Info page) is written by `version_git.py` before
   each build.
 - The code is written in **C++ with French identifiers**: the project's choice, deliberate and consistent.

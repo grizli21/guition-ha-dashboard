@@ -150,7 +150,7 @@
 #define LV_COLOR_MIX_ROUND_OFS 0
 
 /** Default display refresh, input device read and animation step period. */
-#define LV_DEF_REFR_PERIOD 20
+#define LV_DEF_REFR_PERIOD 2 /* 11/11 : LVGL calé sur la bascule de l'écran (redessine dès que le swap est fait ; effet faible, l'essentiel de la fluidité à 17 MHz vient du XIP) ; la lecture du tactile, qui suit cette période dans LVGL 9.6, est ramenée à 10 ms dans ecran.cpp */
 
 /** Used to initialize default sizes such as widget sizes and style paddings. */
 #define LV_DPI_DEF 130

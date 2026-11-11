@@ -25,7 +25,7 @@ VALEURS = {
     "LV_USE_STDLIB_MALLOC": "LV_STDLIB_CUSTOM",
     "LV_USE_STDLIB_STRING": "LV_STDLIB_CLIB",
     # frequence (8.4 : LV_DISP_DEF_REFR_PERIOD 20 + LV_INDEV_DEF_READ_PERIOD 20 ; 9.6 : une seule option)
-    "LV_DEF_REFR_PERIOD": "20",
+    "LV_DEF_REFR_PERIOD": "2",  # 11/11 : LVGL calé sur la bascule de l'écran, effet faible (l'essentiel vient du XIP) ; lecture du tactile ramenée à 10 ms dans ecran.cpp
     "LV_DPI_DEF": "130",
     "LV_DRAW_BUF_ALIGN": "4",
     "LV_DRAW_LAYER_SIMPLE_BUF_SIZE": "24576",

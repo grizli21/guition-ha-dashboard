@@ -844,6 +844,7 @@ static void synchro_tache()
 // Le corps est inchangé : LV_INDEV_STATE_PR / _REL sont redéfinis par la 9.6
 // (include/lvgl/api_map/lv_api_map_v8.h:118-119, en-tête inclus sans condition depuis lvgl.h:214).
 #if LVGL_VERSION_MAJOR >= 9
+extern "C" lv_timer_t *lv_indev_get_read_timer(lv_indev_t *indev); // lv_indev.c:579 (non déclarée en public dans LVGL 9.6)
 static void touch_cb(lv_indev_t *drv, lv_indev_data_t *data)
 #else
 static void touch_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
@@ -1649,6 +1650,9 @@ void setup()
     lv_indev_t *indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER); // indev/lv_indev.h:139
     lv_indev_set_read_cb(indev, touch_cb);           // indev/lv_indev.h:146
+    // 11/11 : la lecture du tactile suit LV_DEF_REFR_PERIOD (lv_indev.c:105) ; LVGL étant calé sur la bascule (2 ms),
+    // le GT911 serait lu à chaque passage : lecture ramenée à 10 ms (rythme du GT911)
+    lv_timer_set_period(lv_indev_get_read_timer(indev), 10);
     lv_indev_set_display(indev, g_disp);             // indev/lv_indev.h:167
 #else
     static lv_indev_drv_t indev_drv;

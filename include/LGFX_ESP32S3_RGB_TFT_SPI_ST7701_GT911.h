@@ -63,7 +63,11 @@ public:
       cfg.pin_vsync = GPIO_NUM_17;
       cfg.pin_hsync = GPIO_NUM_16;
       cfg.pin_pclk = GPIO_NUM_21;
-      cfg.freq_write = 12000000; // def 14000000ok 17ok 18 20nok 22nok 24nok 30nok 36nok
+      cfg.freq_write = 17000000; // 17 MHz = 59,9 images/s (était 12). Tenu grâce au XIP (platformio.ini, custom_sdkconfig) :
+      // A/B du 11/11 à 17 MHz, sans XIP l'image saute fort, avec XIP propre. Le glissement vu à 14 MHz le 10/11 (sans
+      // XIP) venait de là : bus flash/PSRAM partagé, DMA de l'écran affamé. Le calage de LVGL sur la bascule
+      // (LV_DEF_REFR_PERIOD 2) ne corrige qu'un petit sautillement (trame 20,3 ms ≈ 20 ms de LVGL) : effet faible.
+      // Historique : def 14000000ok 17ok 18 20nok 22nok 24nok 30nok 36nok
 
       cfg.hsync_polarity = 0;
       cfg.hsync_front_porch = 10;
@@ -104,7 +108,7 @@ public:
       cfg.pin_scl = GPIO_NUM_45;
       cfg.pin_rst = GPIO_NUM_NC;
 
-      cfg.freq = 100000;
+      cfg.freq = 400000; // 11/11 : I2C du tactile à 400 kHz (était 100) : lecture du GT911 ~1 ms au lieu de ~4 (calcul)
       _touch_instance.config(cfg);
       _panel_instance.setTouch(&_touch_instance);
     }

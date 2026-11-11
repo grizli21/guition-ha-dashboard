@@ -27,6 +27,18 @@ public.
   et **77 ko de RAM interne rendus** ([src/ecran/ecran.cpp](../src/ecran/ecran.cpp)). C'est la condition
   du chemin rapide : sans mémoire à décaler, rien à décaler. Le mode direct à une seule mémoire a été
   essayé et refusé à l'usage (clignotement et déchirure).
+- **Dalle à 17 MHz (60 images/s) : c'est le XIP qui la tient.** La flash et la PSRAM partagent le même
+  bus. Sans XIP, chaque écriture en flash (Wi-Fi, réglages, OTA) coupe la PSRAM un instant, et le code lu
+  en flash (4 fils) occupe ce bus plus longtemps que s'il était lu en PSRAM (8 fils). Or le DMA de l'écran
+  lit la PSRAM en continu : il manque de données, l'image glisse ou saute. Avec le XIP
+  (`CONFIG_SPIRAM_XIP_FROM_PSRAM`, `FETCH_INSTRUCTIONS`, `RODATA` dans [platformio.ini](../platformio.ini)),
+  le programme est recopié en PSRAM au démarrage et le problème disparaît — c'est le remède recommandé par
+  [Espressif](https://docs.espressif.com/projects/esp-faq/en/latest/software-framework/peripherals/lcd.html).
+  Essai A/B à 17 MHz, seul le XIP changeant : sans XIP l'image saute fort, avec XIP elle est propre. Coût
+  mesuré : **2,55 Mo de PSRAM** (réserve 8,39 → 5,83 Mo). À 12 MHz sans XIP, l'image tenait déjà, mais
+  dès 14 MHz elle glissait. En plus, LVGL est calé sur la bascule de l'écran (`LV_DEF_REFR_PERIOD 2`,
+  tactile relu toutes les 10 ms, I2C à 400 kHz) : à 20 ms, son rythme tombait sur celui de la dalle
+  (20,3 ms à 14 MHz) et faisait sautiller l'image — un effet réel, mais faible à côté du XIP.
 - **L'anneau du thermostat : 75 → 24 ms par pas.** L'anneau est décrit élément par élément (135
   segments de 2°, fondus, bouts arrondis, point de la pièce), chacun avec son rectangle d'impact ;
   seule la zone qui change est invalidée (`anneau_invalider`). Mesuré sur l'écran en A-B-A pendant une
