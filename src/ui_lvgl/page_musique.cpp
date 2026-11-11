@@ -1103,4 +1103,5 @@ void page_musique_creer(lv_obj_t *zone)
 void page_musique_quitter()
 {
     g_zone = nullptr; // plus de mises à jour
+    ui_musique_quitter(); // 11/11 : rendre pochettes, pochette en lecture et logos de radios (voir ui_musique.cpp)
 }

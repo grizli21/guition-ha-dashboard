@@ -7,6 +7,15 @@
 
 typedef char fichier_t[96];
 static UI_PSRAM(fichier_t, g_fichier, PR_FICHIERS_MAX, nullptr); // 29/10 : en PSRAM (ui_psram.h) // fichier dont les miniatures sont demandées au rang k
+#define PR_BASE_MAX 72 // même taille que g_pr_base (ui_mqtt.cpp:150)
+static UI_PSRAM(char, g_base, PR_BASE_MAX, nullptr);            // adresse du dossier .thumbs/ (enregistrée à chaque message)
+
+// 11/11 (mesure Nicolas : PSRAM 4,5 -> 3,1 Mo et jamais rendue) : les 24 images décodées (PNG -> RGB565A8, 3 o/px :
+// 12 × (48² × 3 + 190² × 3) = 12 × 115 212 = 1 382 544 o en PSRAM) ne doivent vivre que pendant la page. HA republie la liste
+// toutes les 15 min (imprimante allumée) : demander sans filtre re-remplirait les emplacements en arrière-plan.
+// On n'appelle donc ui_images_demander que page ouverte ; les noms et la base restent enregistrés (2 Ko de texte)
+// pour re-demander à l'entrée. Emplacement oublié pendant qu'un téléchargement est en vol : poser() compare l'url
+// de l'emplacement (vidée par ui_images_oublier) et LIBÈRE le résultat (ui_images.cpp:438-449) — aucune écriture.
 
 // adresse : caractères réservés encodés (les noms d'OrcaSlicer contiennent des espaces)
 static void url(char *dst, size_t n, const char *base, const char *fichier, int taille)
@@ -50,9 +59,36 @@ void ui_vignettes_demander(int k, const char *base, const char *fichier)
         f.mini = f.vignette = nullptr; // l'ancienne image n'est plus la bonne
         snprintf(g_fichier[k], sizeof g_fichier[k], "%s", fichier);
     }
+    if (base != g_base) // JAMAIS d'auto-copie : snprintf(dst, n, "%s", dst) VIDE la chaîne (mesuré 11/11 au simulateur,
+        snprintf(g_base, PR_BASE_MAX, "%s", base); // glibc 5.2 : « [] » après appel) — et renouer() passe base == g_base
+    if (!page_imprimante_affichee())
+        return; // page fermée : on note, on ne télécharge pas (sinon HA, toutes les 15 min, re-remplirait la PSRAM)
     char u[256];
     url(u, sizeof u, base, fichier, 48);
     ui_images_demander(UI_IMG_IMPRIMANTE + 2 * k, u, 48, prete, allumee);
     url(u, sizeof u, base, fichier, 300);
     ui_images_demander(UI_IMG_IMPRIMANTE + 2 * k + 1, u, PR_VIGNETTE, prete, allumee);
+}
+
+void ui_vignettes_renouer() // entrée de page : re-demander ce qu'on connaît (les emplacements ont été oubliés à la sortie)
+{
+    if (!*g_base)
+        return;
+    for (int k = 0; k < PR_FICHIERS_MAX; k++)
+        if (g_fichier[k][0])
+            ui_vignettes_demander(k, g_base, g_fichier[k]);
+}
+
+void ui_vignettes_oublier() // sortie de page : rendre les 24 images décodées ; les noms restent connus pour renouer()
+{
+    for (int k = 0; k < PR_FICHIERS_MAX; k++)
+    {
+        ui_images_oublier(UI_IMG_IMPRIMANTE + 2 * k);
+        ui_images_oublier(UI_IMG_IMPRIMANTE + 2 * k + 1);
+        pr_fichier_t &f = pr_etat.fichiers[k]; // nullifier SEULEMENT nos descripteurs (le simulateur met des icônes à lui)
+        if (ui_images_tient(f.mini))
+            f.mini = nullptr; // sinon pointeur pendant vers un emplacement vidé
+        if (ui_images_tient(f.vignette))
+            f.vignette = nullptr;
+    }
 }

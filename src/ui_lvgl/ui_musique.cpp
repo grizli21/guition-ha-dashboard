@@ -559,6 +559,35 @@ static void changer_pochette(const char *px)
     ui_images_demander(UI_IMG_LECTURE, url, POCHETTE_LECTURE, pochette_lecture_prete);
 }
 
+// 11/11 (même correction que les miniatures de l'imprimante — mesuré sur l'écran : la PSRAM ne remontait pas en
+// quittant une page) : quitter la page Musique rend les images décodées qui ne sont plus affichées — pochettes
+// d'albums (slots 24..39 : 121² × 2 = 29 282 o chacun, 468 512 o au pire), pochette en lecture (slot 40 :
+// 228² × 2 = 103 968 o) et logos de radios (slots 41..80 : 34² × 2 = 2 312 o chacun, 92 480 o au pire).
+// Coût signalé : au retour, re-téléchargement (JPEG de MA, un par tick de 100 ms) — la file de lecture redemande
+// sa pochette dès le premier tic (g_pochette vidée), les albums à l'ouverture (ouvrir_artiste), les logos à la
+// vue Radios (envoyer(MU_LOGOS), g_logos_demandes remis à false). En vol vers un slot oublié : poser() ne pose
+// pas et LIBÈRE le résultat (l'url de l'emplacement a été vidée — ui_images.cpp:438-449).
+void ui_musique_quitter()
+{
+    for (int k = 0; k < MU_LISTE_MAX; k++)
+    {
+        ui_images_oublier(UI_IMG_POCHETTES + k);
+        if (ui_images_tient(mu_etat.albums[k].img))
+            mu_etat.albums[k].img = nullptr; // pointait le descripteur d'un emplacement vidé (page_musique teste null)
+    }
+    for (int i = 0; i < MU_RADIOS_MAX; i++)
+    {
+        ui_images_oublier(UI_IMG_RADIOS + i);
+        if (ui_images_tient(mu_etat.radios[i].img))
+            mu_etat.radios[i].img = nullptr;
+    }
+    ui_images_oublier(UI_IMG_LECTURE);
+    if (ui_images_tient(mu_etat.pochette))
+        mu_etat.pochette = nullptr;
+    g_pochette[0] = 0; // forcer la re-demande de la pochette du morceau en cours au premier tic (synchro)
+    g_logos_demandes = false;
+}
+
 // File : une fenêtre de MU_FILE_MAX morceaux qui commence 2 avant celui en cours
 static void lire_file(int index)
 {

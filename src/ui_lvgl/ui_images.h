@@ -29,3 +29,6 @@ typedef void (*ui_image_prete_t)(int emplacement, const lv_img_dsc_t *img);
 // possible : nullptr, ou une fonction qui dit si le serveur répond (imprimante éteinte : on n'attend pas pour rien).
 void ui_images_demander(int emplacement, const char *url, int cote, ui_image_prete_t pret, bool (*possible)() = nullptr);
 void ui_images_oublier(int emplacement); // libère l'image (la page ne doit plus l'afficher)
+// vrai si ce descripteur EST celui d'un de nos emplacements (le pointeur passé aux callbacks pret). Une page qui
+// oublie ses emplacements ne doit nullifier QUE ses pointeurs-là : le simulateur y met des icônes statiques, à lui.
+bool ui_images_tient(const lv_img_dsc_t *desc);

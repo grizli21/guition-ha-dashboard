@@ -23,3 +23,6 @@ void ui_musique_precharger();
 extern bool ui_musique_a_la_demande;
 void ui_musique_demander_biblio();
 bool ui_musique_biblio_prete();
+// 11/11 : à la sortie de la page Musique, libérer les emplacements d'images (pochettes 24..39, lecture 40,
+// radios 41..80) et réarmer leurs re-demandes (coût : re-téléchargement au retour, tout est redemandé)
+void ui_musique_quitter();

@@ -518,3 +518,13 @@ void ui_images_oublier(int e)
     g_img[e].url[0] = 0;
     g_img[e].attente = false;
 }
+
+bool ui_images_tient(const lv_img_dsc_t *desc)
+{
+    if (!g_img || !desc)
+        return false;
+    for (int e = 0; e < UI_IMG_NB; e++)
+        if (desc == &g_img[e].img)
+            return true;
+    return false;
+}

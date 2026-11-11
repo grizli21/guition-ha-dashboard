@@ -1,5 +1,6 @@
 #include "page_imprimante.h"
 #include "ui_psram.h" // 29/10 : tableaux de texte en PSRAM
+#include "ui_vignettes.h" // 11/11 : renouer/oublier les miniatures à l'entrée/sortie de page
 #include "ui_theme.h"
 #include "ui_courbe.h" // 05/11 (vague D) : wrapper uc_arc — anneau de progression sous 9.6
 #include "ui_camera.h"
@@ -808,9 +809,13 @@ void page_imprimante_creer(lv_obj_t *zone)
     g_camera = VUE_STL; // 08/11 : en arrivant sur la page, c'est la miniature du fichier (comme avant)
     g_confirme = false;
     construire();
+    ui_vignettes_renouer(); // 11/11 : les emplacements ont été oubliés à la sortie ; on re-demande (en tâche de fond)
 }
 
 void page_imprimante_quitter()
 {
     g_zone = nullptr;
+    ui_vignettes_oublier(); // 11/11 : rendre les 1,38 Mo de miniatures décodées (mesuré sur l'écran : jamais rendues)
 }
+
+bool page_imprimante_affichee() { return g_zone != nullptr; }

@@ -64,3 +64,4 @@ lv_obj_t *page_imprimante_zone_camera();
 void page_imprimante_creer(lv_obj_t *zone);
 void page_imprimante_quitter();
 void page_imprimante_maj();
+bool page_imprimante_affichee(); // 11/11 : les miniatures ne sont demandées que si la page est ouverte (ui_vignettes)
