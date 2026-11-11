@@ -7,11 +7,8 @@
 #include <string.h>
 
 #ifdef ARDUINO
-// 06/11 diagnostic p10 (OPTI_JOURNAL « Diagnostic des redémarrages 9.6 ») : le parcours du tas interne
-// meurt juste après page_lumieres_creer (trace page-diag v4, r6) et le tampon du disque est en PSRAM
-// (0x3c… en r8). v6 : on vérifie aussi le tas PSRAM — si sa chaîne de blocs est déjà corrompue AVANT
-// le malloc de 145 200 o, c'est le malloc lui-même qui, en suivant un pointeur faux, écrase les
-// métadonnées du tas interne. Chaque vérification a sa trace : la dernière émise nomme l'appel tué.
+// Vérification des tas (interne et PSRAM) avant le gros malloc : une chaîne de blocs corrompue en PSRAM fait
+// écraser les métadonnées du tas interne par le malloc (diagnostic au banc).
 #include <Arduino.h> // uxTaskGetStackHighWaterMark
 #include <esp_heap_caps.h>
 static void lum_diag(const char *etape)
@@ -128,19 +125,6 @@ static void calculer_disque()
 {
     if (g_disque_buf)
         return;
-#if LVGL_VERSION_MAJOR >= 9
-    // 05/11 (vague D) : lv_mem_alloc a disparu (allocateurs publics 9.6 : lv_malloc/lv_free, stdlib/lv_mem.h:67,95)
-    // et LV_CANVAS_BUF_SIZE_TRUE_COLOR_ALPHA aussi — même contenu : 3 octets/px (RGB565 puis A8), tampon serré
-    // (LV_DRAW_BUF_STRIDE_ALIGN = 1 dans conf_v9). NOTE : en 8.4 lv_mem_alloc = ps_malloc (PSRAM d'office) ;
-    // lv_malloc en 9.6 suit le malloc d'Arduino (interne d'abord, PSRAM au-delà du seuil) — non mesuré ici.
-    // 06/11 CORRECTIF CRASH (page Lumières) : en 9.6, LV_COLOR_FORMAT_RGB565A8 est PLANAIRE — plan couleur
-    // (stride = largeur * 2) puis masque A8 (stride / 2 par ligne) : src/draw/sw/lv_draw_sw_img.c:254-261 et
-    // src/image/lv_bin_decoder.c:506-519. La 8.4, elle, entrelaçait couleur+alpha (3 o/px). Le remplissage
-    // ci-dessous écrivait « sizeof(lv_color_t) + 1 » par pixel, soit 4 o/px en 9.6 (lv_color_t = bleu, vert,
-    // rouge : include/lvgl/draw/lv_color.h:108-113) dans un tampon dimensionné pour 3 o/px : 220*220*4 =
-    // 193 600 octets écrits dans 145 200, soit 48 400 octets par-dessus — corruption du tas, redémarrage sur
-    // chien de garde (mesuré par la campagne de diagnostic : 3/3, traces « disque rempli » jamais émises).
-    // Le total ne change pas : 2 o de couleur + 1 o de masque par pixel = 145 200 octets.
     g_disque_buf = (uint8_t *)lv_malloc(DISQUE * DISQUE * 3);
 #ifdef ARDUINO
     // 06/11 diagnostic : la valeur du pointeur dit si le tampon est en PSRAM (0x3C…) ou en interne (0x3F…)
@@ -150,16 +134,8 @@ static void calculer_disque()
     // v6 : le tas PSRAM est-il encore intègre APRÈS ce malloc de 145 200 o, AVANT qu'on le remplisse ?
     ui_trace("[lum-diag] apres malloc : integrite PSRAM %d\n", heap_caps_check_integrity_all(MALLOC_CAP_SPIRAM) ? 1 : 0);
 #endif
-#else
-    g_disque_buf = (uint8_t *)lv_mem_alloc(LV_CANVAS_BUF_SIZE_TRUE_COLOR_ALPHA(DISQUE, DISQUE));
-#endif
     if (!g_disque_buf)
     {
-        // 06/11 (audit 9.6, chantier 3) : l'allocation de 145 200 o n'était pas vérifiée et la boucle de
-        // remplissage qui suit écrivait immédiatement à travers le nul — la famille du dépassement déjà
-        // réparé ici même (72210b8). En cas d'échec : pas de remplissage, pas de disque dessiné (la
-        // source de l'objet image n'est pas posée, l'objet est caché), dit UNE fois dans les traces ;
-        // le tampon n'étant jamais libéré, la visite suivante de la page retente une fois.
         if (!g_disque_echec_signale)
         {
             g_disque_echec_signale = true;
@@ -178,17 +154,11 @@ static void calculer_disque()
                 h += 360;
             lv_color_t c = hsv(h, LV_MIN(1.0f, r / R));
             const uint8_t alpha = (uint8_t)(255 * LV_CLAMP(0.0f, R - r + 0.5f, 1.0f));
-#if LVGL_VERSION_MAJOR >= 9
             // Plan couleur d'abord : RGB565 NATIF (lv_color_to_u16, draw/lv_color.h:343), 2 o par pixel.
             const uint16_t v = lv_color_to_u16(c);
             memcpy(p + 2 * (y * DISQUE + x), &v, sizeof v);
             // Masque A8 à part, après tout le plan couleur : 1 o par pixel, même ordre de lignes.
             g_disque_buf[2 * DISQUE * DISQUE + y * DISQUE + x] = alpha;
-#else
-            memcpy(p, &c, sizeof c);
-            p[sizeof c] = alpha;
-            p += sizeof c + 1;
-#endif
         }
 #ifdef ARDUINO
     // v6 : le remplissage (145 200 o en PSRAM) vient d'écrire — les deux tas sont-ils intègres ?
@@ -200,7 +170,7 @@ static void calculer_disque()
 // --- jauge de température : une colonne par pixel, couleur du blanc correspondant ---
 static void temp_cb(lv_event_t *e)
 {
-    uc_cible_t * ctx = uc_cible_du(e); // 9.6 : la layer de l'événement (avant : lv_event_get_draw_ctx)
+    uc_cible_t * ctx = uc_cible_du(e);
     lv_area_t a;
     lv_obj_get_coords(uc_objet_du(e), &a);
     lv_draw_rect_dsc_t d;
@@ -524,13 +494,7 @@ void page_lumieres_creer(lv_obj_t *zone)
     }
 
     // lampes (colonne qui défile)
-    o_liste = ui_conteneur(zone);
-    lv_obj_set_size(o_liste, LISTE_L, UI_ZONE_H - 52 - 10);
-    lv_obj_set_pos(o_liste, UI_MARGE, 52);
-    lv_obj_add_flag(o_liste, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(o_liste, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(o_liste, LV_SCROLLBAR_MODE_OFF);
-    ui_defilement_rapide(o_liste); // 05/11 : scroll par bande (garde = style lu a la creation)
+    o_liste = ui_conteneur_defilant(zone, UI_MARGE, 52, LISTE_L, UI_ZONE_H - 52 - 10);
     lv_obj_set_flex_flow(o_liste, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(o_liste, 5, 0);
     for (int i = 0; i < LU_NB; i++)
@@ -576,12 +540,6 @@ void page_lumieres_creer(lv_obj_t *zone)
     // disque chromatique (image calculée) + bouton qui montre la couleur réglée
     calculer_disque();
     lum_diag("disque");
-#if LVGL_VERSION_MAJOR >= 9
-    // 9.6 : lv_img_dsc_t -> lv_image_dsc_t (draw/lv_image_dsc.h:141-149) ; le header perd always_zero et gagne
-    // magic + stride (:29-50) ; LV_IMG_CF_TRUE_COLOR_ALPHA -> LV_COLOR_FORMAT_RGB565A8, mais PAS la même
-    // disposition : la 9.6 est PLANAIRE (tout le plan couleur, stride = DISQUE*2, puis tout le masque A8),
-    // la 8.4 entrelaçait couleur+alpha (3 o/px, stride = DISQUE*3). Corrigé le 06/11 : l'ancienne note, qui
-    // affirmait « même disposition », est la cause du dépassement d'écriture et du redémarrage sur chien de garde.
     static lv_image_dsc_t img;
     memset(&img, 0, sizeof img);
     img.header.magic = LV_IMAGE_HEADER_MAGIC;
@@ -591,15 +549,6 @@ void page_lumieres_creer(lv_obj_t *zone)
     img.header.stride = DISQUE * 2; // 06/11 : planaire en 9.6 -> stride du plan couleur = largeur * 2 (et non * 3)
     img.data_size = DISQUE * DISQUE * 3;
     img.data = g_disque_buf;
-#else
-    static lv_img_dsc_t img;
-    img.header.always_zero = 0;
-    img.header.w = DISQUE;
-    img.header.h = DISQUE;
-    img.header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA;
-    img.data_size = LV_CANVAS_BUF_SIZE_TRUE_COLOR_ALPHA(DISQUE, DISQUE);
-    img.data = g_disque_buf;
-#endif
     o_disque = lv_img_create(zone);
     if (g_disque_buf)
         ui_img_src(o_disque, &img);
@@ -642,15 +591,9 @@ void page_lumieres_creer(lv_obj_t *zone)
 
     // température de blanc
     o_temp = jauge(zone, 336);
-    // 06/11 (audit 9.6, chantier 3) : le dégradé (temp_cb, une colonne par pixel, pleine hauteur)
-    // peignait les angles arrondis de la jauge en carré. En 8.4 le masque de clip_corner couvrait
-    // aussi les callbacks maison (8.4 core/lv_obj.c:554-566 + core/lv_event.c:452-470) ; en 9.6 il
-    // ne rogne plus que les ENFANTS (9.6 core/lv_refr.c:171-263). Mesuré capture avant
-    // (.banc_v9_esp/grandes_repeintes/cc_avant_lumieres.raw) : aux 4 coins de la boîte
-    // (172,336)-(391,381), obtenu (255,157,65) à gauche et (205,226,255) à droite, attendu le fond
-    // de page (8,16,16). Le dégradé passe dans un ENFANT de la jauge, patron éprouvé du ballon
-    // (1ce763d) : l'enfant est rogné dans les deux lignes. Il n'est pas cliquable : le contact — et
-    // temp_cb_touche, qui commande les lampes réelles — restent sur la jauge, inchangés.
+    // Dégradé dans un ENFANT de la jauge : en 9.6 clip_corner ne rogne plus que les ENFANTS (8.4 rognait aussi
+    // les callbacks maison) — sinon les angles arrondis sont peints en carré. L'enfant n'est pas cliquable :
+    // le contact — et temp_cb_touche — restent sur la jauge.
     lv_obj_t *temp_grad = ui_conteneur(o_temp);
     lv_obj_set_size(temp_grad, LV_PCT(100), LV_PCT(100));
     lv_obj_clear_flag(temp_grad, LV_OBJ_FLAG_CLICKABLE);

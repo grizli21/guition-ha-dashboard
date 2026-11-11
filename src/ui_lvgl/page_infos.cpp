@@ -110,7 +110,7 @@ static void rafraichir()
             }
             break;
         }
-        int n = snprintf(ligne, LIGNE, "#5BD08A %s :# ", a.piece[0] ? a.piece : TXT("Sans pièce", "No room"));
+        int n = snprintf(ligne, LIGNE, UI_MARK_VERT " %s :# ", a.piece[0] ? a.piece : TXT("Sans pièce", "No room"));
         const char *sep = "";
         for (int k = i; k < if_nb_appareils && n < (int)LIGNE - 30; k++)
             if (if_appareils[k].ok && !strcmp(if_appareils[k].piece, a.piece))
@@ -133,7 +133,7 @@ static void rafraichir()
     {
         lv_obj_t *l = ui_label(o_journal, UI_POLICE_LEGENDE, UI_TEXTE2, "");
         lv_label_set_recolor(l, true);
-        ui_label_texte_fmt(l, "#8B95A1 %s#  %s%s%s", g_journal[i].heure, g_journal[i].alerte ? "#FFB547 " : "",
+        ui_label_texte_fmt(l, UI_MARK_TEXTE3 " %s#  %s%s%s", g_journal[i].heure, g_journal[i].alerte ? UI_MARK_ACCENT " " : "",
                               g_journal[i].texte, g_journal[i].alerte ? "#" : "");
     }
 
@@ -189,24 +189,12 @@ void page_infos_creer(lv_obj_t *zone)
     lv_obj_t *titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, TXT("Informations", "Info"));
     lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 2);
 
-    o_page = ui_conteneur(zone);
-    lv_obj_set_size(o_page, UI_ZONE_L, UI_ZONE_H - 46);
-    lv_obj_set_pos(o_page, 0, 46);
-    lv_obj_add_flag(o_page, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(o_page, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(o_page, LV_SCROLLBAR_MODE_OFF);
+    o_page = ui_conteneur_defilant(zone, 0, 46, UI_ZONE_L, UI_ZONE_H - 46);
     lv_obj_set_flex_flow(o_page, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_hor(o_page, UI_MARGE, 0);
     lv_obj_set_style_pad_top(o_page, 4, 0);
     lv_obj_set_style_pad_bottom(o_page, 16, 0);
     lv_obj_set_style_pad_row(o_page, 10, 0);
-    // 05/11 : scroll par bande (patch lv_obj_scroll.c) — c'est o_page qui défile (LV_DIR_VER, barre OFF).
-    // Statue ICI, à la création (mesuré : une exclusion en cours de geste ne défait pas les images sautées).
-    // Chambre 1 (rotation 90) : l'adaptateur renvoie NULL, le drapeau ne change rien au rendu.
-    // A-B-A : -DDEFILERAPIDE_OFF donne le MEME binaire, marqueur enlevé (un seul drapeau d'écart).
-#ifndef DEFILERAPIDE_OFF
-    ui_defilement_rapide(o_page);
-#endif
 
     // CET ÉCRAN : 2 colonnes de « libellé / valeur »
     ui_titre_section(o_page, TXT("CET ÉCRAN", "THIS SCREEN"));

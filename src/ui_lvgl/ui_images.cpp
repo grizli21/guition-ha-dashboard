@@ -14,28 +14,10 @@
 // décodeur PNG de LVGL (lodepng, compilé en C ; son en-tête tire du C++ quand on l'inclut ici : on déclare la seule fonction)
 extern "C" unsigned lodepng_decode32(unsigned char **out, unsigned *w, unsigned *h, const unsigned char *in, size_t insize);
 
-// ---- 05/11/2026 portage LVGL 9.6 (étape 2-vague D) -------------------------------------------------------
-//   * lv_mem_alloc/lv_mem_free ont disparu : allocateurs publics 9.6 lv_malloc/lv_free (stdlib/lv_mem.h:67,95).
-//     NOTE : en 8.4, lv_mem_alloc = ps_malloc (PSRAM d'office) ; lv_malloc 9.6 suit le malloc d'Arduino
-//     (interne d'abord, PSRAM au-delà du seuil de CONFIG_SPIRAM) — non mesuré ici, buffers image = gros.
-//   * lv_color_t vaut 3 octets (RGB888) en 9.6 (draw/lv_color.h:109) : plus de .full, plus de LV_COLOR_GET/SET_*.
-//     Les pixels RGB565 des décodeurs (2 octets) sont manipulés en uint16_t natif ; conversion RGB888 -> RGB565
-//     par lv_color_to_u16 (draw/lv_color.h:343). Les décodeurs JPEG sortent du RGB565 BIG ENDIAN : on permute
-//     les octets pour rester au format NATIF, celui de l'affichage 9.6 (LV_COLOR_FORMAT_RGB565, glue vague A).
-//   * LV_IMG_CF_TRUE_COLOR_ALPHA (entrelacé, 3 o/px) -> LV_COLOR_FORMAT_RGB565A8, qui est PLANAIRE en 9.6 :
-//     plan couleur (stride = w*2) puis masque A8 (stride/2 par ligne) — src/image/lv_bin_decoder.c:506-519.
-//   * lv_img_cache_invalidate_src : le cache d'images n'existe plus en 9.6 (décodage à chaque task) — rien à faire.
-#if LVGL_VERSION_MAJOR >= 9
 #define UI_IMG_ALLOC(n) lv_malloc(n)
 #define UI_IMG_LIBERE(p) lv_free(p)
 #define UI_IMG_ALPHA_BYTE 3 // o/px (RGB565 + alpha) ; en 8.4 LV_IMG_PX_SIZE_ALPHA_BYTE = 3 aussi
 typedef uint16_t px565_t;   // RGB565 sur 2 octets (le lv_color_t 9.6 en fait 3)
-#else
-#define UI_IMG_ALLOC(n) lv_mem_alloc(n)
-#define UI_IMG_LIBERE(p) lv_mem_free(p)
-#define UI_IMG_ALPHA_BYTE LV_IMG_PX_SIZE_ALPHA_BYTE
-typedef lv_color_t px565_t;
-#endif
 
 bool (*ui_images_telecharger)(const char *url, uint8_t **donnees, size_t *taille) = nullptr;
 bool (*ui_images_en_fond)(void (*travail)(void *)) = nullptr;
@@ -57,9 +39,6 @@ static void liberer(image_t &m)
 {
     if (!m.px)
         return;
-#if LVGL_VERSION_MAJOR < 9
-    lv_img_cache_invalidate_src(&m.img); // 9.6 : plus de cache d'images, rien à invalider
-#endif
     UI_IMG_LIBERE(m.px);
     m.px = nullptr;
 }
@@ -68,16 +47,9 @@ static void liberer(image_t &m)
 static uint8_t *convertir(const uint8_t *png, size_t n, int cote, lv_img_dsc_t &dsc)
 {
     unsigned w = 0, h = 0;
-#if LVGL_VERSION_MAJOR >= 9
-    // 07/11 CORRECTION — fuite PSRAM et vignettes fausses, mesurées sur `.193`. En 9.6, `lodepng_decode32` ne rend
-    // PAS un tampon de pixels : `*out` est un `lv_draw_buf_t *` (c'est ainsi que la librairie le manipule,
-    // src/libs/lodepng/lodepng.c:5832-5856), les pixels sont dans `->data` avec `->header.stride` par ligne, et
-    // le descripteur et les pixels sont DEUX allocations distinctes (src/draw/lv_draw_buf.c:283-313). Notre code
-    // lisait le descripteur comme s'il était l'image (vignettes affichées fausses) et ne rendait que le
-    // descripteur par lv_free : les pixels restaient orphelins — carte du tas du 07/11 : douze blocs de 360 448 o
-    // (300 x 300 x 4) = 4,3 Mo de PSRAM perdus au démarrage, sans même ouvrir la page. La libération qui rend les
-    // deux est `lv_draw_buf_destroy` (src/draw/lv_draw_buf.c:376-399 ; elle exige le drapeau ALLOCATED, posé par
-    // create_ex à :306).
+    // En 9.6, lodepng_decode32 ne rend pas un tampon de pixels mais un lv_draw_buf_t * (pixels dans ->data,
+    // stride dans ->header.stride) ; descripteur et pixels sont DEUX allocations distinctes. La libération qui
+    // rend les deux est lv_draw_buf_destroy.
     lv_draw_buf_t *buf = nullptr;
     if (lodepng_decode32((unsigned char **)&buf, &w, &h, png, n) || !w || !h)
     {
@@ -87,15 +59,6 @@ static uint8_t *convertir(const uint8_t *png, size_t n, int cote, lv_img_dsc_t &
     const unsigned char *rgba = (const unsigned char *)buf->data;
     const unsigned pas = buf->header.stride ? buf->header.stride : 4u * w; // ARGB8888 : 4 o/px, stride aligné
 #define SRC(sy, sx) (rgba + (size_t)(sy) * pas + (size_t)(sx) * 4)
-#else
-    unsigned char *rgba = nullptr;
-    if (lodepng_decode32(&rgba, &w, &h, png, n) || !w || !h)
-    {
-        UI_IMG_LIBERE(rgba); // 8.4 : le pointeur rendu EST le tampon de pixels
-        return nullptr;
-    }
-#define SRC(sy, sx) (rgba + 4 * ((size_t)(sy) * w + (sx)))
-#endif
     uint8_t *px = (uint8_t *)UI_IMG_ALLOC(cote * cote * UI_IMG_ALPHA_BYTE);
     if (px)
         for (int y = 0; y < cote; y++)
@@ -115,33 +78,19 @@ static uint8_t *convertir(const uint8_t *png, size_t n, int cote, lv_img_dsc_t &
                         nb++;
                     }
                 lv_color_t c = a ? lv_color_make(r / a, g / a, b / a) : lv_color_black();
-#if LVGL_VERSION_MAJOR >= 9
                 // RGB565A8 planaire 9.6 : plan couleur (2 o/px, RGB565 NATIF via lv_color_to_u16), puis masque A8
                 uint16_t v = lv_color_to_u16(c);
                 memcpy(px + 2 * (y * cote + x), &v, 2);
                 px[2 * cote * cote + y * cote + x] = (uint8_t)(a / nb);
-#else
-                uint8_t *d = px + (y * cote + x) * LV_IMG_PX_SIZE_ALPHA_BYTE;
-                memcpy(d, &c, sizeof c);
-                d[sizeof c] = (uint8_t)(a / nb);
-#endif
             }
-#if LVGL_VERSION_MAJOR >= 9
     lv_draw_buf_destroy(buf); // le descripteur et les pixels, cette fois (voir le bloc plus haut)
-#else
-    UI_IMG_LIBERE(rgba);
-#endif
 #undef SRC
     if (!px)
         return nullptr;
     memset(&dsc, 0, sizeof dsc);
-#if LVGL_VERSION_MAJOR >= 9
     dsc.header.magic = LV_IMAGE_HEADER_MAGIC; // sans magic, lv_draw_image.c:206-231 classe la source en UNKNOWN
     dsc.header.cf = LV_COLOR_FORMAT_RGB565A8; // planaire : couleur (stride = cote*2) puis masque A8 (stride/2)
     dsc.header.stride = cote * 2;
-#else
-    dsc.header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA;
-#endif
     dsc.header.w = cote;
     dsc.header.h = cote;
     dsc.data_size = cote * cote * UI_IMG_ALPHA_BYTE;
@@ -260,11 +209,7 @@ static int jpeg_dessin(JPEGDRAW *d)
         {
             int px = d->x + x, py = d->y + y;
             if (px < dst->w && py < dst->h)
-#if LVGL_VERSION_MAJOR >= 9
                 dst->px[py * dst->w + px] = d->pPixels[i]; // 9.6 : px565_t est un uint16_t tout court
-#else
-                dst->px[py * dst->w + px].full = d->pPixels[i];
-#endif
         }
     return 1;
 }
@@ -294,14 +239,10 @@ static px565_t *decoder_jpeg(const uint8_t *jpg, size_t n, int cote, int &w, int
         if (d.px)
         {
             memset(d.px, 0, d.w * d.h * (int)sizeof(px565_t));
-#if LVGL_VERSION_MAJOR >= 9
             // 9.6 au simulateur : plus de LV_COLOR_16_SWAP dans la conf (la 8.4 du dépôt le mettait à 1, comme la
             // dalle ST7701). Le simulateur lit et écrit du RVB565 NATIF (petit boutiste) : c'est ce qui doit sortir
             // dans les captures, sinon les couleurs sont échangées (la leçon de la caméra).
             jpeg->setPixelType(RGB565_LITTLE_ENDIAN);
-#else
-            jpeg->setPixelType(RGB565_BIG_ENDIAN);
-#endif
             jpeg->setUserPointer(&d);
             if (!jpeg->decode(0, 0, opt))
             {
@@ -343,40 +284,21 @@ static uint8_t *convertir_jpeg(const uint8_t *jpg, size_t n, int cote, lv_img_ds
             for (int sy = y0; sy < y1; sy++)
                 for (int sx = x0; sx < x1; sx++)
                 {
-#if LVGL_VERSION_MAJOR >= 9
                     uint16_t v = __builtin_bswap16(src[sy * w + sx]); // big endian -> valeur RGB565 réelle
                     r += (v >> 11) & 0x1F;
                     g += (v >> 5) & 0x3F;
                     b += v & 0x1F;
-#else
-                    lv_color_t c = src[sy * w + sx];
-                    r += LV_COLOR_GET_R(c);
-                    g += LV_COLOR_GET_G(c);
-                    b += LV_COLOR_GET_B(c);
-#endif
                     nb++;
                 }
-#if LVGL_VERSION_MAJOR >= 9
             o[y * cote + x] = (px565_t)((((r / nb) & 0x1Fu) << 11) | (((g / nb) & 0x3Fu) << 5) | ((b / nb) & 0x1Fu));
-#else
-            lv_color_t c;
-            LV_COLOR_SET_R(c, r / nb);
-            LV_COLOR_SET_G(c, g / nb);
-            LV_COLOR_SET_B(c, b / nb);
-            o[y * cote + x] = c;
-#endif
         }
     liberer_px(src);
     if (!px)
         return nullptr;
     memset(&dsc, 0, sizeof dsc);
-#if LVGL_VERSION_MAJOR >= 9
     dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
     dsc.header.cf = LV_COLOR_FORMAT_RGB565; // RGB565 natif : l'écran 9.6 est en LV_COLOR_FORMAT_RGB565
     dsc.header.stride = cote * 2;
-#else
-    dsc.header.cf = LV_IMG_CF_TRUE_COLOR;
-#endif
     dsc.header.w = cote;
     dsc.header.h = cote;
     dsc.data_size = cote * cote * (int)sizeof(px565_t);

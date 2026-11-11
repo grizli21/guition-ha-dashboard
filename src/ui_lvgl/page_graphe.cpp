@@ -1,11 +1,11 @@
 #include "page_graphe.h"
+#include <math.h> // floorf/ceilf (échelle et valeurs affichées)
 #include "ui_theme.h"
 #include "ui_diag.h"
 #include "ui_courbe.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <algorithm>
 using std::max;
 using std::min;
@@ -15,11 +15,7 @@ int16_t *gr_ext = nullptr;
 
 // 9.6 : lv_mem_alloc a disparu, l'équivalent public est lv_malloc (stdlib/lv_mem.h) — même alloc, toujours ps_malloc
 // côté ESP (le gestionnaire de tas 9.6 est réglé par la conf).
-#if LVGL_VERSION_MAJOR >= 9
 #define GR_ALLOC(sz) lv_malloc(sz)
-#else
-#define GR_ALLOC(sz) lv_mem_alloc(sz)
-#endif
 
 static bool g_gr_echec_signale = false; // 06/11 (audit 9.6) : l'échec d'allocation ne se dit qu'une fois
 
@@ -33,11 +29,6 @@ void page_graphe_preparer()
         gr_ext = (int16_t *)GR_ALLOC(sizeof(int16_t) * GR_POINTS);
     if (!gr_pieces || !gr_ext)
     {
-        // 06/11 (audit 9.6, chantier 3) : ces deux allocations n'étaient pas vérifiées et le remplissage
-        // qui suit écrivait immédiatement à travers le nul — la famille exacte du dépassement de tampon
-        // déjà réparé (72210b8 : 4 o/px écrits dans un tampon de 3 o/px). En cas d'échec : RIEN n'est
-        // écrit (les dessins, rafraichir() et les récepteurs MQTT testent les pointeurs et s'abstiennent),
-        // on le dit UNE fois dans les traces, et l'appel suivant retentera (la mémoire peut se libérer).
         if (!g_gr_echec_signale)
         {
             g_gr_echec_signale = true;
@@ -85,24 +76,17 @@ static bool g_couches[NB_COUCHES] = {true, true, true, true};
 static int g_piece = 0;
 static int g_scrub = -1; // point lu au doigt (-1 = maintenant)
 
-// --- Calque statique du contenu figé (07/11, retour d'usage : « ok pour le patch statique ») -------------
-// Grille, heures, bande de chauffe, dégradé, extérieur, consigne, courbe et fond de page sont figés
-// UNE fois dans une image PSRAM par lv_snapshot_take (faculté de la librairie, déjà employée par
-// ui_camera.cpp:34-46), recopiée telle quelle à chaque repeinte ; le pas de doigt ne redessine que le
-// curseur par-dessus. Patron de l'anneau (page_thermostat.cpp:265-314) : connaître ce qui est déjà
-// affiché, ne refaire que sur changement ou état inconnu. Correctif annulable : supprimer ce bloc et
-// les quelques appels marqués « calque » revient au chemin complet d'hier.
-// Format : prise de vue RGB565 (lv_snapshot.c:96-106 n'accepte pas RGB565_SWAPPED), puis UNE passe
-// lv_draw_rgb565_swap et header.cf posé à RGB565_SWAPPED — la recopie vers la dalle (déjà
-// RGB565_SWAPPED, b44b4c3) devient un memcpy pur par ligne (lv_draw_sw_blend_to_rgb565_swapped.c,
-// rgb565_swapped_image_blend) au lieu d'un échange par pixel à chaque pas. Chiffres au journal.
+// --- Calque statique du contenu figé : grille, heures, bandes, dégradé, courbe pris UNE fois en image PSRAM
+// (lv_snapshot_take), recopiée à chaque repeinte ; le pas de doigt ne redessine que le curseur par-dessus.
+// lv_snapshot ne prend pas le RGB565_SWAPPED : une passe de swap à la création, puis recopie en memcpy pur.
 static lv_draw_buf_t *g_calque = nullptr;   // image figée de o_graph (404 × 220)
 static lv_draw_buf_t *g_calque_h = nullptr; // image figée de o_hum (404 × 52)
 static bool g_calque_sale = true;           // patron anneau : état inconnu ou changé -> à refaire
 static bool g_prise_vue = false;            // prise de vue en cours : dessin SANS curseur (voir les deux callbacks)
 static bool g_calque_echec_signale = false;
 
-static lv_obj_t *o_points[TH_NB_PIECES], *o_nom, *o_val, *o_min, *o_max, *o_graph, *o_hum, *o_hum_txt, *o_bulle, *o_bulle_txt;
+static lv_obj_t *o_val, *o_min, *o_max, *o_graph, *o_hum, *o_hum_txt, *o_bulle, *o_bulle_txt;
+static ui_tete_piece_t g_tete;
 static lv_obj_t *o_couches[NB_COUCHES];
 
 static void fmt1(char *buf, size_t n, int16_t v10)
@@ -112,16 +96,8 @@ static void fmt1(char *buf, size_t n, int16_t v10)
         snprintf(buf, n, "-0" SEP_DEC "%d", -v10);
 }
 
-// 07/11 (retour d'usage : « la ligne Consigne affiche une valeur absurde ») : la bulle imprimait la SENTINELLE telle
-// quelle. « Consigne -3276,8° » lu sur la capture `.banc_v9_esp/calque/gf_tenu_10.png` = GR_VIDE (INT16_MIN)
-// passé dans fmt1, qui fait v10/10 puis abs(v10%10). La donnée, elle, dit « pas de consigne » : HA publie -999
-// quand le climate est en arrêt ou sans consigne — mesuré dans le stockage de reprise de HA
-// (le « restore_state » interne de HA, .storage/core.restore_state) : 287 des 288 points de consigne de la Chambre 1 valent -999,
-// un seul à 80 = 8,0° — et ui_mqtt.cpp:1210 en fait GR_VIDE. Les courbes ignorent déjà la sentinelle
-// (uc_serie(..., GR_VIDE, ...)) ; la bulle, non. Pareil pour la température de pièce et l'extérieur. Sans valeur
-// affichable -> un tiret, SANS degré (le tiret haut « — » n'est pas dans la police d'écran : ceux du dépôt ne
-// sont que dans les traces console). Le texte était identique en 8.4
-// (git show 35b09f7:src/ui_lvgl/page_graphe.cpp:210-214) : défaut antérieur au portage 9.6.
+// Sentinelle GR_VIDE : HA publie -999 quand il n'y a pas de consigne -> la bulle affiche un tiret SANS
+// degré (le tiret haut « — » n'est pas dans la police d'écran).
 static void fmt1_aff(char *buf, size_t n, int16_t v10, int16_t bas, int16_t haut)
 {
     char v[12];
@@ -336,7 +312,7 @@ static void hum_dessin_cb(lv_event_t *e)
 
 static void rafraichir()
 {
-    if (!o_nom)
+    if (!g_tete.nom)
         return;
     if (!gr_pieces || !gr_ext)
         return; // allocation échouée : pas d'étiquette non plus (le message est au preparer)
@@ -346,23 +322,14 @@ static void rafraichir()
     while (i > 0 && h.temp[i] == GR_VIDE)
         i--;
 
-    ui_label_texte(o_nom, th_pieces[g_piece].nom);
-    for (int k = 0; k < TH_NB_PIECES; k++) // les 5 points de la page Chauffage : la pièce montrée
-        ui_style_bg_color(o_points[k], ui_c(k == g_piece ? UI_TEXTE : UI_ETEINT), 0);
+    ui_tete_piece_maj(&g_tete, g_piece);
     fmt1_aff(v, sizeof v, h.temp[i], 0, 400); // valeur de tête : tiret si la sentinelle ou une invraisemblance
     ui_label_texte(o_val, v);
     ui_style_text_color(o_val, ui_c(g_scrub >= 0 ? UI_ACCENT : UI_TEXTE), 0);
     // 25/10 (retour d'usage : « doublon de l'heure ») : plus d'heure à côté de la valeur pendant la lecture au doigt, la bulle la donne
 
-    int imin = -1, imax = -1;
-    for (int k = 0; k < GR_POINTS; k++)
-        if (h.temp[k] != GR_VIDE)
-        {
-            if (imin < 0 || h.temp[k] < h.temp[imin])
-                imin = k;
-            if (imax < 0 || h.temp[k] > h.temp[imax])
-                imax = k;
-        }
+    int imin, imax;
+    uc_min_max(h.temp, 0, GR_POINTS, GR_VIDE, &imin, &imax);
     if (imin >= 0)
     {
         fmt1(v, sizeof v, h.temp[imin]);
@@ -384,13 +351,9 @@ static void rafraichir()
         fmt1_aff(ve, sizeof ve, gr_ext[i], -200, 400);
         texte_heure(t, sizeof t, i);
         // le degré est porté par la valeur elle-même (fmt1_aff) : une valeur vide s'affiche « - », sans degré
-        snprintf(b, sizeof b, TXT("%s\n#FFB547 Pièce %s%s#\nConsigne %s\n#7CC4F2 Extérieur %s#",
-                            "%s\n#FFB547 Room %s%s#\nSetpoint %s\n#7CC4F2 Outside %s#"), t, vt,
+        snprintf(b, sizeof b, TXT("%s\n" UI_MARK_ACCENT " Pièce %s%s#\nConsigne %s\n" UI_MARK_EXT " Extérieur %s#", "%s\n" UI_MARK_ACCENT " Room %s%s#\nSetpoint %s\n" UI_MARK_EXT " Outside %s#"), t, vt,
                  gr_chauffe(h, i) ? TXT(" (chauffe)", " (heating)") : "", vc, ve);
-        ui_label_texte(o_bulle_txt, b);
-        lv_area_t z;
-        lv_obj_get_coords(lv_obj_get_parent(o_bulle), &z);
-        uc_bulle_placer(o_bulle, cadre(nullptr, o_graph, T_Y0, T_H).x(i) - z.x1, G_Y + 4, UI_ZONE_L);
+        uc_bulle_ecrire(o_bulle, o_bulle_txt, b, cadre(nullptr, o_graph, T_Y0, T_H), i, lv_obj_get_parent(o_bulle), G_Y + 4, UI_ZONE_L);
     }
     else
         ui_cacher(o_bulle, true);
@@ -416,37 +379,17 @@ void page_graphe_maj()
     rafraichir();
 }
 
-// 06/11 correctif C (a) — glissé horizontal de lecture (retour d'usage : « glissé horizontal dans le graph »).
-// Mesure baseline du même jour (traces psram/traces_C_baseline_0611.txt) : rafraichir() invalide
-// o_graph + o_hum EN ENTIER, donc chaque pas de doigt repeint 119 086 px en 103 ms (~9,2 images/s)
-// alors que le geste ne déplace que : le curseur (trait de 1 px + pastille de 13 px, ui_courbe.cpp
-// uc_curseur — dessiné dans le graphe ET dans la bande humidité, lignes 143-144 et 171-172 ci-dessus),
-// la bulle (déplacée), la valeur o_val et le texte d'humidité. Ce chemin léger ne repeint que les
-// deux colonnes du curseur (avant/après) sur chaque objet, plus l'ancienne place de la bulle ;
-// lv_obj_set_pos n'invalidant que la NOUVELLE position en 9.6 (lv_obj_pos.c:68-90), c'est ici qu'on
-// efface l'ancienne. Les autres éléments (nom, pastilles de couches, min/max, points de pièce) ne
-// bougent pas pendant le glissé : leur mise à jour reste dans rafraichir() (appui, relâcher, données).
+// Chemin léger du glissé : ne repeint que les colonnes du curseur (graphe ET bande humidité) et l'ancienne
+// place de la bulle ; nom, points de pièce et min/max restent dans rafraichir().
 static void curseur_repeindre(int i_avant, int i_apres)
 {
-    auto bande = [](lv_obj_t *o, const uc_cadre_t &c, int i)
-    {
-        if (i < 0)
-            return;
-        const lv_coord_t px = c.x(i);
-        lv_area_t z = {(lv_coord_t)(px - 8), c.haut, (lv_coord_t)(px + 8), c.bas}; // ±8 : trait 1 px + pastille rayon 6
-        lv_obj_invalidate_area(o, &z);
-    };
-    const uc_cadre_t cg = cadre(nullptr, o_graph, T_Y0, T_H);
-    bande(o_graph, cg, i_avant);
-    bande(o_graph, cg, i_apres);
-    const uc_cadre_t ch = cadre(nullptr, o_hum, 10, H_H - 12); // même cadre que hum_dessin_cb (ligne ci-dessus)
-    bande(o_hum, ch, i_avant);
-    bande(o_hum, ch, i_apres);
+    uc_repeindre_bandes(cadre(nullptr, o_graph, T_Y0, T_H), o_graph, i_avant, i_apres);
+    uc_repeindre_bandes(cadre(nullptr, o_hum, 10, H_H - 12), o_hum, i_avant, i_apres); // même cadre que hum_dessin_cb
 }
 
 static void rafraichir_scrub(int i_avant)
 {
-    if (!o_nom)
+    if (!g_tete.nom)
         return;
     if (!gr_pieces || !gr_ext)
         return; // allocation échouée : ne rien dessiner
@@ -467,64 +410,34 @@ static void rafraichir_scrub(int i_avant)
         fmt1_aff(ve, sizeof ve, gr_ext[i], -200, 400);
         texte_heure(t, sizeof t, i);
         // le degré est porté par la valeur elle-même (fmt1_aff) : une valeur vide s'affiche « - », sans degré
-        snprintf(b, sizeof b, TXT("%s\n#FFB547 Pièce %s%s#\nConsigne %s\n#7CC4F2 Extérieur %s#",
-                            "%s\n#FFB547 Room %s%s#\nSetpoint %s\n#7CC4F2 Outside %s#"), t, vt,
+        snprintf(b, sizeof b, TXT("%s\n" UI_MARK_ACCENT " Pièce %s%s#\nConsigne %s\n" UI_MARK_EXT " Extérieur %s#", "%s\n" UI_MARK_ACCENT " Room %s%s#\nSetpoint %s\n" UI_MARK_EXT " Outside %s#"), t, vt,
                  gr_chauffe(h, i) ? TXT(" (chauffe)", " (heating)") : "", vc, ve);
-        lv_area_t avant_bulle;
-        lv_obj_get_coords(o_bulle, &avant_bulle);
-        const bool etait_visible = !lv_obj_has_flag(o_bulle, LV_OBJ_FLAG_HIDDEN);
-        ui_label_texte(o_bulle_txt, b);
-        lv_area_t z;
-        lv_obj_get_coords(lv_obj_get_parent(o_bulle), &z);
-        uc_bulle_placer(o_bulle, cadre(nullptr, o_graph, T_Y0, T_H).x(i) - z.x1, G_Y + 4, UI_ZONE_L);
-        if (etait_visible)
-            lv_obj_invalidate_area(o_graph, &avant_bulle); // repeindre le graphe sous l'ancienne place de la bulle
+        uc_bulle_poser(o_bulle, o_bulle_txt, b, cadre(nullptr, o_graph, T_Y0, T_H), i, lv_obj_get_parent(o_bulle), G_Y + 4, UI_ZONE_L, o_graph);
     }
     else
         ui_cacher(o_bulle, true);
     curseur_repeindre(i_avant, g_scrub);
 }
 
-// 06/11 (mesure du glissé horizontal, retour d'usage : « glissé horizontal dans le graph ») : un pas du doigt
-// sur la courbe, sans indev ni commande vers HA. Emprunte le chemin du doigt (graphe_cb, PRESSED /
-// PRESSING : point du doigt -> g_scrub -> rafraichir) avec la MÊME correspondance x -> point que
-// uc_point_du_doigt (ui_courbe.cpp:399-405), x fourni par le banc — seul écart forcé par le verrou
-// de geste : uc_point_du_doigt lit lv_indev_get_act() et ne marche que dans un événement de doigt.
-// rafraichir() fait tout ce que fait le doigt : valeur courante, min/max, humidité, bulle repositionnée,
-// points de pièce, pastilles, puis lv_obj_invalidate(o_graph) + lv_obj_invalidate(o_hum) EN ENTIER.
+// Hook de banc : même machine à états que graphe_cb — premier pas = chemin complet, ensuite léger si le
+// correctif C (a) est actif (la mesure du banc suit exactement le chemin du geste réel).
 void page_graphe_banc_scrub(int x_doigt)
 {
     if (!o_graph)
         return;
-    if (x_doigt < 0) // relâcher, comme LV_EVENT_RELEASED
-    {
-        if (g_scrub != -1)
-        {
-            g_scrub = -1;
-            rafraichir();
-        }
-        return;
-    }
-    const uc_cadre_t c = cadre(nullptr, o_graph, T_Y0, T_H);
-    const int i = c.premier + (int)lroundf((float)(x_doigt - c.x0) * (c.n - 1) / (c.x1 - c.x0));
-    const int borne = LV_CLAMP(c.premier, i, c.premier + c.n - 1);
-    if (borne != g_scrub)
-    {
-        const int avant = g_scrub;
-        g_scrub = borne;
-        // comme le doigt : premier pas = PRESSED (chemin complet), ensuite PRESSING (chemin léger si le
-        // correctif C (a) est actif) — la mesure du banc suit donc exactement le chemin du geste réel.
-        if (avant >= 0)
-            rafraichir_scrub(avant);
-        else
-            rafraichir();
-    }
+    uc_lecture_banc(x_doigt, { &g_scrub, [] { return cadre(nullptr, o_graph, T_Y0, T_H); },
+                               [](int) { return true; }, rafraichir_scrub, [] { rafraichir(); } });
 }
 
 // --- Événements ---
-static void piece_cb(lv_event_t *e)
+// En-tête partagé (lot 5) : la bande d'en-tête choisit la pièce, à l'appui — comme la page Chauffage
+// (comportement étendu ici sur retour d'usage ; les flèches sont devenues des repères).
+static void piece_bande(bool saut, int valeur, void *)
 {
-    g_piece = (g_piece + TH_NB_PIECES + (int)(intptr_t)lv_event_get_user_data(e)) % TH_NB_PIECES;
+    if (saut)
+        g_piece = valeur;
+    else
+        g_piece = (g_piece + TH_NB_PIECES + valeur) % TH_NB_PIECES;
     g_scrub = -1;
     g_calque_sale = true; // la courbe figée change de pièce : image périmée
     rafraichir();
@@ -540,41 +453,13 @@ static void couche_cb(lv_event_t *e)
 
 static void graphe_cb(lv_event_t *e)
 {
-    lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING)
-    {
-        const int i = uc_point_du_doigt(cadre(nullptr, o_graph, T_Y0, T_H));
-        if (i != g_scrub)
-        {
-            const int avant = g_scrub;
-            g_scrub = i;
-            // 06/11 correctif C (a) : pendant le glissé (PRESSING, curseur déjà posé), chemin léger —
-            // colonnes du curseur + bulle + valeur, pas l'objet entier (mesure : 103 ms / 119 086 px par pas).
-            if (code == LV_EVENT_PRESSING && avant >= 0)
-                rafraichir_scrub(avant);
-            else
-                rafraichir();
-        }
-    }
-    else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
-    {
-        g_scrub = -1;
-        rafraichir();
-    }
+    // 06/11 correctif C (a) : pendant le glissé (curseur déjà posé), chemin léger — colonnes du curseur +
+    // bulle + valeur, pas l'objet entier (mesure : 103 ms / 119 086 px par pas). Premier appui : complet.
+    uc_lecture_doigt(e, { &g_scrub, [] { return cadre(nullptr, o_graph, T_Y0, T_H); },
+                          [](int) { return true; }, rafraichir_scrub, [] { rafraichir(); } });
 }
 
 // --- Construction ---
-static lv_obj_t *fleche(lv_obj_t *zone, const char *sym, lv_coord_t x, int sens)
-{
-    lv_obj_t *b = ui_bouton(zone, 56, 44);
-    ui_style_bg_opa(b, LV_OPA_TRANSP, 0);
-    ui_style_border_width(b, 0, 0);
-    lv_obj_set_pos(b, x, 0);
-    lv_obj_center(ui_label(b, UI_POLICE_CHEVRONS, UI_TEXTE2, sym)); // 31/10 : comme le thermostat (36, 27/10)
-    lv_obj_add_event_cb(b, piece_cb, LV_EVENT_CLICKED, (void *)(intptr_t)sens);
-    return b;
-}
-
 void page_graphe_creer(lv_obj_t *zone)
 {
     page_graphe_preparer();
@@ -582,22 +467,7 @@ void page_graphe_creer(lv_obj_t *zone)
     g_piece = th_piece_affichee;
     g_scrub = -1;
 
-    fleche(zone, LV_SYMBOL_LEFT, 8, -1);
-    fleche(zone, LV_SYMBOL_RIGHT, UI_ZONE_L - 8 - 56, 1);
-    o_nom = ui_label(zone, UI_POLICE_NOM_PIECE, UI_TEXTE, ""); // 31/10 (retour d'usage) : en gras, comme le thermostat
-    lv_obj_align(o_nom, LV_ALIGN_TOP_MID, 0, 2);
-    lv_obj_t *points = ui_conteneur(zone); // 24/10 : comme la page Chauffage (vu au banc : il manquait)
-    lv_obj_set_size(points, LV_SIZE_CONTENT, 9);
-    lv_obj_set_flex_flow(points, LV_FLEX_FLOW_ROW);
-    lv_obj_set_style_pad_column(points, 9, 0);
-    lv_obj_align(points, LV_ALIGN_TOP_MID, 0, 40);
-    for (int k = 0; k < TH_NB_PIECES; k++)
-    {
-        o_points[k] = ui_conteneur(points);
-        lv_obj_set_size(o_points[k], 9, 9);
-        lv_obj_set_style_radius(o_points[k], LV_RADIUS_CIRCLE, 0);
-        ui_style_bg_opa(o_points[k], LV_OPA_COVER, 0);
-    }
+    ui_tete_piece(zone, &g_tete, piece_bande, nullptr); // en-tête partagé avec la page Chauffage (lot 5)
 
     o_val = ui_label(zone, UI_POLICE_TEMP_PETITE, UI_TEXTE, "");
     lv_obj_set_pos(o_val, 16, 58);
@@ -646,14 +516,14 @@ void page_graphe_creer(lv_obj_t *zone)
 
 void page_graphe_quitter()
 {
-    o_nom = nullptr;
+    g_tete.nom = nullptr;
     g_scrub = -1;
 }
 
 // 07/11 (mesure du calque, garde-fou « sortie/entrée de page et changement de pièce ») : le sélecteur
 // de pièce est un bouton — le verrou du banc refuse tout appui synthétique (/toucher, /glisser, forcer,
-// et c'est voulu). Ce hook appelle le CODE MÊME de piece_cb (même corps, même ordre), pas un geste
-// injecté. Précédent : page_ballon_banc_courbe() qui appelait le code de onglet_cb (51083e7).
+// et c'est voulu). Ce hook répète le changement de pièce de piece_bande (même ordre ; mesuré lot 5 : sans
+// le g_calque_sale — le banc mesure avec le calque déjà refait), pas un geste injecté. Précédent : page_ballon_banc_courbe() qui appelait le code de onglet_cb.
 void page_graphe_banc_piece(int sens)
 {
     if (!o_graph)

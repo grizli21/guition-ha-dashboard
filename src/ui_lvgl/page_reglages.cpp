@@ -240,13 +240,7 @@ void page_reglages_creer(lv_obj_t *zone)
     lv_obj_t *titre = ui_label(zone, UI_POLICE_VALEUR, UI_TEXTE, TXT("Réglages", "Settings"));
     lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 2);
 
-    o_page = ui_conteneur(zone);
-    lv_obj_set_size(o_page, UI_ZONE_L, UI_ZONE_H - 46);
-    lv_obj_set_pos(o_page, 0, 46);
-    lv_obj_add_flag(o_page, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(o_page, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(o_page, LV_SCROLLBAR_MODE_OFF);
-    ui_defilement_rapide(o_page); // 05/11 : scroll par bande (garde = style lu a la creation)
+    o_page = ui_conteneur_defilant(zone, 0, 46, UI_ZONE_L, UI_ZONE_H - 46);
     lv_obj_set_flex_flow(o_page, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_hor(o_page, UI_MARGE, 0);
     lv_obj_set_style_pad_top(o_page, 4, 0);

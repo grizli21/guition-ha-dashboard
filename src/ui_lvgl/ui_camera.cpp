@@ -1,8 +1,6 @@
-// 26/10/2026 : caméras (voir ui_camera.h ; 28/10 : flux MJPEG de go2rtc sur le NAS). Pendant qu'une image se décode
-// (cœur 1, comme la production qui décodait dans loop()), la suivante arrive (lecture continue, cœur 0, près du Wi-Fi).
-// À l'écran : esp_new_jpeg (Espressif, fourni avec l'Arduino 3) écrit directement dans la mémoire d'image ; sinon
-// (simulateur) JPEGDEC vers une image LVGL, une image à la fois. Les doublons (même image reçue deux fois) ne sont ni
-// décodés ni comptés.
+// Caméras (voir ui_camera.h ; flux MJPEG de go2rtc sur le NAS). Pendant qu'une image se décode (cœur 1),
+// la suivante arrive (lecture continue, cœur 0). Écran : esp_new_jpeg écrit directement dans la mémoire
+// d'image ; simulateur : JPEGDEC vers une image LVGL. Les doublons ne sont ni décodés ni comptés.
 #include "ui_camera.h"
 #include "ui_images.h"
 #include "ui_diag.h"
@@ -23,48 +21,16 @@
 #define CAM_JPEG_MAX 250000    // MAX_JPEG_SIZE de la production
 #define CAM_REESSAI_MS 2000    // la caméra ne répond pas : nouvel essai 2 s plus tard
 
-// ── 05/11 ÉTAPE 2-vague C : la caméra sous 9.6 (le chemin 8.4 reste intact, comme dans le glue écran) ──
-// Ce que la 9.6 change ici, lu dans les en-têtes publics (lib/lvgl-9.6.0/include/lvgl) :
-//  • « lv_color_t » n'a plus de champ « full » : c'est un RGB888 de 3 octets (draw/lv_color.h:109). Nos pixels
-//    décodés, eux, restent du RGB565 sur 2 octets (esp_new_jpeg « JPEG_PIXEL_FORMAT_RGB565_BE », JPEGDEC
-//    « RGB565_BIG_ENDIAN ») : le type de nos tampons de pixels est donc fixé à uint16_t sous 9.6.
-//  • mélanger deux RGB565 : « lv_color_16_16_mix(c1, c2, mix) » (draw/lv_color.h:361, corps dans
-//    src/misc/lv_color.c:316 — mix == 255 rend c1, mix == 0 rend c2), exactement le comportement du
-//    « lv_color_mix(dessus, dessous, a).full » de la 8.4. RGB888 -> RGB565 : « lv_color_to_u16 » (draw/lv_color.h:343).
-//  • « lv_snapshot_take » renvoie un « lv_draw_buf_t * » (draw/lv_snapshot.h:38) et non un « lv_img_dsc_t * », et se
-//    libère par « lv_draw_buf_destroy » (draw/lv_draw_buf.h:283 ; lv_snapshot_free est marqué déprécié). Le format
-//    « LV_IMG_CF_TRUE_COLOR_ALPHA » n'existe plus et « LV_COLOR_FORMAT_RGB565A8 » n'est PAS accepté par le snapshot
-//    (liste de src/draw/snapshot/lv_snapshot.c:95-108) : la photo d'élément passe donc en ARGB8888, 4 octets par
-//    pixel dans l'ordre B, G, R, A (draw/lv_color.h:121), lignes espacées de « header.stride » (draw/lv_image_dsc.h).
-//  • « lv_mem_alloc/lv_mem_free » -> « lv_malloc/lv_free » (stdlib/lv_mem.h:67 et :95).
-//  • une image en RAM doit porter « header.magic = LV_IMAGE_HEADER_MAGIC » : « lv_image_src_get_type » classe la
-//    source d'après ce premier octet (src/draw/lv_image_decoder.c via src/draw/lv_draw_image.c:206-231) ; sans lui,
-//    « lv_img_set_src » conclut « LV_IMAGE_SRC_UNKNOWN » et l'image n'est pas montrée.
-#if LVGL_VERSION_MAJOR >= 9
 typedef lv_draw_buf_t cam_photo_t;                  // une photo d'élément posé sur la caméra (lv_snapshot_take)
 #define CAM_PHOTO_LIBERE(b) lv_draw_buf_destroy(b)  // draw/lv_draw_buf.h:283
 #define CAM_PHOTO_OCTETS(b) ((size_t)(b)->data_size) // draw/lv_draw_buf.h:95
 #define CAM_PHOTO_CF LV_COLOR_FORMAT_ARGB8888       // format demandé à lv_snapshot_take
 #define CAM_PHOTO_OCTETS_PAR_PX 4                   // B, G, R, A
 typedef uint16_t cam_px_t;                          // pixel décodé : RGB565 brut (2 octets), plus lv_color_t (3 o)
-#else
-typedef lv_img_dsc_t cam_photo_t;
-#define CAM_PHOTO_LIBERE(b) lv_snapshot_free(b)
-#define CAM_PHOTO_OCTETS(b) ((size_t)(b)->data_size) // misc/lv_img_buf.h (lv_img_dsc_t)
-#define CAM_PHOTO_CF LV_IMG_CF_TRUE_COLOR_ALPHA
-#define CAM_PHOTO_OCTETS_PAR_PX LV_IMG_PX_SIZE_ALPHA_BYTE // 3 en RGB565 + alpha (lib/lvgl-8.4.0/src/draw/lv_img_buf.h:27)
-typedef lv_color_t cam_px_t;
-#endif
 #define CAM_TAILLE_PX sizeof(cam_px_t)
-#if LVGL_VERSION_MAJOR >= 9
 #define CAM_ALLOC(n) lv_malloc(n)              // stdlib/lv_mem.h:67 (lv_mem_alloc n'existe plus en 9.6)
 #define CAM_LIBERE(p) lv_free(p)               // stdlib/lv_mem.h:95
-#else
-#define CAM_ALLOC(n) lv_mem_alloc(n)
-#define CAM_LIBERE(p) lv_mem_free(p)           // misc/lv_mem.h:80 en 8.4
-#endif
 
-#if LVGL_VERSION_MAJOR >= 9
 // 9.6 : « lv_area_intersect » et « lv_obj_get_ext_draw_size » ne sont plus publiés (ils sont passés dans
 // src/misc/lv_area_private.h:46 et src/core/lv_obj_draw_private.h:36). Remplacés par de l'API publique :
 // l'intersection est calculée ici, et la taille de dessin étendue se lit par l'événement même que
@@ -87,7 +53,6 @@ static int32_t cam_ext_draw_size(lv_obj_t *o)
     lv_obj_send_event(o, LV_EVENT_REFR_EXT_DRAW_SIZE, &s); // core/lv_obj_event.h:48
     return s;
 }
-#endif
 
 static lv_obj_t *g_zone = nullptr, *g_img = nullptr;
 static char g_url[96];
@@ -202,20 +167,14 @@ static bool composer(int x, int y, uint16_t cam, uint16_t &out)
         const lv_area_t &z = g_job.calque_zone[i];
         if (!im || x < z.x1 || x > z.x2 || y < z.y1 || y > z.y2)
             return false;
-#if LVGL_VERSION_MAJOR >= 9
         // 9.6 : photo en ARGB8888 — 4 octets par pixel (B, G, R, A), lignes espacées de « header.stride »
         const uint8_t *p = (const uint8_t *)im->data + (size_t)(y - z.y1) * im->header.stride + (size_t)(x - z.x1) * CAM_PHOTO_OCTETS_PAR_PX;
         const uint8_t a = p[3];
         const lv_color_t c = lv_color_make(p[2], p[1], p[0]); // R, G, B (misc/lv_color.h:145)
         const uint16_t dessus = lv_color_to_u16(c);           // RGB888 -> RGB565 (misc/lv_color.h:343)
-        // 07/11 CORRECTION (capture `GET /ecran` de la page Imprimante, caméra ouverte) : `cam` vient du décodeur
-        // JPEG en RGB565 **grand boutiste** — `JPEG_PIXEL_FORMAT_RGB565_BE` à :333 sur l'ESP, `RGB565_BIG_ENDIAN`
-        // à :424 au simulateur — donc dans l'ordre de la dalle, tandis que `lv_color_to_u16` rend du RGB565
-        // **natif**. `lv_color_16_16_mix` (misc/lv_color.c:316) travaille sur les champs 5/6/5 tels quels : mélanger
-        // un natif avec un inversé mélange du rouge avec du bleu — d'où les fausses couleurs du bouton « Pièce »,
-        // de l'indicateur et de l'heure posés par-dessus la caméra. En 8.4 c'était cohérent parce que
-        // LV_COLOR_16_SWAP 1 (include/lv_conf.h) rendait déjà `lv_color_t.full` dans l'ordre de la dalle.
-        // On compose donc tout en natif, et on ne repasse dans l'ordre de la dalle qu'à la sortie.
+        // Le pixel du décodeur JPEG est RGB565 grand boutiste (ordre de la dalle) alors que lv_color_to_u16 rend du
+        // natif : les mélanger mélange rouge et bleu. On compose tout en natif et on ne repasse dans l'ordre de la
+        // dalle qu'à la sortie.
         const uint16_t dessous = __builtin_bswap16(cam);
         uint16_t melange;
         if (a == LV_OPA_COVER)
@@ -225,14 +184,6 @@ static bool composer(int x, int y, uint16_t cam, uint16_t &out)
         else
             melange = lv_color_16_16_mix(dessus, dessous, a); // poids sur le 1er argument (blend_private.h:179-186)
         out = __builtin_bswap16(melange);
-#else
-        const uint8_t *p = im->data + ((y - z.y1) * im->header.w + (x - z.x1)) * LV_IMG_PX_SIZE_ALPHA_BYTE;
-        const uint8_t a = p[LV_IMG_PX_SIZE_ALPHA_BYTE - 1];
-        lv_color_t dessus, dessous;
-        dessus.full = (uint16_t)(p[0] | (p[1] << 8));
-        dessous.full = cam;
-        out = a == LV_OPA_COVER ? dessus.full : a == 0 ? cam : lv_color_mix(dessus, dessous, a).full;
-#endif
         return true;
     }
     const int r = g_job.rayon;
@@ -455,12 +406,8 @@ static bool decoder(uint8_t *jpg, size_t n, cam_px_t *px)
         memset(c.px, 0, g_job.w * g_job.h * CAM_TAILLE_PX);
     // 27/10 : plus de setCropArea (simulateur seulement) : JPEGDEC arrondit le recadrage aux blocs de 16 px et laissait
     // des colonnes non écrites au bord droit d'une zone de 350 px ; image entière décodée, cam_dessin recadre
-#if LVGL_VERSION_MAJOR >= 9
     // idem ui_images.cpp:293 : au simulateur, sous 9.6, le tampon est lu en RVB565 natif (pas de LV_COLOR_16_SWAP)
     jpeg->setPixelType(RGB565_LITTLE_ENDIAN);
-#else
-    jpeg->setPixelType(RGB565_BIG_ENDIAN);
-#endif
     jpeg->setUserPointer(&c);
     const bool ok = jpeg->decode(0, 0, opt);
     if (g_job.direct && c.phy_max >= c.phy_min && ui_camera_ecran_synchro) // une synchronisation par image
@@ -706,7 +653,6 @@ static void poser(int i)
         lv_obj_center(g_img);
         lv_obj_move_background(g_img); // sous les étiquettes de la zone (pourcentage de l'impression…)
     }
-#if LVGL_VERSION_MAJOR >= 9
     // 9.6 : « lv_img_cache_invalidate_src » n'a PAS d'équivalent public — le cache image est interne
     // (src/misc/cache/instance/lv_image_cache.c, aucune en-tête de cache dans include/lvgl). Rien à invalider ici,
     // mesuré : (1) il est éteint dans notre conf (.banc_v9_esp/conf_v9/lv_conf.h:892 « LV_CACHE_DEF_SIZE 0 », et
@@ -715,9 +661,6 @@ static void poser(int i)
     // (src/widgets/image/lv_image.c:181) et, pour une source en RAM, recopie son en-tête sans jamais passer par le
     // cache d'en-têtes (réservé aux fichiers : « is_header_cache_enabled && src_type == LV_IMAGE_SRC_FILE »,
     // src/image/lv_image_decoder.c). Les pixels, eux, sont lus sur place.
-#else
-    lv_img_cache_invalidate_src(&d); // même descripteur, nouveaux pixels
-#endif
     lv_img_set_src(g_img, &d);
     g_affichee = i;
 }
@@ -867,21 +810,12 @@ static void figer_zone()
     liberer_calques_anciens();
     auto ajouter = [&](lv_obj_t *o)
     {
-#if LVGL_VERSION_MAJOR >= 9
         if (nb >= CAM_EXCLUS_MAX || lv_obj_is_hidden(o)) // core/lv_obj.h:561 (lv_obj_has_flag est marqué déprécié en 9.6)
-#else
-        if (nb >= CAM_EXCLUS_MAX || lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN))
-#endif
             return;
         lv_area_t a;
         lv_obj_get_coords(o, &a);
-#if LVGL_VERSION_MAJOR >= 9
         if (!cam_zone_intersecte(&a, &a, &g_job.zone))
             return;
-#else
-        if (!_lv_area_intersect(&a, &a, &g_job.zone))
-            return;
-#endif
         // sa photo (reprise si c'est un autre élément, ou au bout de CALQUE_MS)
         auto &k = g_calques[nb];
         if (k.obj != o || !k.img || lv_tick_elaps(k.quand) >= CALQUE_MS)
@@ -890,11 +824,7 @@ static void figer_zone()
             if (img)
             {
                 retirer_calque(k.img);
-#if LVGL_VERSION_MAJOR >= 9
                 const int32_t ext = cam_ext_draw_size(o);
-#else
-                const lv_coord_t ext = _lv_obj_get_ext_draw_size(o);
-#endif
                 lv_obj_get_coords(o, &k.zone);
                 lv_area_increase(&k.zone, ext, ext);
                 k.img = img;
@@ -928,32 +858,10 @@ bool ui_camera_zone_directe(lv_area_t *zone)
     return true;
 }
 
-// ── 08/11 (retour d'usage : « on ne libère pas et ça me gêne, ce n'est pas propre ») : tout rendre à la fermeture ────────────
-// Mesuré le 08/11 au soir sur la chambre 1, caméra fermée : RAM interne libre 87 ko au lieu de ~110 ko au démarrage,
-// PSRAM libre 4,07 Mo au lieu de 5,9 Mo. Ce que la caméra retenait : g_px[2] (2 x 460 800 o) et g_jpg[3] (3 x 250 000 o)
-// = 1 671 600 o, la bande de décodage d'esp_new_jpeg (~15 ko de RAM interne) et les deux tâches de fond (piles 8 192 et
-// 4 096 o, plus leur TCB).
-//
-// ORDRE D'ARRÊT CHOISI, et pourquoi il est sûr. Le point de fermeture reste celui d'aujourd'hui, dans ui_camera_tache :
-// « !g_zone && !g_job.en_cours && !g_flux.en_route ». À ce moment-là, lu dans le code :
-//  1. la zone est détruite : zone_supprimee a coupé g_enchainer et, si une écriture directe était en cours, posé
-//     g_job.annule — cam_ecran_bloc teste ce drapeau à chaque bande et s'arrête, et la boucle refera la zone ;
-//  2. g_job.en_cours ne redevient faux que quand la tâche de décodage est REVENUE de travail() : « g_job.fini = true »
-//     est sa toute dernière instruction, relue par la boucle. Elle ne tient donc plus ni g_jpg, ni g_px, ni g_bande, ni
-//     les calques, et elle est retournée attendre dans ulTaskNotifyTake ;
-//  3. g_flux.en_route ne redevient faux qu'à la sortie de lecture_continue() : plus aucun recv() en cours. Et travail()
-//     appelle arreter_flux() avant de finir, qui attend cette sortie — l'ordre interne est donc déjà « décodeur d'abord,
-//     lecteur arrêté ensuite », et pret/dec sont rendus à -1.
-// Les deux tâches sont donc au repos sur leur notification. On ne les tue JAMAIS depuis la boucle (vTaskDelete(handle)
-// détruirait une tâche en plein recv() ou en plein décodage, la main sur un tampon) : on leur demande de se rendre
-// (ui_camera_arreter_taches : drapeau + notification), elles sortent de leur boucle — donc l'image en cours a fini — et
-// font vTaskDelete(NULL). Les tampons ne sont rendus qu'une fois ui_camera_taches_rendues() vrai, et aucun travail
-// nouveau n'est lancé tant que le rendu n'est pas fini (garde dans ui_camera_tache) : une tâche marquée « à rendre » ne
-// peut pas recevoir un travail qu'elle n'exécuterait pas, et aucune image ne pointe dans un tampon qu'on va libérer
-// (ui_camera_afficher force g_affichee à -1 pendant le rendu).
-// Les calques (photos lv_snapshot des éléments posés par-dessus la caméra, jusqu'à 8) partent avec le reste : le
-// décodeur les lit dans composer(), mais il est parti, et la file « à libérer 1 s plus tard » n'a plus de raison
-// d'attendre.
+// ── Fermeture de la caméra : TOUT rendre (tampons, bande, tâches, calques) ──────────────────────────
+// Sûr car, au point de fermeture, les deux tâches de fond sont au repos sur leur notification (décodeur
+// rentré, lecture sortie de recv) : on leur demande de se rendre et elles font vTaskDelete(NULL) ; les
+// tampons ne sont rendus qu'après ui_camera_taches_rendues(). Analyse complète du 08/11.
 static bool camera_tient_une_chose()
 {
     for (int i = 0; i < 2; i++)
@@ -1081,7 +989,6 @@ void ui_camera_tache()
         {
             lv_img_dsc_t &d = g_dsc[g_job.tampon];
             memset(&d, 0, sizeof d);
-#if LVGL_VERSION_MAJOR >= 9
             // 9.6 : le descripteur doit se reconnaître lui-même — « lv_image_src_get_type » classe la source d'après
             // le premier octet du descripteur, qui doit valoir LV_IMAGE_HEADER_MAGIC (0x19) sous peine de
             // « LV_IMAGE_SRC_UNKNOWN » et d'aucune image affichée (src/draw/lv_draw_image.c:206-231, draw/lv_image_dsc.h:25).
@@ -1090,9 +997,6 @@ void ui_camera_tache()
             d.header.magic = LV_IMAGE_HEADER_MAGIC;
             d.header.cf = LV_COLOR_FORMAT_RGB565;
             d.header.stride = (uint32_t)g_job.w * CAM_TAILLE_PX; // la 9.6 le calculerait (draw/lv_image_dsc.h) : posé ici, pas de surprise
-#else
-            d.header.cf = LV_IMG_CF_TRUE_COLOR;
-#endif
             d.header.w = g_job.w;
             d.header.h = g_job.h;
             d.data_size = g_job.w * g_job.h * CAM_TAILLE_PX;

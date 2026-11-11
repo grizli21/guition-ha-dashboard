@@ -10,12 +10,8 @@ static UI_PSRAM(fichier_t, g_fichier, PR_FICHIERS_MAX, nullptr); // 29/10 : en P
 #define PR_BASE_MAX 72 // même taille que g_pr_base (ui_mqtt.cpp:150)
 static UI_PSRAM(char, g_base, PR_BASE_MAX, nullptr);            // adresse du dossier .thumbs/ (enregistrée à chaque message)
 
-// 11/11 (mesure Nicolas : PSRAM 4,5 -> 3,1 Mo et jamais rendue) : les 24 images décodées (PNG -> RGB565A8, 3 o/px :
-// 12 × (48² × 3 + 190² × 3) = 12 × 115 212 = 1 382 544 o en PSRAM) ne doivent vivre que pendant la page. HA republie la liste
-// toutes les 15 min (imprimante allumée) : demander sans filtre re-remplirait les emplacements en arrière-plan.
-// On n'appelle donc ui_images_demander que page ouverte ; les noms et la base restent enregistrés (2 Ko de texte)
-// pour re-demander à l'entrée. Emplacement oublié pendant qu'un téléchargement est en vol : poser() compare l'url
-// de l'emplacement (vidée par ui_images_oublier) et LIBÈRE le résultat (ui_images.cpp:438-449) — aucune écriture.
+// Les 24 images décodées (1,38 Mo de PSRAM) ne vivent que pendant la page : ui_images_demander seulement
+// page ouverte, sinon les republications de HA (15 min) re-rempliraient les emplacements en arrière-plan.
 
 // adresse : caractères réservés encodés (les noms d'OrcaSlicer contiennent des espaces)
 static void url(char *dst, size_t n, const char *base, const char *fichier, int taille)

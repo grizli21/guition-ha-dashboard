@@ -439,102 +439,74 @@ static void appliquer_cafe(const cf_recu_t &r)
 
 static bool en_garde(uint32_t debut) { return debut && lv_tick_elaps(debut) < GARDE_MS; }
 
+// ——— Anti-écho (mesuré lot 6 : le même geste « attente && garde expirée -> appliquer, reposer, rafraîchir »
+// était écrit onze fois). Un domaine = une ligne de la table ; « garde » et « attente » pointent les états
+// existants (une ligne par entrée pour les domaines à tableaux : thermostat, vmc, air, ouvrants, lumières).
+// L'ordre des lignes est l'ordre exact des anciens blocs de garde_cb — rien ne change au tick près.
+struct echo_t
+{
+    const char *nom;
+    uint32_t *garde;
+    bool *attente;
+    int nb;
+    void (*appliquer)(int i); // applique le dernier état reçu de la ligne i
+    void (*maj)(void);        // rafraîchit la page, une fois si au moins une ligne est appliquée
+};
+
+static void appliquer_th(int i) { th_pieces[i].mode = g_mode_recu[i]; th_pieces[i].consigne = g_consigne_recue[i]; }
+static void appliquer_bc(int)
+{
+    bc_etat.mode = g_bc_connu.mode = g_bc_recu.mode;
+    bc_etat.eco = g_bc_connu.eco = g_bc_recu.eco;
+    bc_etat.consigne = g_bc_connu.consigne = g_bc_recu.consigne;
+}
+static void appliquer_vmc(int z) { vmc_zones[z].vitesse = g_vmc_recue[z]; }
+static void appliquer_aq(int i) { aq_purificateurs[i].mode = g_aq_recu[i]; }
+static void appliquer_ov(int i)
+{
+    if (i < OV_NB)
+        ov_ouvrants[i].pos = g_ov_pos_recue[i];
+    else
+    {
+        ov_toile = g_ov_pos_recue[i]; // la toile porte l'état firetv avec elle
+        ov_firetv = g_ov_tv_recue;
+    }
+}
+static void appliquer_lu(int i) { appliquer_lampe(lu_lampes[i], g_lu_recue[i]); }
+static void appliquer_pr(int) { appliquer_imprimante(g_pr_recu); }
+static void appliquer_pl(int) { appliquer_poele(g_pl_recu); }
+static void appliquer_pnl(int) { appliquer_panneau_led(g_pnl_recu); }
+static void appliquer_cf(int) { appliquer_cafe(g_cf_recu); }
+static void appliquer_cq(int) { memcpy(cq_etat.repas, g_cq_repas_recus, sizeof cq_etat.repas); }
+
+static const echo_t ECHOS[] = {
+    { "thermostat", g_garde, g_en_attente, TH_NB_PIECES, appliquer_th, page_thermostat_maj },
+    { "ballon", &g_bc_garde, &g_bc_attente, 1, appliquer_bc, page_ballon_maj },
+    { "vmc", g_vmc_garde, g_vmc_attente, VMC_NB, appliquer_vmc, page_vmc_maj },
+    { "air", g_aq_garde, g_aq_attente, AQ_NB, appliquer_aq, page_air_maj },
+    { "ouvrants", g_ov_garde, g_ov_attente, OV_NB + 1, appliquer_ov, page_ouvrants_maj },
+    { "lumieres", g_lu_garde, g_lu_attente, LU_NB, appliquer_lu, page_lumieres_maj },
+    { "imprimante", &g_pr_garde, &g_pr_attente, 1, appliquer_pr, page_imprimante_maj },
+    { "poele", &g_pl_garde, &g_pl_attente, 1, appliquer_pl, page_poele_maj },
+    { "panneau_led", &g_pnl_garde, &g_pnl_attente, 1, appliquer_pnl, page_panneau_led_maj },
+    { "cafe", &g_cf_garde, &g_cf_attente, 1, appliquer_cf, page_cafe_maj },
+    { "croquettes", &g_cq_garde, &g_cq_attente, 1, appliquer_cq, page_croquettes_maj },
+};
+
 static void garde_cb(lv_timer_t *)
 {
-    bool change = false;
-    for (int i = 0; i < TH_NB_PIECES; i++)
-        if (g_en_attente[i] && !en_garde(g_garde[i]))
-        {
-            th_pieces[i].mode = g_mode_recu[i];
-            th_pieces[i].consigne = g_consigne_recue[i];
-            g_en_attente[i] = false;
-            change = true;
-        }
-    if (change)
-        page_thermostat_maj();
-    if (g_bc_attente && !en_garde(g_bc_garde))
+    for (const echo_t &E : ECHOS)
     {
-        bc_etat.mode = g_bc_connu.mode = g_bc_recu.mode;
-        bc_etat.eco = g_bc_connu.eco = g_bc_recu.eco;
-        bc_etat.consigne = g_bc_connu.consigne = g_bc_recu.consigne;
-        g_bc_attente = false;
-        page_ballon_maj();
-    }
-    change = false;
-    for (int z = 0; z < VMC_NB; z++)
-        if (g_vmc_attente[z] && !en_garde(g_vmc_garde[z]))
-        {
-            vmc_zones[z].vitesse = g_vmc_recue[z];
-            g_vmc_attente[z] = false;
-            change = true;
-        }
-    if (change)
-        page_vmc_maj();
-    change = false;
-    for (int i = 0; i < AQ_NB; i++)
-        if (g_aq_attente[i] && !en_garde(g_aq_garde[i]))
-        {
-            aq_purificateurs[i].mode = g_aq_recu[i];
-            g_aq_attente[i] = false;
-            change = true;
-        }
-    if (change)
-        page_air_maj();
-    change = false;
-    for (int i = 0; i <= OV_NB; i++)
-        if (g_ov_attente[i] && !en_garde(g_ov_garde[i]))
-        {
-            if (i < OV_NB)
-                ov_ouvrants[i].pos = g_ov_pos_recue[i];
-            else
+        bool change = false;
+        for (int i = 0; i < E.nb; i++)
+            if (E.attente[i] && !en_garde(E.garde[i]))
             {
-                ov_toile = g_ov_pos_recue[i];
-                ov_firetv = g_ov_tv_recue;
+                E.appliquer(i);
+                E.attente[i] = false;
+                change = true;
             }
-            g_ov_attente[i] = false;
-            change = true;
-        }
-    if (change)
-        page_ouvrants_maj();
-    change = false;
-    for (int i = 0; i < LU_NB; i++)
-        if (g_lu_attente[i] && !en_garde(g_lu_garde[i]))
-        {
-            appliquer_lampe(lu_lampes[i], g_lu_recue[i]);
-            g_lu_attente[i] = false;
-            change = true;
-        }
-    if (change)
-        page_lumieres_maj();
-    if (g_pr_attente && !en_garde(g_pr_garde))
-    {
-        appliquer_imprimante(g_pr_recu);
-        g_pr_attente = false;
-        page_imprimante_maj();
-    }
-    if (g_pl_attente && !en_garde(g_pl_garde))
-    {
-        appliquer_poele(g_pl_recu);
-        g_pl_attente = false;
-        page_poele_maj();
-    }
-    if (g_pnl_attente && !en_garde(g_pnl_garde))
-    {
-        appliquer_panneau_led(g_pnl_recu);
-        g_pnl_attente = false;
-        page_panneau_led_maj();
-    }
-    if (g_cf_attente && !en_garde(g_cf_garde))
-    {
-        appliquer_cafe(g_cf_recu);
-        g_cf_attente = false;
-        page_cafe_maj();
-    }
-    if (g_cq_attente && !en_garde(g_cq_garde))
-    {
-        memcpy(cq_etat.repas, g_cq_repas_recus, sizeof cq_etat.repas);
-        g_cq_attente = false;
-        page_croquettes_maj();
+        if (change)
+            E.maj();
     }
 }
 
@@ -1446,6 +1418,19 @@ int ui_mqtt_manquants(char *b, size_t n)
     return nb;
 }
 
+// Routage « préfixe + tableau de noms + suffixe » : index de l'entrée visée, -1 si le sujet ne désigne
+// rien (quatre blocs identiques mesurés lot 3 : air, ouvrants, lumieres, vmc).
+static int index_nom(const char *t, const char *const noms[], int nb, const char *suffixe)
+{
+    for (int i = 0; i < nb; i++)
+    {
+        size_t n = strlen(noms[i]);
+        if (strncmp(t, noms[i], n) == 0 && strcmp(t + n, suffixe) == 0)
+            return i;
+    }
+    return -1;
+}
+
 void ui_mqtt_recevoir(const char *sujet, const uint8_t *message, unsigned longueur)
 {
     const size_t lp = strlen(UI_MQTT_PREFIXE);
@@ -1456,25 +1441,11 @@ void ui_mqtt_recevoir(const char *sujet, const uint8_t *message, unsigned longue
     snprintf(etape, sizeof etape, "mqtt:%s", s);
     ui_diag_etape(etape); // ce message et la mise à jour de page qu'il déclenche
 
-    // 24/10 : lu en PSRAM (lv_mem_alloc = ps_malloc) : un historique de 2 Ko prend ~10 Ko le temps de sa lecture
-    // 05/11/2026 (étape 2-vague E) : en 9.6 « lv_mem_alloc/free/realloc » n'existent plus ; les allocateurs publics
-    // sont « lv_malloc / lv_free / lv_realloc » (include/lvgl/stdlib/lv_mem.h:67, :95, :105). ATTENTION, mesuré dans
-    // les deux confs : le 8.4 du projet a « LV_MEM_CUSTOM 1 » avec « LV_MEM_CUSTOM_ALLOC ps_malloc »
-    // (include/lv_conf.h:49-76) — donc lv_mem_alloc allait en PSRAM ; la conf 9.6 du banc a
-    // « LV_USE_STDLIB_MALLOC = LV_STDLIB_CLIB » (banc .banc_v9_esp/conf_v9/lv_conf.h:37) — donc lv_malloc appelle
-    // le malloc du C, soit la RAM interne de l'ESP32-S3. Le code suit la conf : si la 9.6 doit loger ces
-    // ~10 Ko en PSRAM, c'est la conf qu'il faut changer (LV_STDLIB_CUSTOM + ps_malloc), pas ici.
     struct psram_t : ArduinoJson::Allocator
     {
-#if LVGL_VERSION_MAJOR >= 9
         void *allocate(size_t n) override { return lv_malloc(n); }
         void deallocate(void *p) override { lv_free(p); }
         void *reallocate(void *p, size_t n) override { return lv_realloc(p, n); }
-#else
-        void *allocate(size_t n) override { return lv_mem_alloc(n); }
-        void deallocate(void *p) override { lv_mem_free(p); }
-        void *reallocate(void *p, size_t n) override { return lv_mem_realloc(p, n); }
-#endif
     };
     static psram_t psram;
     JsonDocument j(&psram);
@@ -1536,43 +1507,29 @@ void ui_mqtt_recevoir(const char *sujet, const uint8_t *message, unsigned longue
         recevoir_panneau_led(j);
     else if (strncmp(s, "air/", 4) == 0)
     {
-        for (int i = 0; i < AQ_NB; i++)
-        {
-            size_t n = strlen(AIR[i]);
-            if (strncmp(s + 4, AIR[i], n) != 0)
-                continue;
-            if (strcmp(s + 4 + n, "/etat") == 0)
-                recevoir_air(i, j);
-            else if (strcmp(s + 4 + n, "/historique") == 0)
-                recevoir_air_historique(i, j);
-        }
+        int i = index_nom(s + 4, AIR, AQ_NB, "/etat");
+        if (i >= 0)
+            recevoir_air(i, j);
+        else if ((i = index_nom(s + 4, AIR, AQ_NB, "/historique")) >= 0)
+            recevoir_air_historique(i, j);
     }
     else if (strncmp(s, "ouvrants/", 9) == 0)
     {
-        for (int i = 0; i <= OV_NB; i++)
-        {
-            size_t n = strlen(OUVRANTS[i]);
-            if (strncmp(s + 9, OUVRANTS[i], n) == 0 && strcmp(s + 9 + n, "/etat") == 0)
-                recevoir_ouvrant(i, j);
-        }
+        const int i = index_nom(s + 9, OUVRANTS, OV_NB + 1, "/etat");
+        if (i >= 0)
+            recevoir_ouvrant(i, j);
     }
     else if (strncmp(s, "lumieres/", 9) == 0)
     {
-        for (int i = 0; i < LU_NB; i++)
-        {
-            size_t n = strlen(LAMPES[i]);
-            if (strncmp(s + 9, LAMPES[i], n) == 0 && strcmp(s + 9 + n, "/etat") == 0)
-                recevoir_lampe(i, j);
-        }
+        const int i = index_nom(s + 9, LAMPES, LU_NB, "/etat");
+        if (i >= 0)
+            recevoir_lampe(i, j);
     }
     else if (strncmp(s, "vmc/", 4) == 0)
     {
-        for (int z = 0; z < VMC_NB; z++)
-        {
-            size_t n = strlen(VMC_ZONES[z]);
-            if (strncmp(s + 4, VMC_ZONES[z], n) == 0 && strcmp(s + 4 + n, "/etat") == 0)
-                recevoir_vmc(z, j);
-        }
+        const int i = index_nom(s + 4, VMC_ZONES, VMC_NB, "/etat");
+        if (i >= 0)
+            recevoir_vmc(i, j);
     }
     else if (strncmp(s, "thermostats/", 12) == 0)
     {

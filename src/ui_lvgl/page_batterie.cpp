@@ -46,7 +46,7 @@ static void duree_texte(char *b, size_t n, uint32_t s)
 // ---------------------------------------------------------------------------------------------------- pile
 static void pile_cb(lv_event_t *e)
 {
-    uc_cible_t * ctx = uc_cible_du(e); // 9.6 : la layer de l'événement (avant : lv_event_get_draw_ctx)
+    uc_cible_t * ctx = uc_cible_du(e);
     lv_area_t a;
     lv_obj_get_coords(uc_objet_du(e), &a);
     lv_draw_rect_dsc_t d;

@@ -4,30 +4,8 @@
 #pragma once
 #include <lvgl.h>
 
-enum th_mode_t
-{
-    TH_ARRET,
-    TH_HORSGEL,
-    TH_ECO,
-    TH_CONFORT,
-    TH_MANUEL // consigne libre (preset_mode « none » dans HA)
-};
+#include "ui_pieces.h" // th_mode_t, th_piece_t, th_pieces[], th_piece_affichee (lot 5 : partagés avec les Graphes)
 
-struct th_piece_t
-{
-    const char *nom;
-    float temp;
-    float consigne;
-    th_mode_t mode;
-    bool chauffe;
-    float hum;    // reçus par MQTT (pas encore affichés : le graphe et l'alerte pile s'en serviront)
-    int batterie; // %
-    int signal;   // LQI Zigbee 0-255
-};
-
-#define TH_NB_PIECES 5
-extern th_piece_t th_pieces[TH_NB_PIECES];
-extern int th_piece_affichee;
 extern float th_ext_temp;
 extern int th_ext_hum;
 

@@ -68,7 +68,7 @@ lv_obj_t *page_imprimante_zone_camera() { return g_zone && g_vue == 0 && g_camer
 // 10 derniers degrés de chaque bout fondus vers le fond (ui_anneau_dessiner, ouverture vide)
 static void anneau_cb(lv_event_t *e)
 {
-    uc_cible_t * ctx = uc_cible_du(e); // 9.6 : la layer de l'événement (avant : lv_event_get_draw_ctx)
+    uc_cible_t * ctx = uc_cible_du(e);
     lv_area_t a;
     lv_obj_get_coords(uc_objet_du(e), &a);
     lv_point_t c = {(lv_coord_t)(a.x1 + lv_area_get_width(&a) / 2), (lv_coord_t)(a.y1 + lv_area_get_height(&a) / 2)};
@@ -399,13 +399,7 @@ static void construire_reglages(lv_obj_t *z)
 {
     const pr_etat_imp_t &p = pr_etat;
     const bool off = p.etat == PR_ETEINTE;
-    lv_obj_t *page = ui_conteneur(z);
-    lv_obj_set_size(page, UI_ZONE_L, UI_ZONE_H - 50);
-    lv_obj_set_pos(page, 0, 50);
-    lv_obj_add_flag(page, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(page, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(page, LV_SCROLLBAR_MODE_OFF);
-    ui_defilement_rapide(page); // 05/11 : scroll par bande (garde = style lu a la creation)
+    lv_obj_t *page = ui_conteneur_defilant(z, 0, 50, UI_ZONE_L, UI_ZONE_H - 50);
     lv_obj_set_flex_flow(page, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_style_pad_hor(page, UI_MARGE, 0);
     lv_obj_set_style_pad_bottom(page, 16, 0);
@@ -554,13 +548,7 @@ static void lancer_cb(lv_event_t *)
 static void construire_fichiers(lv_obj_t *z)
 {
     const pr_etat_imp_t &p = pr_etat;
-    lv_obj_t *l = ui_conteneur(z);
-    lv_obj_set_size(l, UI_ZONE_L, UI_ZONE_H - 50); // jusqu'en bas : plus de bouton « Lancer » sous la liste
-    lv_obj_set_pos(l, 0, 50);
-    lv_obj_add_flag(l, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(l, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(l, LV_SCROLLBAR_MODE_OFF);
-    ui_defilement_rapide(l); // 05/11 : scroll par bande (garde = style lu a la creation)
+    lv_obj_t *l = ui_conteneur_defilant(z, 0, 50, UI_ZONE_L, UI_ZONE_H - 50); // jusqu'en bas : plus de bouton « Lancer » sous la liste
     lv_obj_set_flex_flow(l, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_hor(l, UI_MARGE, 0);
     lv_obj_set_style_pad_row(l, 6, 0);

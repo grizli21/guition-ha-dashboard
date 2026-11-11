@@ -1,8 +1,5 @@
-// 18/10/2026 : banc d'essai de la nouvelle interface tout LVGL (src/ui_lvgl/) avec des données FICTIVES, dans un projet
-// séparé du firmware de production de l'époque. 08/11/2026 : c'est DEVENU le firmware de production (LVGL 9.6, trois
-// écrans) ; le dossier et le fichier ont été renommés src/ecran/ecran.cpp le soir même. Le nom de l'ancien environnement
-// a disparu du dépôt : envs « ecran » (production, OTA), « ecran-usb » (câble), « banc-chambre1-v9 » (mesure).
-// Le Wi-Fi et l'OTA sont gardés partout, c'est ce qui permet de reflasher sans câble.
+// Firmware de l'écran : interface toute LVGL (src/ui_lvgl/). Envs : « ecran » (production, OTA),
+// « ecran-usb » (câble), « banc-chambre1-v9 » (mesure). Wi-Fi et OTA partout : reflash sans câble.
 
 #include <Arduino.h>
 #include <algorithm>
@@ -103,11 +100,6 @@ static const char *piece() { return g_ecran ? g_ecran->piece : "inconnu"; }
 
 LGFX tft;
 #if LVGL_VERSION_MAJOR >= 9
-// 05/11 ÉTAPE 2 (9.6) : plus de lv_disp_drv_t ni de lv_disp_draw_buf_t côté public. L'affichage est un
-// lv_display_t créé par lv_display_create (include/lvgl/display/lv_display.h:96) ; les tampons sont des
-// lv_draw_buf_t publics (include/lvgl/draw/lv_draw_buf.h:93) posés avec lv_display_set_draw_buffers
-// (display/lv_display.h:295), qui place le tampon actif sur le PREMIER argument (lu dans
-// lib/lvgl-9.6.0/src/display/lv_display.c:513) : c'est le seul moyen public de choisir la mémoire active.
 static lv_display_t *g_disp = nullptr; // l'affichage unique (480 x 480)
 static lv_draw_buf_t g_fb_buf[2];      // les deux mémoires d'image vues par LVGL (même indice que la mémoire Lovyan)
 static uint32_t g_rendu_px = 0;        // pixels dessinés dans l'image en cours (le « px » du monitor_cb 8.4)
@@ -119,13 +111,9 @@ static lv_disp_draw_buf_t draw_buf;
 // --- Pilotes écran / tactile (même principe que la production) ---
 // 25/10 : temps passé dans la copie vers la mémoire d'image pendant l'image en cours (le reste = rendu de LVGL)
 static uint32_t g_copie_us = 0;
-// Affichage choisi au démarrage d'après la rotation de l'écran (ECRANS[]), 29/10 (retour d'usage : « basculer entre 0 direct et
-// 90 au plus efficient ») : rotation 0 -> DEUX mémoires d'image (Lovyan modifié : Bus_RGB::initDoubleBuffer) : LVGL
-// dessine dans celle qui n'est pas montrée, la dalle bascule à la fin d'une trame (VSYNC) : ni clignotement ni déchirure ;
-// plus de copie (mesuré chambre 1, Info : 51 ms, pire 81) et 77 Ko de RAM interne rendus (plus de tampon de dessin).
-// Rotation 90 -> mode normal, Lovyan tourne pendant la copie (61 ms, pire 129 ; LVGL 8 ne sait pas tourner en mode
-// direct). Les chambres sont à 90 en attendant leurs supports réimprimés pour 0. (02/11 : le mode direct à UNE mémoire,
-// essayé le 27/10, clignotements et déchirures refusés à l'essai, et ses réglages de compilation ESSAI_* sont retirés)
+// Rotation choisie au démarrage (table ECRANS[]) : 0 -> DEUX mémoires d'image, LVGL dessine dans celle qui
+// n'est pas montrée et la dalle bascule à la fin de la trame (VSYNC), sans copie ; 90 -> mode normal,
+// Lovyan tourne pendant la copie (mesures du 29/10).
 #include <esp_cache.h>
 static bool g_double = false;                         // 27/10 : deux mémoires d'image
 static uint8_t **g_lignes_fb[2] = {nullptr, nullptr}; // leurs lignes (la caméra écrit dans celle qui est montrée)
@@ -186,11 +174,6 @@ static void trace_ram()
              (unsigned)(g_ram_plus_bas_signale / 1024), (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) / 1024));
 }
 
-// ==================================================================================== 26/10 : énergie de l'écran sur batterie
-// Repris de la production (power_management.h : reduced_power_mode / full_power_mode / deepSleep / deepSleepST7701S ;
-// loop.h : conditions) : au bout de 10 s sans toucher, luminosité de repos (ui_appareil), 80 MHz et Wi-Fi en économie ;
-// au délai de veille, si le radar ne voit personne et que sa page web n'est pas ouverte : veille profonde, réveil par le
-// radar (GPIO 2 au niveau haut) ou par la minuterie (nouvel essai quand le Wi-Fi manquait).
 static uint32_t g_economie_ms = 10000; // powerReduction_timer de la production ; 31/10 : réglable (onglet Réglages de la page Batterie)
 #define RESET_ECRAN_PIN 42     // reset commun GT911 / ST7701 (modèle sur batterie) : tenu bas pendant la veille
 #define RADAR_REVEIL_PIN GPIO_NUM_2
@@ -502,12 +485,9 @@ void ui_ecran_zone_decalee(const lv_area_t *zone)
 }
 
 
-// 04/11/2026 : vidage du cache sur les seules lignes touchees, au lieu des 460 800 octets de toute la
-// memoire a chaque image. Les lignes d'une zone sont contigues (960 octets par ligne, multiple de la
-// ligne de cache de 32 octets) : un seul appel par emprise. Le drapeau UNALIGNED reste : l'adresse de la
-// memoire d'image rendue par LovyanGFX n'est pas garantie alignee sur la ligne de cache. Gain sur les
-// petites mises a jour (une etiquette changee = quelques lignes) ; sans effet sur un changement de page,
-// ou l'englobant couvre deja tout l'ecran. 460 ko a ecrire en PSRAM, c'etait 6 a 11 ms par image.
+// Vidage du cache sur les seules lignes touchées : les lignes d'une zone sont contiguës (960 o par ligne,
+// multiple de la ligne de cache de 32 o) -> un seul appel par emprise. Le drapeau UNALIGNED reste :
+// l'adresse de la mémoire d'image rendue par LovyanGFX n'est pas garantie alignée.
 static void cache_ecrire(uint8_t *fb, const lv_area_t *z)
 {
     const int y1 = LV_MAX(0, (int)z->y1), y2 = LV_MIN(479, (int)z->y2);
@@ -554,12 +534,8 @@ static void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *col
 #else
             uint8_t *fb = (uint8_t *)disp->draw_buf->buf_act;
 #endif
-            // 04/11 : deux emprises au lieu de la memoire entiere — ce que LVGL vient de dessiner
-            // (g_rendu, rectangle englobant des zones rafraichies) PLUS ce que refr_sync_areas a
-            // recopie de l'autre memoire au debut de cette image, a savoir les zones invalides de
-            // l'image precedente (g_rendu_prec). La recopie de la camera a son propre appel.
-            // MESURE : -DMESURE_MSYNC_COMPLET revient a l'ancien comportement (toute la memoire),
-            // pour comparer les deux avec le meme code source (environnements mesure / mesure-base).
+            // Deux emprises : ce que LVGL vient de dessiner (g_rendu) PLUS ce que refr_sync_areas a recopié des
+            // zones invalides de l'image précédente (g_rendu_prec). La recopie de la caméra a son propre appel.
 #ifdef MESURE_MSYNC_COMPLET
             esp_cache_msync(fb, 480 * 480 * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_TYPE_DATA | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
 #else
@@ -1233,44 +1209,21 @@ void setup()
 
     lv_init();
 #if LVGL_VERSION_MAJOR >= 9
-    // 06/11 (Étape 2-écran) : SOURCE D'HORLOGLE. La 8.4 prenait l'heure de LVGL dans lv_conf.h
-    // (LV_TICK_CUSTOM = 1, LV_TICK_CUSTOM_SYS_TIME_EXPR = millis() — include/lv_conf.h:101-104). Ces deux
-    // options n'existent plus en 9.6 (aucune occurrence de « TICK_CUSTOM » dans lib/lvgl-9.6.0) et rien, côté
-    // portage, ne donnait d'horloge à lv_tick_get() : src/tick/lv_tick.c:45 ne lit que state.sys_time, que
-    // seuls lv_tick_inc() ou lv_tick_set_cb() font avancer. Horloge à 0 ⇒ lv_timer_exec()
-    // (src/misc/lv_timer.c:394 : elp = lv_tick_elaps(last_run), prêt si elp >= period) ne juge JAMAIS un
-    // timer mûr — donc jamais le timer de rafraîchissement de l'écran (src/display/lv_display.c:125, période
-    // LV_DEF_REFR_PERIOD = 20 ms), jamais les animations, jamais le timer de 15 ms de
-    // ui_appareil_transition (src/ui_lvgl/ui_appareil.cpp:457, timer de 15 ms ; son rappel transition_cb,
-    // ligne 409, est ce qui efface l'écran de démarrage).
-    // MESURÉ sur .193 (flash 9.6 de 00 h 02) : loop() tourne (l'étape du diag alterne « demarrage »/« lvgl »,
-    // boucle la plus lente figée à 813 ms), lv_timer_handler() est appelé tous les 5 ms, mais 0 ligne [rendu]
-    // en 60 s de traces et deux captures à 45 s identiques au sha256. Le banc du glisse, qui force
-    // lv_refr_now(), rend 230 400 px puis 27 855 px par pas et fait basculer la dalle : le dessin, le flush
-    // et la bascule marchent ; seul le rafraîchissement commandé par les timers manque. La barre de l'écran
-    // de démarrage est restée à 85 % mesurés (indicateur 236 px sur 280) au lieu des 100 % de « Prêt » :
-    // l'animation n'a jamais avancé. Sous 9.6 l'horloge de LVGL doit être millis(), comme sous la 8.4.
+    // Sous 9.6, lv_tick_get() doit être branché sur millis() : sans horloge aucun timer LVGL ne mûrit — écran
+    // figé à 85 %, mesuré sur un écran le 06/11 (analyse complète).
     lv_tick_set_cb(millis); // include/lvgl/tick/lv_tick.h:84 — lv_tick_get_cb_t = uint32_t (*)(void)
 
     // 9.6 : l'affichage doit exister avant les tampons — lv_display_set_buffers s'appuie sur la résolution
     // (display/lv_display.h:269 ; lv_display.c:550 refuse une résolution nulle). Format RGB565 posé à la
     // main : tout le glue ci-dessous raisonne en 2 octets par pixel (mémoire d'image 480 * 480 * 2).
     g_disp = lv_display_create(480, 480); // display/lv_display.h:96
-    // 06/11 : COULEURS. La 8.4 posait LV_COLOR_16_SWAP 1 (include/lv_conf.h:30) : son tampon sortait
-    // deja en RGB565 gros boutiste, l'ordre que la chaine d'envoi vers la dalle attend (le flush passe
-    // le tampon comme lgfx::swap565_t, vers la ligne 584). La 9.6 na plus cette option : LVGL le dit
-    // lui-meme, lib/lvgl-9.6.0/src/core/lv_refr.c:27 — « Use LV_COLOR_FORMAT_RGB565_SWAPPED as the
-    // display color format instead ». Sans ca la dalle recoit les deux octets de chaque pixel inverses
-    // : rouge et bleu permutes (constaté le 06/11 sur l'écran de test vers 13 h 50). La camera ecrit
-    // deja en ordre inverse (src/ui_lvgl/ui_camera.cpp:203) : elle ne doit pas changer.
+    // Format RGB565_SWAPPED : la 9.6 n'a plus LV_COLOR_16_SWAP ; sans cela la dalle reçoit les deux octets
+    // de chaque pixel inversés (rouge et bleu permutés). La caméra écrit déjà en ordre inverse : ne pas la changer.
     lv_display_set_color_format(g_disp, LV_COLOR_FORMAT_RGB565_SWAPPED); // display/lv_display.h:362
 #endif
     ui_diag_ram_etape("lv_init"); // 28/10 : AUDIT RAM
-    // 25/10 : tampon de dessin en RAM INTERNE (le rendu écrit dans la mémoire rapide, seule la copie va en PSRAM).
-    // 29/10 (retour d'usage : « passe le mode 90 en un tampon de 80 lignes ») : la copie (flush_cb) est synchrone, LVGL ne
-    // dessinait jamais dans l'un des deux tampons pendant que l'autre partait : UN seul tampon de 80 lignes (77 Ko, comme
-    // les 2 x 40 d'avant), deux fois moins de bandes à dessiner ; repli : 40 lignes en RAM interne, puis 80 en PSRAM.
-    // Rotation 0 : libéré juste après (deux mémoires d'image)
+    // Tampon de dessin : UN seul tampon de 80 lignes en RAM INTERNE (la copie est synchrone, jamais d'écriture
+    // pendant l'envoi) ; repli 40 lignes RAM puis 80 PSRAM. Rotation 0 : libéré juste après (deux mémoires d'image).
     size_t lignes = 80;
     lv_color_t *b1 = (lv_color_t *)heap_caps_malloc(480 * lignes * sizeof(lv_color_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     if (!b1)
@@ -1408,12 +1361,6 @@ void setup()
     lv_disp_drv_register(&disp_drv);
 #endif // LVGL_VERSION_MAJOR >= 9
 #ifdef BANC_DECALAGE
-    // 05/11 : banc du DÉCALAGE de lignes, le nombre qui manque pour décider le « scroll par bande ».
-    // L'astuce ne redessine plus que la bande qui entre (8 300 px) mais DÉPLACE toute l'aire visible de la
-    // liste (404 x 434 = 350 000 px) dans la mémoire d'image, en PSRAM. Ce banc chronomètre ce déplacement,
-    // une fois au démarrage : 15 essais, min / médiane / max, en µs et en ns par pixel déplacé.
-    // Trois cas : à l'intérieur d'un même tampon (memmove, qui chevauche — le vrai cas), d'un tampon à
-    // l'autre (memcpy, sans chevauchement), et remplissage seul (le ~74 ns/px déjà connu, pour l'échelle).
     {
         const int LARG = 404, HAUT = 434, PAS = 22;                 // aire visible de la liste, pas du doigt
         const size_t TAMPON = 480 * 480 * 2;                        // une mémoire d'image, comme sur l'écran
@@ -1495,25 +1442,11 @@ void setup()
             ui_trace("[banc msync] %-28s min %u us, mediane %u us, max %u us\n", c.nom, (unsigned)t[0], (unsigned)t[7], (unsigned)t[14]);
         }
     }
-    // 04/11 : banc de l'ANNEAU (piste 2 de Qwen : dégradé pré-rendu en image + quelques arcs par-dessus). Son rejet
-    // reposait sur des ns/px mesurés sur PC ; ici, sur l'écran. Même dessin que le thermostat (ui_anneau_dessiner :
-    // 135 arcs de 2° + segment du bas + 20 fondus, diamètre 320, épaisseur 46), dans une cible 320 x 320 en PSRAM comme
-    // la vraie mémoire d'image, par le moteur de dessin logiciel de LVGL (faux affichage, comme lv_canvas).
-    // Cas : fond seul (référence), fond + anneau en arcs, fond + anneau en image RGB565 opaque (PSRAM),
-    // fond + image + 10 arcs (la partie en pleine lumière, ~20°). 11 essais, médiane. Somme de contrôle : l'image
-    // recopiée doit redonner exactement les pixels de l'anneau dessiné.
     {
         const int C = 320;
         lv_color_t *cible = (lv_color_t *)heap_caps_malloc(C * C * 2, MALLOC_CAP_SPIRAM);
         lv_color_t *image = (lv_color_t *)heap_caps_malloc(C * C * 2, MALLOC_CAP_SPIRAM);
 #if LVGL_VERSION_MAJOR >= 9
-        // 05/11/2026 portage 9.6 (étape 2-vague D) : plus de lv_draw_ctx_t ni de faux affichage (lv_disp_t,
-        // lv_disp_drv_t, _lv_refr_get_disp_refreshing ont disparu). On dessine sur la LAYER d'un canevas caché :
-        // lv_canvas_set_buffer (widgets/lv_canvas.h:62) branche le tampon du canevas sur la cible PSRAM,
-        // lv_canvas_init_layer (:165) remplit la layer (buf_area/_clip_area = tout le tampon, display = l'affichage
-        // de l'objet), et lv_canvas_finish_layer (:173) est le seul moyen de faire RENDRE les tasks hors du
-        // rafraîchissement d'un écran : il les distribue aux unités de dessin et attend la fin. Canevas caché puis
-        // supprimé : le banc ne doit rien montrer à l'écran.
         lv_obj_t * canevas = (cible && image) ? lv_canvas_create(lv_scr_act()) : NULL;
         lv_layer_t layer;
         if (canevas)

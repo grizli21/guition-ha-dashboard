@@ -16,23 +16,11 @@ bool (*ui_ma_requete)(const char *corps, char **reponse, size_t *taille) = nullp
 bool (*ui_ma_en_fond)(void (*travail)(void *)) = nullptr;
 const char *ui_ma_serveur = "";
 
-// Réponses lourdes : chaque élément vient avec toutes ses métadonnées (mesuré le 24/10 : 537 artistes = 392 Ko,
-// 27 albums = 112 Ko, file de 20 morceaux = 58 Ko, état d'une file = 12 Ko, lecteurs = 10 Ko). Lues avec un filtre
-// ArduinoJson : seuls les champs utiles restent, en PSRAM (lv_mem_alloc = ps_malloc).
-// 05/11/2026 (etape 2, migration 9.6) : en 8.4 « lv_mem_alloc » est ps_malloc (include/lv_conf.h:49-76),
-// donc ces buffers JSON vivent en PSRAM. En 9.6 la conf du banc choisit LV_USE_STDLIB_MALLOC = LV_STDLIB_CLIB
-// (.banc_v9_esp/conf_v9/lv_conf.h:37) : « lv_malloc » = malloc du clib, RAM INTERNE. Ces buffers font jusqu'a
-// 112 ko (27 albums) : ils doivent rester en PSRAM d'une version a l'autre. ps_malloc/ps_realloc sont declares
-// dans esp32-hal-psram.h (il n'y a pas de ps_free : c'est free()).
-#if LVGL_VERSION_MAJOR >= 9
+// Réponses lourdes (jusqu'à 392 Ko mesuré) lues avec un filtre ArduinoJson : seuls les champs utiles
+// restent, en PSRAM via ps_malloc/ps_realloc (les allocateurs LVGL de cette conf sont en RAM interne).
 #  define MU_MEM_ALLOC(n)      ps_malloc(n)
 #  define MU_MEM_FREE(p)       free(p)
 #  define MU_MEM_REALLOC(p, n) ps_realloc(p, n)
-#else
-#  define MU_MEM_ALLOC(n)      lv_mem_alloc(n)
-#  define MU_MEM_FREE(p)       lv_mem_free(p)
-#  define MU_MEM_REALLOC(p, n) lv_mem_realloc(p, n)
-#endif
 
 struct psram_t : ArduinoJson::Allocator
 {
@@ -559,14 +547,9 @@ static void changer_pochette(const char *px)
     ui_images_demander(UI_IMG_LECTURE, url, POCHETTE_LECTURE, pochette_lecture_prete);
 }
 
-// 11/11 (même correction que les miniatures de l'imprimante — mesuré sur l'écran : la PSRAM ne remontait pas en
-// quittant une page) : quitter la page Musique rend les images décodées qui ne sont plus affichées — pochettes
-// d'albums (slots 24..39 : 121² × 2 = 29 282 o chacun, 468 512 o au pire), pochette en lecture (slot 40 :
-// 228² × 2 = 103 968 o) et logos de radios (slots 41..80 : 34² × 2 = 2 312 o chacun, 92 480 o au pire).
-// Coût signalé : au retour, re-téléchargement (JPEG de MA, un par tick de 100 ms) — la file de lecture redemande
-// sa pochette dès le premier tic (g_pochette vidée), les albums à l'ouverture (ouvrir_artiste), les logos à la
-// vue Radios (envoyer(MU_LOGOS), g_logos_demandes remis à false). En vol vers un slot oublié : poser() ne pose
-// pas et LIBÈRE le résultat (l'url de l'emplacement a été vidée — ui_images.cpp:438-449).
+// Quitter la page Musique rend les images décodées qui ne sont plus affichées (pochettes d'albums, pochette
+// en lecture, logos de radios) ; au retour elles sont re-téléchargées (un JPEG par tick de 100 ms).
+// En vol vers un emplacement oublié : poser() ne pose pas et LIBÈRE le résultat.
 void ui_musique_quitter()
 {
     for (int k = 0; k < MU_LISTE_MAX; k++)

@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h> // 06/11 (outil du banc) : lroundf, comme uc_point_du_doigt (ui_courbe.cpp)
 
 bc_etat_t bc_etat = {0, 50, BC_AUTO, true, false};
 static const bc_historique_t bc_hist_depart = {{0}, {0}, {0}, {0}, {0}, -1}; // valeur de départ (en flash)
@@ -136,7 +135,7 @@ static void resistance(uc_cible_t *ctx, const lv_area_t &a, bool chauffe)
 // eau (dégradé chaud en haut, tiède en bas) jusqu'au niveau, vide au-dessus ; résistance ; bulles dans l'eau
 static void cuve_cb(lv_event_t *e)
 {
-    uc_cible_t *ctx = uc_cible_du(e); // 9.6 : la layer du draw task (avant : lv_event_get_draw_ctx)
+    uc_cible_t *ctx = uc_cible_du(e);
     lv_area_t a;
     lv_obj_get_coords(uc_objet_du(e), &a);
     lv_draw_rect_dsc_t d;
@@ -149,12 +148,10 @@ static void cuve_cb(lv_event_t *e)
     d.bg_grad.stops[0].frac = 0;
     d.bg_grad.stops[1].color = ui_c(0x6E8FA8);
     d.bg_grad.stops[1].frac = 255;
-#if LVGL_VERSION_MAJOR >= 9
     // 9.6 : chaque palier porte EN PLUS son opacité (draw/lv_grad.h:52-56) et l'init la laisse à 0 -> sans ça le
     // dégradé est entièrement transparent (src/draw/lv_draw_rect.c:220-223 et src/draw/sw/lv_draw_sw_grad.c:213).
     d.bg_grad.stops[0].opa = LV_OPA_COVER;
     d.bg_grad.stops[1].opa = LV_OPA_COVER;
-#endif
     const lv_area_t eau = {a.x1, (lv_coord_t)(a.y1 + surface()), a.x2, a.y2};
     if (eau.y1 < eau.y2)
         uc_carre(ctx, d, &eau);
@@ -189,16 +186,6 @@ static void cuve_creer(lv_obj_t *z, float niveau)
     ui_style_border_color(cadre, ui_c(UI_BORD), 0);
     ui_style_border_width(cadre, 3, 0);
     lv_obj_set_style_border_post(cadre, true, 0);
-    // 06/11 (retour d'usage : « la page ballon, le ballon a un defaut d'affichage il est rempli en carré ») :
-    // le dessin (cuve_cb) est mis dans un ENFANT du cadre arrondi, plus sur le cadre lui-même.
-    // En 8.4, clip_corner posait un masque rayonné au DRAW_MAIN par défaut (core/lv_obj.c:554-566),
-    // retiré au DRAW_POST (:588-594), et les callbacks normaux tournent APRÈS le défaut
-    // (core/lv_event.c:452-470) : cuve_cb était donc rogné. En 9.6, clip_corner ne rogne plus que
-    // les ENFANTS (core/lv_refr.c:171-263 : bandes ARGB8888 + lv_draw_sw_mask_rect) ; le DRAW_MAIN
-    // de l'objet part sur la layer sans rognage — l'eau et le fond remplissaient les angles du cadre
-    // englobant en carré (mesure capture : à (42,313) et (157,313), obtenu (57,64,74) = bas du
-    // dégradé d'eau, attendu (8,16,16) = fond de page, comme en 8.4 ; avant :
-    // .banc_v9_esp/ballon/avant_96_0611.png). Un enfant est rogné dans les DEUX lignes.
     o_cuve = ui_conteneur(cadre);
     lv_obj_set_size(o_cuve, CUVE_L, CUVE_H);
     lv_obj_clear_flag(o_cuve, LV_OBJ_FLAG_CLICKABLE);
@@ -450,15 +437,8 @@ static void rafraichir_courbe(bool graphe)
     const int v = bc_hist.temp[i] != BC_VIDE ? (bc_hist.temp[i] + 5) / 10 : (int)(bc_etat.temp + 0.5f);
     ui_label_texte_fmt(o_cval, "%d", v);
     ui_style_text_color(o_cval, ui_c(g_scrub >= 0 ? UI_CHAUFFE : UI_TEXTE), 0);
-    int imin = -1, imax = -1;
-    for (int k = 0; k < BC_POINTS; k++)
-        if (bc_hist.temp[k] != BC_VIDE)
-        {
-            if (imin < 0 || bc_hist.temp[k] < bc_hist.temp[imin])
-                imin = k;
-            if (imax < 0 || bc_hist.temp[k] > bc_hist.temp[imax])
-                imax = k;
-        }
+    int imin, imax;
+    uc_min_max(bc_hist.temp, 0, BC_POINTS, BC_VIDE, &imin, &imax);
     char h[24];
     if (imin >= 0 && bc_hist.fin >= 0)
     {
@@ -478,13 +458,9 @@ static void rafraichir_courbe(bool graphe)
         if (bc_hist.temp[i] != BC_VIDE)
             snprintf(t, sizeof t, "%d", (bc_hist.temp[i] + 5) / 10);
         uc_texte_heure(h, sizeof h, i, BC_POINTS - 1, bc_hist.fin, 5);
-        snprintf(b, sizeof b, TXT("%s\n#FF8A4B Eau %s°#\nConsigne %d°%s%s", "%s\n#FF8A4B Water %s°#\nSetpoint %d°%s%s"),
-                 h, t, (bc_hist.consigne[i] + 5) / 10,
-                 relais(i) ? TXT("\n#E5484D Chauffe#", "\n#E5484D Heating#") : "", bc_bit(bc_hist.creuses, i) ? TXT("\nHeures creuses", "\nOff-peak") : TXT("\nHeures pleines", "\nPeak"));
-        ui_label_texte(o_bulle_txt, b);
-        lv_area_t z;
-        lv_obj_get_coords(g_zone, &z);
-        uc_bulle_placer(o_bulle, cadre(nullptr).x(i) - z.x1, G_Y + 4, UI_ZONE_L);
+        snprintf(b, sizeof b, TXT("%s\n" UI_MARK_CHAUFFE " Eau %s°#\nConsigne %d°%s%s", "%s\n" UI_MARK_CHAUFFE " Water %s°#\nSetpoint %d°%s%s"), h, t, (bc_hist.consigne[i] + 5) / 10,
+                 relais(i) ? TXT("\n" UI_MARK_RELIS " Chauffe#", "\n" UI_MARK_RELIS " Heating#") : "", bc_bit(bc_hist.creuses, i) ? TXT("\nHeures creuses", "\nOff-peak") : TXT("\nHeures pleines", "\nPeak"));
+        uc_bulle_ecrire(o_bulle, o_bulle_txt, b, cadre(nullptr), i, g_zone, G_Y + 4, UI_ZONE_L);
     }
     else
         ui_cacher(o_bulle, true);
@@ -498,17 +474,9 @@ static void rafraichir_courbe(bool graphe)
     }
 }
 
-// 06/11 correctif chantier 2 (a) — glissé horizontal de lecture sur la courbe du ballon.
-// Baseline mesurée le même soir (traces grandes_repeintes/traces_scrubballon_base_0611.txt, build
-// 10ded189, uptime 164 s) : rafraichir_courbe(true) invalide o_graphe EN ENTIER, soit
-// 147 768 px médians repeints en 106 ms par pas de doigt (~8,9 images/s) — l'objet fait
-// 404 × (480−118−4) = 144 632 px (page_ballon.cpp:523). Or le geste ne déplace que : le curseur
-// (uc_curseur, trait + pastille rayon 6, dessiné par graphe_cb en :405-406), la bulle (texte +
-// repositionnement) et la valeur o_cval. Min/max, heures, barres d'eau et bandes ne bougent pas.
-// Ce chemin léger ne repeint que les deux colonnes du curseur (avant/après) plus l'ancienne place
-// de la bulle — lv_obj_set_pos n'invalidant que la NOUVELLE position en 9.6
-// (core/lv_obj_pos.c:68-90), c'est ici qu'on efface l'ancienne. Patron éprouvé : le graphe des
-// pièces (2d58d44, 103 -> 45 ms mesurés) et l'anneau du thermostat (mesuré 24 ms).
+// Chemin léger du glissé de lecture : ne repeint que les deux colonnes du curseur (avant/après) et l'ancienne
+// place de la bulle — en 9.6 lv_obj_set_pos n'invalidite que la NOUVELLE position (core/lv_obj_pos.c:68-90),
+// c'est ici qu'on efface l'ancienne.
 static void rafraichir_scrub(int i_avant)
 {
     const int i = g_scrub;
@@ -521,94 +489,28 @@ static void rafraichir_scrub(int i_avant)
         if (bc_hist.temp[i] != BC_VIDE)
             snprintf(t, sizeof t, "%d", (bc_hist.temp[i] + 5) / 10);
         uc_texte_heure(h, sizeof h, i, BC_POINTS - 1, bc_hist.fin, 5);
-        snprintf(b, sizeof b, TXT("%s\n#FF8A4B Eau %s°#\nConsigne %d°%s%s", "%s\n#FF8A4B Water %s°#\nSetpoint %d°%s%s"),
-                 h, t, (bc_hist.consigne[i] + 5) / 10,
-                 relais(i) ? TXT("\n#E5484D Chauffe#", "\n#E5484D Heating#") : "", bc_bit(bc_hist.creuses, i) ? TXT("\nHeures creuses", "\nOff-peak") : TXT("\nHeures pleines", "\nPeak"));
-        lv_area_t avant_bulle;
-        lv_obj_get_coords(o_bulle, &avant_bulle);
-        const bool etait_visible = !lv_obj_has_flag(o_bulle, LV_OBJ_FLAG_HIDDEN);
-        ui_label_texte(o_bulle_txt, b);
-        lv_area_t z;
-        lv_obj_get_coords(g_zone, &z);
-        uc_bulle_placer(o_bulle, cadre(nullptr).x(i) - z.x1, G_Y + 4, UI_ZONE_L);
-        if (etait_visible)
-            lv_obj_invalidate_area(o_graphe, &avant_bulle);
+        snprintf(b, sizeof b, TXT("%s\n" UI_MARK_CHAUFFE " Eau %s°#\nConsigne %d°%s%s", "%s\n" UI_MARK_CHAUFFE " Water %s°#\nSetpoint %d°%s%s"), h, t, (bc_hist.consigne[i] + 5) / 10,
+                 relais(i) ? TXT("\n" UI_MARK_RELIS " Chauffe#", "\n" UI_MARK_RELIS " Heating#") : "", bc_bit(bc_hist.creuses, i) ? TXT("\nHeures creuses", "\nOff-peak") : TXT("\nHeures pleines", "\nPeak"));
+        uc_bulle_poser(o_bulle, o_bulle_txt, b, cadre(nullptr), i, g_zone, G_Y + 4, UI_ZONE_L, o_graphe);
     }
-    const uc_cadre_t c = cadre(nullptr);
-    for (int k = 0; k < 2; k++)
-    {
-        const int j = k == 0 ? i_avant : i;
-        if (j < 0)
-            continue;
-        const lv_coord_t px = c.x(j);
-        lv_area_t bande = {(lv_coord_t)(px - 8), c.haut, (lv_coord_t)(px + 8), c.bas}; // ±8 : trait 1 px + pastille rayon 6
-        lv_obj_invalidate_area(o_graphe, &bande);
-    }
+    uc_repeindre_bandes(cadre(nullptr), o_graphe, i_avant, i);
 }
 
 static void doigt_cb(lv_event_t *e)
 {
-    const lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING)
-    {
-        const int i = uc_point_du_doigt(cadre(nullptr));
-        if (i != g_scrub)
-        {
-            const int avant = g_scrub;
-            g_scrub = i;
-            // 06/11 (chantier 2) : premier appui (avant < 0) ou historique absent -> chemin complet ;
-            // PRESSING avec curseur déjà posé -> chemin léger (colonnes du curseur + bulle).
-            if (avant >= 0 && bc_hist.fin >= 0)
-                rafraichir_scrub(avant);
-            else
-                rafraichir_courbe(true);
-        }
-    }
-    else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
-    {
-        g_scrub = -1;
-        rafraichir_courbe(true);
-    }
+    // 06/11 (chantier 2) : premier appui ou historique absent -> chemin complet ; sinon léger (colonnes + bulle).
+    uc_lecture_doigt(e, { &g_scrub, [] { return cadre(nullptr); },
+                          [](int) { return bc_hist.fin >= 0; }, rafraichir_scrub, [] { rafraichir_courbe(true); } });
 }
 
-// 06/11 (mesure du chantier 2, audit e58325f) : un pas de la lecture au doigt sur la courbe du
-// ballon, sans indev ni /glisser ni /toucher ni forcer — précédent : /scrubgraph (4f41058).
-// Emprunte le chemin du doigt (doigt_cb : PRESSED/PRESSING -> point du doigt -> g_scrub ->
-// rafraichir_courbe(true)) avec la MÊME correspondance x -> point que uc_point_du_doigt
-// (ui_courbe.cpp:399-405, calcul recopié car uc_point_du_doigt lit lv_indev_get_act() et ne
-// marche que dans un événement de doigt — seul écart forcé par le verrou de geste).
-// Fonctions appelées par le pas (celles du doigt, rien de plus) :
-//   rafraichir_courbe(true) = valeur o_cval + couleur, min/max (o_cmin/o_cmax), bulle (texte
-//   o_bulle_txt + repositionnement uc_bulle_placer), puis empreinte (bc_hist + g_scrub) ->
-//   lv_obj_invalidate(o_graphe) EN ENTIER (page_ballon.cpp:490, 144 632 px — l'objet mesuré).
-// La repeinte effective passe par graphe_cb (grille, bandes chauffe, heures, creuses/pleines,
-// dégradé, escalier de consigne, barres d'eau, curseur) : c'est bien le chemin réel du geste.
+// Hook de banc : un pas de lecture au doigt sans indev — même machine à états que doigt_cb, branchement
+// compris (le banc mesure le chemin réel du geste).
 void page_ballon_banc_scrub(int x_doigt)
 {
     if (!o_graphe)
         return;
-    if (x_doigt < 0) // relâcher, comme LV_EVENT_RELEASED / PRESS_LOST
-    {
-        if (g_scrub != -1)
-        {
-            g_scrub = -1;
-            rafraichir_courbe(true);
-        }
-        return;
-    }
-    const uc_cadre_t c = cadre(nullptr);
-    const int i = c.premier + (int)lroundf((float)(x_doigt - c.x0) * (c.n - 1) / (c.x1 - c.x0));
-    const int borne = LV_CLAMP(c.premier, i, c.premier + c.n - 1);
-    if (borne != g_scrub)
-    {
-        const int avant = g_scrub;
-        g_scrub = borne;
-        // comme le doigt, branchement compris (le banc mesure le chemin réel du geste)
-        if (avant >= 0 && bc_hist.fin >= 0)
-            rafraichir_scrub(avant);
-        else
-            rafraichir_courbe(true);
-    }
+    uc_lecture_banc(x_doigt, { &g_scrub, [] { return cadre(nullptr); },
+                               [](int) { return bc_hist.fin >= 0; }, rafraichir_scrub, [] { rafraichir_courbe(true); } });
 }
 
 static void construire(); // déclarée plus bas (section PAGE) : l'outil du banc l'emprunte comme onglet_cb
@@ -655,15 +557,11 @@ static void construire_courbe(lv_obj_t *z)
         lv_obj_set_pos(p, x, G_Y + 234);
         lv_obj_t *l = ui_label(z, UI_POLICE_LEGENDE, UI_TEXTE2, noms[k]);
         lv_obj_set_pos(l, x + 14, G_Y + 231);
-#if LVGL_VERSION_MAJOR >= 9
         // 9.6 : lv_txt_get_width n'existe plus (l'alias api_map/lv_api_map_v8.h:172 renvoie à lv_text_get_width, qui
         // n'est déclaré nulle part) — même mesure avec lv_text_get_size (font/lv_text.h:117)
         lv_point_t sz;
         lv_text_get_size(&sz, noms[k], UI_POLICE_LEGENDE, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
         x += 14 + sz.x + 12;
-#else
-        x += 14 + lv_txt_get_width(noms[k], strlen(noms[k]), UI_POLICE_LEGENDE, 0, LV_TEXT_FLAG_NONE) + 12;
-#endif
     }
     lv_obj_set_pos(ui_label(z, UI_POLICE_LEGENDE, UI_FROID, TXT("Eau chaude tirée · litres par 2 h", "Hot water drawn · litres per 2 h")), 4, G_Y + 262);
     o_bulle = uc_bulle(z, &o_bulle_txt);

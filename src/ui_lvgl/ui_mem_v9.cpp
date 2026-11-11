@@ -1,14 +1,3 @@
-// 06/11/2026 (mission RAM, retour d'usage : « 8k c'est accepté / 100k de moins ce n'est pas acceptable ») :
-// backend d'allocation LVGL 9.6 en LV_STDLIB_CUSTOM — le même choix que la 8.4 livrée
-// (maitre-84/include/lv_conf.h:49 : « LV_MEM_CUSTOM 1 » avec ps_malloc, realloc en ps_realloc :74).
-// Le réglage vient de .banc_v9_esp/gen_conf.py (ligne « LV_USE_STDLIB_MALLOC »), plus d'édition
-// manuelle de conf_v9/lv_conf.h. En LV_STDLIB_CLIB (conf générée jusqu'ici), le
-// heap_caps_malloc_extmem_enable(512) de setup()
-// ne poussait en PSRAM que les blocs > 512 o : les structures LVGL (objets, styles, écrans, tâches
-// de dessin, une par zone sale et par image) restaient dans le tas interne — mesuré 06/11 :
-// interne 41 656 o au début de la page Informations, 14 996 o à la fin, plus gros bloc 7 156 o.
-// Contrat des quatre fonctions lu dans lib/lvgl-9.6.0/include/lvgl/stdlib/lv_mem.h:122-141.
-// Comme ps_malloc en 8.4 : PSRAM d'abord, repli RAM interne si la PSRAM manque.
 #include <lvgl.h>
 
 // Garde : ne définir ces symboles QUE quand la conf choisit le backend CUSTOM. En CLIB, la lib

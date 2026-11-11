@@ -5,11 +5,7 @@
 #define FIN_ANNEAU 0x0A0E14 // segment du bas : un cran (RGB565) plus foncé que le fond 0x0F1216
 #define ROUGE_CHAUD 0xFF5B4B
 
-#if LVGL_VERSION_MAJOR >= 9
 using anneau_cible_t = lv_layer_t; // 9.6 : la layer du draw task en cours (avant : lv_draw_ctx_t)
-#else
-using anneau_cible_t = lv_draw_ctx_t;
-#endif
 
 static lv_color_t degrade(float t)
 {

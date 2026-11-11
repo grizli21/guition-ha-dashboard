@@ -169,11 +169,9 @@ void ui_shell_creer(const ui_page_t *pages, int nb, int page_accueil)
     // amenait la dernière icône en haut : du vide dessous) ni élastique : il s'arrête sur la première / la dernière icône
     lv_obj_clear_flag(g_rail, LV_OBJ_FLAG_SCROLL_ELASTIC);
     lv_obj_set_scrollbar_mode(g_rail, LV_SCROLLBAR_MODE_OFF);
-    // 27/10 : la caméra s'arrête dès que le doigt se pose sur le rail, et ne repart que quand il est levé ET que le rail est
-    // IMMOBILE depuis RAIL_REPRISE_MS (300 ms ; essayé 1000 : le tremblement venait d'ailleurs, cf. g_sync_aussitot ; retour d'usage : « mets le stream en pause jusqu'à la fin du mouvement du rail ») : l'élan avance
-    // par petits pas qui ont chacun leur début / fin de défilement ; relancée entre deux pas, la caméra espaçait les pas
-    // (47 -> 135-300 ms, mesuré) et l'élan durait 1,4 à 3 s au lieu de 0,4 à 0,8 ; les appuis des icônes remontent
-    // jusqu'au rail (LV_OBJ_FLAG_EVENT_BUBBLE)
+    // La caméra s'arrête dès que le doigt se pose sur le rail et ne repart que rail IMMOBILE depuis
+    // RAIL_REPRISE_MS : relancée entre deux pas de l'élan, elle espaçait les pas (47 -> 135-300 ms) et l'élan
+    // durait 1,4 à 3 s au lieu de 0,4 à 0,8.
     lv_obj_add_event_cb(g_rail, [](lv_event_t *e)
                         {
                             static bool appuye = false;

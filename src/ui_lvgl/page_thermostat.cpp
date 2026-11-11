@@ -22,14 +22,6 @@
 #define DECALAGE_X 15        // anneau + demi-cercle décalés vers la droite
 #define ROUGE_CHAUD 0xFF5B4B
 
-th_piece_t th_pieces[TH_NB_PIECES] = {
-    {TXT("Cuisine", "Kitchen"), 0, 15, TH_ARRET, false, 0, 100, 255},
-    {TXT("Séjour", "Living Room"), 0, 15, TH_ARRET, false, 0, 100, 255},
-    {TXT("Chambre 1", "Bedroom 1"), 0, 15, TH_ARRET, false, 0, 100, 255},
-    {TXT("Chambre 2", "Bedroom 2"), 0, 15, TH_ARRET, false, 0, 100, 255},
-    {TXT("Salle de bain", "Bathroom"), 0, 20, TH_ARRET, false, 0, 100, 255},
-};
-int th_piece_affichee = 0;
 float th_ext_temp = 0;
 int th_ext_hum = 0;
 void (*th_commande)(int piece, th_mode_t mode, float consigne) = nullptr;
@@ -38,7 +30,8 @@ static const char *NOMS_MODE[] = {TXT("Arrêt", "Off"), TXT("Hors-gel", "Frost")
 static const float CONSIGNE_MODE[] = {0, 8, 16, 20, 0};
 
 // Pointeurs valides seulement quand la page est affichée (remis à nullptr par page_thermostat_quitter)
-static lv_obj_t *o_ext_temp, *o_ext_hum, *o_nom, *o_points[TH_NB_PIECES];
+static lv_obj_t *o_ext_temp, *o_ext_hum;
+static ui_tete_piece_t g_tete;
 static lv_obj_t *o_anneau, *o_arc, *o_valeur, *o_consigne, *o_modes[4]; // 07/11 (ESSAI) : icône du radiateur retirée, la lueur la remplace
 static bool g_reglage = false; // doigt sur l'anneau : on affiche la consigne
 // 31/10 (retour d'usage) : au toucher d'un préréglage, la consigne glisse sur l'anneau de l'ancienne valeur à la nouvelle
@@ -50,13 +43,7 @@ static float g_cons_anim = NAN; // consigne dessinée pendant la transition (NAN
 static float g_front = NAN;       // position du front sur l'anneau (0..1) ; NAN : pas de balayage
 static bool g_vers_arret = false; // balayage descendant : la pièce est déjà à l'arrêt, l'anneau se dessine encore en marche
 
-static void fmt1(char *buf, size_t n, float v)
-{
-    snprintf(buf, n, "%.1f", v);
-    for (char *p = buf; *p; p++)
-        if (*p == '.')
-            *p = SEP_CAR;
-}
+static void fmt1(char *buf, size_t n, float v) { ui_fmt_float(buf, n, v, 1); }
 
 static th_mode_t mode_de_consigne(float c)
 {
@@ -97,12 +84,8 @@ static void disque(uc_cible_t *ctx, lv_point_t c, lv_coord_t d, lv_color_t coul,
     uc_carre(ctx, r, &z);
 }
 
-// 04/11/2026 : l'anneau décrit élément par élément (135 segments de 2°, segment du bas, 20 fondus, 2 bouts arrondis,
-// point de la pièce), avec le rectangle que chacun peut toucher. Mesuré sur l'écran (cuisine) : l'anneau entier en arcs
-// coûte ~46 ms ; il était redessiné EN ENTIER à chaque pas de 0,5° du glissé et à chaque image de la transition. Le
-// dessin et rafraichir() lisent la même description : rafraichir() ne fait repeindre que les rectangles des éléments
-// qui changent, et le dessin saute les éléments hors de la zone à repeindre. Mêmes appels de dessin, dans le même
-// ordre : pixels identiques (vérifié au simulateur contre les captures d'avant).
+// L'anneau est décrit élément par élément (135 segments de 2°, chacun avec le rectangle qu'il peut toucher) :
+// rafraichir() ne repeint que les rectangles des éléments qui changent, le dessin saute les éléments hors zone.
 #define NB_SEG 135 // 135 segments de 2° = 270° (5° faisait des marches visibles)
 #define E_BAS NB_SEG            // segment uni du bas
 #define E_FONDU (NB_SEG + 1)    // 20 fondus : rouge i, bleu i, rouge i+1…
@@ -115,39 +98,23 @@ static void disque(uc_cible_t *ctx, lv_point_t c, lv_coord_t d, lv_color_t coul,
 #define LUEUR_D (2 * LUEUR_R)                 // 232 px de côté (ANNEAU_D 320, ANNEAU_L 46)
 #define LUEUR_CENTRE 0.60f                    // part du rouge au centre (vif au centre, éteint vers l'anneau)
 
-// 07/11 (ESSAI) : la lueur précalculée UNE fois en image. Couleur déjà mélangée au fond de la page, TRAMÉE
-// (Bayer 4x4) pour que les ~20 niveaux du rouge en RGB565 ne fassent pas de marches visibles (refusées au retour d'usage sans trame) ; opaque dans le disque, transparent hors du disque (les coins du carré passent sous
-// l'anneau et son cadre). 232 x 232 px = 161 472 o, soit 2 o de couleur + 1 o de masque par pixel.
-//   9.6 : RGB565A8 est PLANAIRE — tout le plan couleur (stride = largeur * 2) puis tout le masque A8
-//         (lib/lvgl-9.6.0/src/draw/sw/lv_draw_sw_img.c, lv_bin_decoder.c ; leçon du crash de la page Lumières,
-//         où l'écriture entrelacée 4 o/px a corrompu le tas). Header avec magic + stride, comme la vignette.
-//   8.4 : LV_IMG_CF_TRUE_COLOR_ALPHA est entrelacé (3 o par pixel, LV_IMG_PX_SIZE_ALPHA_BYTE).
+// Lueur précalculée UNE fois en image : TRAMÉE Bayer 4x4 (les ~20 niveaux de rouge en RGB565 font des
+// marches sans trame) ; en 9.6 RGB565A8 est PLANAIRE (tout le plan couleur puis tout le masque A8).
 static uint8_t *g_lueur_px = nullptr;
 static bool g_lueur_echec_signale = false;
 
 static void lueur_canaux(lv_color_t c, uint8_t *r, uint8_t *g, uint8_t *b)
 {
-#if LVGL_VERSION_MAJOR >= 9
     const uint32_t v = lv_color_to_u32(c); // include/lvgl/draw/lv_color.h:350
     *r = (uint8_t)(v >> 16);
     *g = (uint8_t)(v >> 8);
     *b = (uint8_t)v;
-#else
-    const lv_color32_t v = lv_color_to32(c);
-    *r = v.ch.red;
-    *g = v.ch.green;
-    *b = v.ch.blue;
-#endif
 }
 
 // Renvoie lv_image_dsc_t* en 9.6, lv_img_dsc_t* en 8.4, nullptr si l'allocation a échoué (dessin alors sauté)
 static const void *lueur_image()
 {
-#if LVGL_VERSION_MAJOR >= 9
     static lv_image_dsc_t img;
-#else
-    static lv_img_dsc_t img;
-#endif
     static bool pret = false;
     if (pret)
         return &img;
@@ -159,11 +126,7 @@ static const void *lueur_image()
     ui_trace("[lueur-diag] avant : PSRAM %u o ; interne %u o\n", (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
 #endif
-#if LVGL_VERSION_MAJOR >= 9
     g_lueur_px = (uint8_t *)lv_malloc(total * 3);
-#else
-    g_lueur_px = (uint8_t *)lv_mem_alloc(total * LV_IMG_PX_SIZE_ALPHA_BYTE);
-#endif
 #ifdef ARDUINO
     ui_trace("[lueur-diag] %d o demandés : tampon %p ; PSRAM %u o ; interne %u o\n", total * 3, (void *)g_lueur_px,
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM), (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
@@ -189,12 +152,8 @@ static const void *lueur_image()
             const int i = y * LUEUR_D + x;
             if (r >= 1.0f) // hors du disque : transparent
             {
-#if LVGL_VERSION_MAJOR >= 9
                 * (uint16_t *)(g_lueur_px + 2 * i) = 0;
                 g_lueur_px[2 * total + i] = LV_OPA_TRANSP;
-#else
-                memset(g_lueur_px + i * LV_IMG_PX_SIZE_ALPHA_BYTE, 0, LV_IMG_PX_SIZE_ALPHA_BYTE);
-#endif
                 continue;
             }
             const float k = LUEUR_CENTRE * (1 - r) * (1 - r);     // intensité : douce vers le bord
@@ -205,17 +164,10 @@ static const void *lueur_image()
                 return (uint8_t)LV_MIN(255, (int)(v + trame * pas));
             };
             const lv_color_t c = lv_color_make(canal(rr, fr, 8), canal(rg, fg, 4), canal(rb, fb, 8));
-#if LVGL_VERSION_MAJOR >= 9
             const uint16_t v = lv_color_to_u16(c); // RGB565 natif, dans l'ordre d'octets de la cible
             memcpy(g_lueur_px + 2 * i, &v, sizeof v);
             g_lueur_px[2 * total + i] = LV_OPA_COVER;
-#else
-            uint8_t *d = g_lueur_px + i * LV_IMG_PX_SIZE_ALPHA_BYTE;
-            memcpy(d, &c, sizeof c);
-            d[LV_IMG_PX_SIZE_ALPHA_BYTE - 1] = LV_OPA_COVER;
-#endif
         }
-#if LVGL_VERSION_MAJOR >= 9
     memset(&img, 0, sizeof img);
     img.header.magic = LV_IMAGE_HEADER_MAGIC;
     img.header.cf = LV_COLOR_FORMAT_RGB565A8;
@@ -224,14 +176,6 @@ static const void *lueur_image()
     img.header.stride = LUEUR_D * 2; // planaire : stride du plan couleur
     img.data_size = total * 3;
     img.data = g_lueur_px;
-#else
-    img.header.always_zero = 0;
-    img.header.w = LUEUR_D;
-    img.header.h = LUEUR_D;
-    img.header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA;
-    img.data_size = total * LV_IMG_PX_SIZE_ALPHA_BYTE;
-    img.data = g_lueur_px;
-#endif
     pret = true;
     return &img;
 }
@@ -309,12 +253,7 @@ static void decrire(const th_piece_t &p, elem_t *e)
     }
     e[E_POINT] = {ui_c(UI_FOND), true, t_piece}; // 31/10 : 14 -> 22 px
     e[E_LUEUR] = {ui_c(ROUGE_CHAUD),
-#ifdef LUEUR_ESSAI_FORCE
-                  true, // 07/11 build de MESURE uniquement (drapeau jamais mis dans platformio.ini) : la lueur
-                        // s'affiche même sans chauffe, pour mesurer PSRAM et le coût d'une repeinte sans forcer HA
-#else
                   p.chauffe && !arret,
-#endif
                   0}; // 07/11 (ESSAI) : remplace le radiateur orange
 }
 
@@ -366,7 +305,7 @@ static lv_area_t decaler(lv_area_t z, lv_point_t c) { return {(lv_coord_t)(z.x1 
 
 static void anneau_dessin_cb(lv_event_t *e)
 {
-    uc_cible_t *ctx = uc_cible_du(e); // 9.6 : la layer du draw task (avant : lv_event_get_draw_ctx)
+    uc_cible_t *ctx = uc_cible_du(e);
     const lv_point_t centre = centre_de(uc_objet_du(e));
     elem_t el[NB_ELEM];
     decrire(th_pieces[th_piece_affichee], el);
@@ -422,11 +361,7 @@ static bool g_affiche_connu = false;
 // 9.6 : lv_color_t n'a plus de champ « full » (draw/lv_color.h:107-111 : blue/green/red) — comparaison champ par champ
 static bool couleur_egale(lv_color_t a, lv_color_t b)
 {
-#if LVGL_VERSION_MAJOR >= 9
     return a.red == b.red && a.green == b.green && a.blue == b.blue;
-#else
-    return a.full == b.full;
-#endif
 }
 
 static bool elem_change(const elem_t &a, const elem_t &b) { return a.vis != b.vis || !couleur_egale(a.c, b.c) || (a.vis && a.t != b.t); }
@@ -512,7 +447,7 @@ static void cadre_dessin_cb(lv_event_t *e)
 // --- Rafraîchissement ---
 static void rafraichir()
 {
-    if (!o_nom)
+    if (!g_tete.nom)
         return;
     const th_piece_t &p = th_pieces[th_piece_affichee];
     char v[12];
@@ -520,9 +455,7 @@ static void rafraichir()
     ui_label_texte_fmt(o_ext_temp, "%.0f°C", th_ext_temp);
     ui_label_texte_fmt(o_ext_hum, "%d %%", th_ext_hum);
 
-    ui_label_texte(o_nom, p.nom);
-    for (int i = 0; i < TH_NB_PIECES; i++)
-        ui_style_bg_color(o_points[i], ui_c(i == th_piece_affichee ? UI_TEXTE : UI_ETEINT), 0);
+    ui_tete_piece_maj(&g_tete, th_piece_affichee);
 
     bool arret = p.mode == TH_ARRET;
     if (arret && !g_vers_arret) // 07/11 : pendant le balayage vers l'arrêt, le bouton reste visible et descend
@@ -610,37 +543,15 @@ static void balayer(float de, float a, bool vers_arret)
     lv_anim_start(&an);
 }
 
-static void piece_cb(lv_event_t *e)
+// 11/11 (retour d'usage : même amélioration que la barre d'onglets) : toute la bande d'en-tête choisit la
+// pièce, à l'APPUI (ui_tete_piece). Pas de reconstruction de page ici (rafraichir) : rien à différer.
+static void piece_bande(bool saut, int valeur, void *)
 {
     transition_arreter();
-    int sens = (int)(intptr_t)lv_event_get_user_data(e);
-    th_piece_affichee = (th_piece_affichee + TH_NB_PIECES + sens) % TH_NB_PIECES;
-    rafraichir();
-}
-
-// 11/11 (retour d'usage : même amélioration que la barre d'onglets) : toute la bande d'en-tête choisit la pièce, à
-// l'APPUI. Moitié gauche = précédente, moitié droite = suivante ; un appui sur la rangée de points saute à ce point
-// (cellule de 18 px par point). Les flèches ne sont plus que des repères. Pas de reconstruction de page ici
-// (rafraichir) : rien à différer.
-#define BANDE_PIECE_H 60 // en-tête : nom + points (≈49) ; l'anneau commence à 72
-#define POINTS_Y 40      // haut de la rangée de points (lv_obj_align … 0, 40)
-#define POINT_PAS 18     // point de 9 px + écart de 9 px
-static void bande_piece_cb(lv_event_t *e)
-{
-    lv_indev_t *indev = lv_indev_active();
-    if (!indev)
-        return;
-    lv_point_t p;
-    lv_indev_get_point(indev, &p);
-    lv_area_t z;
-    lv_obj_get_coords((lv_obj_t *)lv_event_get_target(e), &z);
-    const int x = p.x - z.x1, y = p.y - z.y1, l = lv_area_get_width(&z);
-    transition_arreter();
-    const int rangee = TH_NB_PIECES * POINT_PAS, x0 = (l - rangee) / 2;
-    if (y >= POINTS_Y - 10 && x >= x0 - 4 && x < x0 + rangee + 4)
-        th_piece_affichee = LV_CLAMP(0, (x - x0) / POINT_PAS, TH_NB_PIECES - 1);
+    if (saut)
+        th_piece_affichee = valeur;
     else
-        th_piece_affichee = (th_piece_affichee + TH_NB_PIECES + (x < l / 2 ? -1 : 1)) % TH_NB_PIECES;
+        th_piece_affichee = (th_piece_affichee + TH_NB_PIECES + valeur) % TH_NB_PIECES;
     rafraichir();
 }
 
@@ -705,44 +616,9 @@ static void arc_cb(lv_event_t *e)
 // --- Construction ---
 void page_thermostat_creer(lv_obj_t *zone)
 {
-    // Pièce : < nom > + points (plus de bandeau extérieur en haut : toute la surface pour la pièce, 18/10)
-    lv_obj_t *prec = ui_bouton(zone, 56, 44);
-    ui_style_bg_opa(prec, LV_OPA_TRANSP, 0);
-    ui_style_border_width(prec, 0, 0);
-    lv_obj_set_pos(prec, 8, 0);
-    lv_obj_center(ui_label(prec, UI_POLICE_CHEVRONS, UI_TEXTE2, LV_SYMBOL_LEFT)); // 27/10 : 30 -> 36 (retour d'usage)
-    lv_obj_add_event_cb(prec, piece_cb, LV_EVENT_CLICKED, (void *)(intptr_t)-1);
-
-    lv_obj_t *suiv = ui_bouton(zone, 56, 44);
-    ui_style_bg_opa(suiv, LV_OPA_TRANSP, 0);
-    ui_style_border_width(suiv, 0, 0);
-    lv_obj_set_pos(suiv, UI_ZONE_L - 8 - 56, 0);
-    lv_obj_center(ui_label(suiv, UI_POLICE_CHEVRONS, UI_TEXTE2, LV_SYMBOL_RIGHT));
-    lv_obj_add_event_cb(suiv, piece_cb, LV_EVENT_CLICKED, (void *)(intptr_t)1);
-    // 11/11 : les flèches deviennent des repères ; la bande transparente ci-dessous (créée plus bas, donc au-dessus) reçoit l'appui
-    lv_obj_clear_flag(prec, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_clear_flag(suiv, LV_OBJ_FLAG_CLICKABLE);
-
-    o_nom = ui_label(zone, UI_POLICE_NOM_PIECE, UI_TEXTE, ""); // essai 3x5 refusé (18/10) ; 27/10 : en gras (retour d'usage)
-    lv_obj_align(o_nom, LV_ALIGN_TOP_MID, 0, 2);
-    lv_obj_t *points = ui_conteneur(zone);
-    lv_obj_set_size(points, LV_SIZE_CONTENT, 9);
-    lv_obj_set_flex_flow(points, LV_FLEX_FLOW_ROW);
-    lv_obj_set_style_pad_column(points, 9, 0);
-    lv_obj_align(points, LV_ALIGN_TOP_MID, 0, 40);
-    for (int i = 0; i < TH_NB_PIECES; i++)
-    {
-        o_points[i] = ui_conteneur(points);
-        lv_obj_set_size(o_points[i], 9, 9);
-        lv_obj_set_style_radius(o_points[i], LV_RADIUS_CIRCLE, 0);
-        ui_style_bg_opa(o_points[i], LV_OPA_COVER, 0);
-    }
-    lv_obj_t *bande = ui_conteneur(zone); // 11/11 : toute l'en-tête choisit la pièce (bande_piece_cb)
-    lv_obj_set_size(bande, UI_ZONE_L, BANDE_PIECE_H);
-    lv_obj_set_pos(bande, 0, 0);
-    lv_obj_add_flag(bande, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_clear_flag(bande, LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_add_event_cb(bande, bande_piece_cb, LV_EVENT_PRESSED, nullptr);
+    // Pièce : flèches-repères + nom + points + bande cliquable (plus de bandeau extérieur en haut :
+    // toute la surface pour la pièce, 18/10 ; bande d'en-tête, 11/11) — en-tête partagé avec les Graphes (lot 5).
+    ui_tete_piece(zone, &g_tete, piece_bande, nullptr);
 
     // Anneau dessiné + arc transparent par-dessus pour le bouton à faire glisser
     const lv_coord_t ax = (UI_ZONE_L - ANNEAU_D) / 2 + DECALAGE_X, ay = 72; // sous l'en-tête (points à ≈49), trait du bas au-dessus des pastilles (414)
@@ -844,7 +720,7 @@ void page_thermostat_creer(lv_obj_t *zone)
 
 void page_thermostat_quitter()
 {
-    o_nom = nullptr; // rafraichir() ne touche plus à rien
+    g_tete.nom = nullptr; // rafraichir() ne touche plus à rien
     g_reglage = false;
     transition_arreter();
 }
@@ -853,7 +729,7 @@ void page_thermostat_quitter()
 // que le fait arc_cb (bouton déplacé + consigne + rafraîchir), SANS envoyer de commande à HA (th_commande non appelé).
 bool page_thermostat_centre_anneau(lv_point_t *c)
 {
-    if (!o_nom)
+    if (!g_tete.nom)
         return false;
     lv_area_t a;
     lv_obj_get_coords(o_anneau, &a);
@@ -863,7 +739,7 @@ bool page_thermostat_centre_anneau(lv_point_t *c)
 
 void page_thermostat_banc_glisse(float consigne, bool fin)
 {
-    if (!o_nom)
+    if (!g_tete.nom)
         return;
     th_piece_t &p = th_pieces[th_piece_affichee];
     if (fin)

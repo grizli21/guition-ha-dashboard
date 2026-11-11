@@ -172,21 +172,11 @@ void ui_diag_demarrer()
     esp_rom_install_channel_putc(1, rom_putc);
     // avertissements, erreurs, assertions de LVGL ; sauf « Style might be already inited » : 21 fois au démarrage, le thème
     // par défaut réinitialisé par ui_theme_init (LVGL l'a déjà fait à l'enregistrement de l'écran), sans suite
-#if LVGL_VERSION_MAJOR >= 9
-    // 05/11/2026 (étape 2-vague E) : en 9.6 le callback de log prend le NIVEAU en premier paramètre
-    // (« lv_log_print_g_cb_t » = « void (*)(lv_log_level_t, const char *) », include/lvgl/logging/lv_log.h:51).
-    // Le texte, lui, garde son préfixe : c'est lv_log_add qui formate « [Warn] … (fichier:ligne) » puis appelle
-    // « custom_print_cb(level, buf) » (src/logging/lv_log.c:99-105) — la trace « [lvgl] … » reste donc identique,
-    // et le même filtre « already inited » reste valide (le message existe toujours : src/misc/lv_style.c:189).
     lv_log_register_print_cb([](lv_log_level_t niveau, const char *texte)
                              {
                                  (void)niveau;
                                  if (!strstr(texte, "already inited")) ui_trace("[lvgl] %s", texte);
                              });
-#else
-    lv_log_register_print_cb([](const char *texte)
-                             { if (!strstr(texte, "already inited")) ui_trace("[lvgl] %s", texte); });
-#endif
     // reconfigure celui du framework (5 s, plantage) : 10 s, sans plantage (voir le crochet plus haut), tâche inactive du
     // cœur 0 toujours surveillée (comme le framework) ; IDF 5 : reconfigure, init seulement s'il n'existe pas encore
     esp_task_wdt_config_t chien = {};
@@ -339,11 +329,9 @@ static bool ram_marcher(walker_heap_into_t, walker_block_info_t b, void *)
 
 size_t ui_camera_etat_connexions(char *s, size_t n); // ui_camera_esp.cpp
 
-// 07/11 : marche du tas PSRAM. La fuite signalée au retour d'usage (« psram 0.5mo ») ne se voyait pas : la commande
-// « ram » ne parcourait que la RAM interne, et 1,48 Mo libres ne disaient pas qu'il ne restait aucun bloc
-// contigu de 460 800 o (le tampon du banc). Ici : les blocs PSRAM >= 64 Ko avec leur adresse, le nombre de
-// trous libres et la taille du plus grand. Seuil haut volontaire : la PSRAM contient des milliers de petits
-// blocs LVGL, tout lister ferait déborder le rapport de 12 Ko.
+// Marche du tas PSRAM (blocs >= 64 Ko, nombre de trous, plus grand bloc) : « 1,48 Mo libres » ne dit pas
+// qu'il ne reste aucun bloc contigu de 460 800 o. Seuil haut volontaire : la PSRAM contient des milliers
+// de petits blocs LVGL.
 static ram_bloc_t *g_blocs_p;
 static int g_nb_blocs_p;
 static uint32_t g_p_gas_n, g_p_gas_o, g_p_trou_max, g_p_debordes, g_p_utilise;

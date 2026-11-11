@@ -71,24 +71,10 @@ void uc_heures(const uc_cadre_t &c, int minute_fin, int mpp, int ecart)
 static bool valeur_en_x(const uc_cadre_t &c, const uc_serie_t &s, lv_coord_t x, float &v);
 static float y_exact(const uc_cadre_t &c, float v) { return c.bas - (LV_CLAMP(c.lo, v, c.hi) - c.lo) / (c.hi - c.lo) * (c.bas - c.haut); }
 
-#if LVGL_VERSION_MAJOR >= 9
-// ---- 05/11/2026 (étape 2-vague B) : uc_trait et uc_degrade n'écrivent plus dans le tampon, ils créent des tasks.
-// En 8.4 ces deux rendus allaient pixel par pixel dans ctx->buf / ctx->clip_area / ctx->buf_area (c'était LE gain de
-// vitesse : 270 ms -> quelques ms, voir le commentaire d'origine ci-dessous). En 9.6 ce n'est plus faisable :
-//   1) le contexte n'expose plus de tampon : une layer a draw_buf + buf_area + _clip_area (draw/lv_draw.h:98-134),
-//      format variable (layer->color_format) et tampon morcelé ;
-//   2) surtout le RENDU n'est pas synchrone : lv_refr.c empile les tasks de toute la zone (lv_obj_redraw,
-//      core/lv_refr.c:128-133), pose layer->all_tasks_added (core/lv_refr.c:946) puis seulement dispatche (982-983).
-//      Avec LV_USE_OS = LV_OS_NONE (conf 9.6 hors dépôt, lv_conf.h:104) rien n'est rendu pendant la création des
-//      tasks : une écriture directe dans le tampon pendant DRAW_MAIN serait donc effacée par le fond de la carte,
-//      dont la task de remplissage a été créée avant la nôtre.
-// Le calcul reste IDENTIQUE (mêmes colonnes couvertes, mêmes lignes, mêmes parts de pixel), mais exprimé en
-// lv_draw_fill : une task par plage de colonnes consécutives qui donnent exactement le même haut/bas (cas des
-// données plates), plus une task par bord partiel. NOMBRE DE TASKS DONC DÉPEND DE LA COURBE (pire cas : une colonne
-// = une plage = 3 tasks, ~1000 tasks par courbe ; lv_draw_add_task cherche le bout de la liste à chaque ajout,
-// src/draw/lv_draw.c:112-121, donc coût en n²/2) -> À MESURER sur l'écran, c'est le principal risque de
-// régression de cette étape. Le seul moyen de retrouver la vitesse 8.4 serait une unité de dessin personnalisée
-// (lv_draw_create_unit, draw/lv_draw.h:150) — hors de portée ici, elle demande lv_draw_private.h (non public).
+// uc_trait et uc_degrade créent des tasks lv_draw_fill : en 9.6 le rendu n'est pas synchrone et le tampon
+// n'est plus accessible — écrire « à la main » comme en 8.4 serait effacé par le fond de la carte. Une task
+// par plage de colonnes donnant le même haut/bas + bords partiels ; le nombre de tasks dépend de la courbe
+// (lv_draw_add_task coûte en n²/2 — risque mesuré depuis : acceptable).
 static void plage_trait(uc_cible_t *ctx, lv_coord_t xa, lv_coord_t xb, float haut, float bas, lv_color_t col,
                         const lv_area_t &clip)
 {
@@ -159,51 +145,6 @@ void uc_trait(const uc_cadre_t &c, const uc_serie_t &s, uint32_t couleur, lv_coo
             rg_a = x, rg_haut = haut, rg_bas = bas, rg = true;
     }
 }
-#else
-// 25/10 (retour d'usage : « l'aliasing sur le haut du graphe ») : la courbe était tracée en segments LVGL entre points arrondis au
-// pixel (288 points sur ~350 px : des segments d'un pixel, que le lissage de LVGL ne rattrape pas -> marches). Elle est
-// maintenant dessinée colonne par colonne depuis sa position exacte : chaque colonne couvre le trait sur son épaisseur et
-// jusqu'à mi-chemin des colonnes voisines (pentes raides continues), bords lissés selon la part de pixel couverte.
-void uc_trait(const uc_cadre_t &c, const uc_serie_t &s, uint32_t couleur, lv_coord_t largeur)
-{
-    lv_draw_ctx_t *ctx = c.ctx;
-    const lv_area_t &clip = *ctx->clip_area, &zone = *ctx->buf_area;
-    lv_color_t *buf = (lv_color_t *)ctx->buf;
-    const lv_coord_t larg = lv_area_get_width(&zone);
-    const lv_color_t col = ui_c(couleur);
-    const float demi = largeur / 2.0f;
-    const lv_coord_t xa = LV_MAX(c.x0, clip.x1), xb = LV_MIN(c.x1, clip.x2);
-    for (lv_coord_t x = xa; x <= xb; x++)
-    {
-        float v, vg, vd;
-        if (!valeur_en_x(c, s, x, v))
-            continue;
-        const float y = y_exact(c, v);
-        float haut = y, bas = y;
-        if (x > c.x0 && valeur_en_x(c, s, x - 1, vg))
-        {
-            const float m = (y + y_exact(c, vg)) / 2;
-            haut = LV_MIN(haut, m), bas = LV_MAX(bas, m);
-        }
-        if (x < c.x1 && valeur_en_x(c, s, x + 1, vd))
-        {
-            const float m = (y + y_exact(c, vd)) / 2;
-            haut = LV_MIN(haut, m), bas = LV_MAX(bas, m);
-        }
-        haut -= demi, bas += demi;
-        const lv_coord_t ya = LV_MAX((lv_coord_t)haut, clip.y1), yb = LV_MIN((lv_coord_t)bas, clip.y2);
-        lv_color_t *px = buf + (lv_coord_t)(ya - zone.y1) * larg + (x - zone.x1);
-        for (lv_coord_t yy = ya; yy <= yb; yy++, px += larg)
-        {
-            const float couvert = LV_MIN(yy + 1.0f, bas) - LV_MAX((float)yy, haut); // part du pixel dans le trait
-            if (couvert >= 0.99f)
-                *px = col;
-            else if (couvert > 0.02f)
-                *px = lv_color_mix(col, *px, (uint8_t)(couvert * 255));
-        }
-    }
-}
-#endif
 
 // Valeur interpolée sous la colonne de pixels x (false : trou de mesure de part et d'autre)
 static bool valeur_en_x(const uc_cadre_t &c, const uc_serie_t &s, lv_coord_t x, float &v)
@@ -217,7 +158,6 @@ static bool valeur_en_x(const uc_cadre_t &c, const uc_serie_t &s, lv_coord_t x, 
     return true;
 }
 
-#if LVGL_VERSION_MAJOR >= 9
 // 9.6 : même calcul que la version 8.4 ci-dessous (qui écrivait dans le tampon), rendu par des tasks de remplissage.
 // Une plage = des colonnes consécutives dont le HAUT tombe exactement au même endroit (données plates) : une task de
 // dégradé + une task pour la ligne du haut partiellement couverte. Le dégradé est calé sur la première ligne
@@ -257,42 +197,6 @@ void uc_degrade(const uc_cadre_t &c, const uc_serie_t &s, uint32_t couleur)
             rg_a = x, rg_yf = yf, rg = true;
     }
 }
-#else
-// 25/10 (retour d'usage : « page graphe lente, quel est le consommateur ? ») : mesuré sur Chambre 1, ce dégradé prenait 86 % du
-// dessin du graphe (~270 ms sur ~310 par image : un rectangle en dégradé LVGL par colonne, refait à chaque bande de 80
-// lignes). Les pixels sont maintenant calculés directement dans le tampon de dessin, même rendu (couleur de la courbe
-// estompée en haut de chaque colonne -> fond en bas) ; le pixel du haut est mélangé selon la position exacte de la courbe
-// (« l'aliasing sur le haut du graphe » : le remplissage commençait sur un pixel entier, en marches).
-void uc_degrade(const uc_cadre_t &c, const uc_serie_t &s, uint32_t couleur)
-{
-    lv_draw_ctx_t *ctx = c.ctx;
-    const lv_area_t &clip = *ctx->clip_area, &zone = *ctx->buf_area;
-    lv_color_t *buf = (lv_color_t *)ctx->buf;
-    const lv_coord_t larg = lv_area_get_width(&zone);
-    const lv_color_t haut_c = lv_color_mix(ui_c(couleur), ui_c(UI_FOND), 105), fond = ui_c(UI_FOND);
-    const lv_coord_t xa = LV_MAX(c.x0, clip.x1), xb = LV_MIN(c.x1, clip.x2);
-    float v;
-    for (lv_coord_t x = xa; x <= xb; x++)
-    {
-        if (!valeur_en_x(c, s, x, v))
-            continue;
-        const float yf = c.bas - (LV_CLAMP(c.lo, v, c.hi) - c.lo) / (c.hi - c.lo) * (c.bas - c.haut); // haut exact
-        const float h = LV_MAX(c.bas - yf, 1.0f);
-        const lv_coord_t y0 = (lv_coord_t)yf; // pixel du haut, partiellement couvert
-        const lv_coord_t ya = LV_MAX(y0, clip.y1), yb = LV_MIN(c.bas, clip.y2);
-        lv_color_t *px = buf + (lv_coord_t)(ya - zone.y1) * larg + (x - zone.x1);
-        for (lv_coord_t y = ya; y <= yb; y++, px += larg)
-        {
-            const float k = LV_CLAMP(0.0f, (y - yf) / h, 1.0f); // 0 en haut, 1 en bas
-            const lv_color_t col = lv_color_mix(fond, haut_c, (uint8_t)(k * 255));
-            if (y == y0) // couvert de (y0 + 1 - yf)
-                *px = lv_color_mix(col, *px, (uint8_t)((y0 + 1 - yf) * 255));
-            else
-                *px = col;
-        }
-    }
-}
-#endif
 
 void uc_principale(const uc_cadre_t &c, const uc_serie_t &s, uint32_t couleur)
 {
@@ -396,12 +300,94 @@ void uc_curseur(const uc_cadre_t &c, int i, const uc_serie_t &s, uint32_t couleu
     uc_carre(c.ctx, pd, &pa);
 }
 
+int uc_point_sans_doigt(const uc_cadre_t &c, int x)
+{
+    const int i = c.premier + (int)lroundf((float)(x - c.x0) * (c.n - 1) / (c.x1 - c.x0));
+    return LV_CLAMP(c.premier, i, c.premier + c.n - 1);
+}
+
 int uc_point_du_doigt(const uc_cadre_t &c)
 {
     lv_point_t p;
     lv_indev_get_point(lv_indev_get_act(), &p);
-    const int i = c.premier + (int)lroundf((float)(p.x - c.x0) * (c.n - 1) / (c.x1 - c.x0));
-    return LV_CLAMP(c.premier, i, c.premier + c.n - 1);
+    return uc_point_sans_doigt(c, p.x);
+}
+
+// Machine à états du glissé (D1a) : le doigt pose/déplace le curseur, la release le retire.
+// À la release, pas de garde « curseur posé » : LVGL envoie toujours RELEASED après PRESSED, le curseur
+// est donc toujours posé à ce moment-là (le hook de banc, lui, peut recevoir un relâcher sans pas avant).
+void uc_lecture_doigt(lv_event_t *e, const uc_lecture_t &L)
+{
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING)
+    {
+        const int i = uc_point_du_doigt(L.cadre());
+        if (i != *L.scrub)
+        {
+            const int avant = *L.scrub;
+            *L.scrub = i;
+            // premier appui (avant < 0) ou chemin léger refusé -> chemin complet ; sinon léger
+            if (avant >= 0 && L.leger_ok(avant))
+                L.leger(avant);
+            else
+                L.complet();
+        }
+    }
+    else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
+    {
+        *L.scrub = -1;
+        L.complet();
+    }
+}
+
+// Pas du banc (hook ESP sans indev) : même branchement que le doigt — le banc mesure le chemin réel du geste.
+void uc_lecture_banc(int x_doigt, const uc_lecture_t &L)
+{
+    if (x_doigt < 0) // relâcher, comme LV_EVENT_RELEASED / PRESS_LOST — avec garde : le banc peut relâcher sans pas avant
+    {
+        if (*L.scrub != -1)
+        {
+            *L.scrub = -1;
+            L.complet();
+        }
+        return;
+    }
+    const int borne = uc_point_sans_doigt(L.cadre(), x_doigt);
+    if (borne != *L.scrub)
+    {
+        const int avant = *L.scrub;
+        *L.scrub = borne;
+        if (avant >= 0 && L.leger_ok(avant))
+            L.leger(avant);
+        else
+            L.complet();
+    }
+}
+
+void uc_min_max(const int16_t *valeurs, int debut, int n, int16_t sentinelle, int *imin, int *imax)
+{
+    *imin = *imax = -1;
+    for (int k = debut; k < debut + n; k++)
+        if (valeurs[k] != sentinelle)
+        {
+            if (*imin < 0 || valeurs[k] < valeurs[*imin])
+                *imin = k;
+            if (*imax < 0 || valeurs[k] > valeurs[*imax])
+                *imax = k;
+        }
+}
+
+void uc_repeindre_bandes(const uc_cadre_t &c, lv_obj_t *o, int i_avant, int i_apres)
+{
+    for (int k = 0; k < 2; k++)
+    {
+        const int j = k == 0 ? i_avant : i_apres;
+        if (j < 0)
+            continue;
+        const lv_coord_t px = c.x(j);
+        lv_area_t bande = {(lv_coord_t)(px - CURSEUR_BANDE), c.haut, (lv_coord_t)(px + CURSEUR_BANDE), c.bas};
+        lv_obj_invalidate_area(o, &bande);
+    }
 }
 
 void uc_texte_heure(char *buf, size_t n, int i, int dernier, int minute_fin, int mpp)
@@ -472,4 +458,24 @@ void uc_bulle_placer(lv_obj_t *bulle, lv_coord_t x_point, lv_coord_t y, lv_coord
     lv_obj_update_layout(bulle);
     const lv_coord_t l = lv_obj_get_width(bulle);
     lv_obj_set_pos(bulle, LV_CLAMP(4, x_point - l / 2, largeur_zone - 4 - l), y);
+}
+
+void uc_bulle_ecrire(lv_obj_t *bulle, lv_obj_t *texte, const char *msg, const uc_cadre_t &c, int i,
+                     lv_obj_t *repere, lv_coord_t y, lv_coord_t largeur_zone)
+{
+    ui_label_texte(texte, msg);
+    lv_area_t z;
+    lv_obj_get_coords(repere, &z);
+    uc_bulle_placer(bulle, c.x(i) - z.x1, y, largeur_zone);
+}
+
+void uc_bulle_poser(lv_obj_t *bulle, lv_obj_t *texte, const char *msg, const uc_cadre_t &c, int i,
+                    lv_obj_t *repere, lv_coord_t y, lv_coord_t largeur_zone, lv_obj_t *graph)
+{
+    lv_area_t avant;
+    lv_obj_get_coords(bulle, &avant);
+    const bool etait_visible = !lv_obj_has_flag(bulle, LV_OBJ_FLAG_HIDDEN);
+    uc_bulle_ecrire(bulle, texte, msg, c, i, repere, y, largeur_zone);
+    if (etait_visible)
+        lv_obj_invalidate_area(graph, &avant); // repeindre sous l'ancienne place de la bulle
 }

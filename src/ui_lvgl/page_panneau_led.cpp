@@ -229,11 +229,6 @@ static void construire_seance(lv_obj_t *z)
     lv_obj_set_style_pad_ver(c, 10, 0);
     ui_label(c, UI_POLICE_PETITE, UI_TEXTE, TXT("Durée de la minuterie", "Timer length"));
     lv_obj_t *ru = ui_valeur_unite(c, UI_POLICE_3X5_M, UI_ACCENT, "min", &o_duree_v);
-    // 07/11 (retour d'usage) : lignes de base alignées sur celles du libellé, comme sur les autres pages. Mesuré sur la
-    // capture de référence : encre du libellé 269..279, encre du « 18 min » 269..292 -> sa ligne de base tombait
-    // 13 px plus bas. Les deux partent du même haut de zone, donc l'écart vient des fontes : ligne de base =
-    // line_height - base_line, soit 18-3 = 15 pour la petite police, 37-5 = 32 pour la 3x5 -> -17 (le -3 d'avant
-    // laissait précisément les 13 px constatés).
     const lv_coord_t ecart_base = (UI_POLICE_PETITE->line_height - UI_POLICE_PETITE->base_line) -
                                   (UI_POLICE_3X5_M->line_height - UI_POLICE_3X5_M->base_line);
     lv_obj_align(ru, LV_ALIGN_TOP_RIGHT, 0, ecart_base);

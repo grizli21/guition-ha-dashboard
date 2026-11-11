@@ -25,7 +25,7 @@ static uint8_t *seuils() { return g_vue ? rd_etat.maintien : rd_etat.detection; 
 
 static void graphe_cb(lv_event_t *e)
 {
-    uc_cible_t * ctx = uc_cible_du(e); // 9.6 : la layer de l'événement (avant : lv_event_get_draw_ctx)
+    uc_cible_t * ctx = uc_cible_du(e);
     lv_area_t a;
     lv_obj_get_coords(uc_objet_du(e), &a);
     const uint8_t *s = seuils();
@@ -163,17 +163,9 @@ static void graphe_doigt_cb(lv_event_t *e)
     (void)e;
 }
 
-// 06/11 (mesure du chantier 2, audit e58325f) : un pas du glissé horizontal sur le graphe radar,
-// sans indev ni /glisser ni /toucher ni forcer — précédent : /scrubgraph (4f41058). Le geste ne
-// lit pas un point : il change la ZONE choisie à chaque franchissement (16 zones, ~21 px de
-// course par zone). Emprunte le chemin de graphe_doigt_cb avec la MÊME correspondance x -> zone
-// (recopiée : lv_indev_get_point exige un événement de doigt — seul écart forcé par le verrou).
-// Fonctions appelées par le pas (celles du doigt, rien de plus) : rafraichir() = étiquettes
-// (auto/seuil/zone), puis empreinte (seuils + énergie + g_choisie + g_vue + présence + distance)
-// -> lv_obj_invalidate(o_graphe) EN ENTIER (page_radar.cpp:138, 90 496 px — l'objet mesuré).
-// NOTE : sur `.193` (chambre1, sur secteur), la page « Batterie et capteur » — donc l'onglet
-// Radar — n'existe pas (réservée aux écrans sur batterie, ecran.cpp:1662) : cet outil
-// est commité pour la suite, il n'a pas pu être mesuré sur `.193`.
+// Hook de banc : un pas du glissé radar. Le geste ne lit pas un point : il change la ZONE choisie à chaque
+// franchissement (16 zones) ; même correspondance x -> zone que graphe_doigt_cb (recopiée : lv_indev_get_point
+// exige un événement de doigt).
 void page_radar_banc_scrub(int x_doigt)
 {
     if (!o_graphe)

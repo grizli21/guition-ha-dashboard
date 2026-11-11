@@ -6,12 +6,10 @@
 #include "ui_musique.h" // mu_appui_ms (latence des commandes)
 #include <stdio.h>
 #include <string.h>
-#if LVGL_VERSION_MAJOR >= 9
 // 05/11 (vague D) : en 9.6 la STRUCTURE lv_hit_test_info_t est devenue privée (src/core/lv_obj_event_private.h,
 // l'en-tête public ne garde que le typedef). Mêmes champs qu'en 8.4 (point : le point écran, res : le résultat) —
 // on inclut l'en-tête privé (le dépôt a déjà -Ilib/lvgl-9.6.0/src, comme pour <src/draw/sw/lv_draw_sw.h>).
 #include <src/core/lv_obj_event_private.h>
-#endif
 
 UI_PSRAM(mu_etat_t, mu_etat_p, 1, nullptr); // 29/10 : en PSRAM (ui_psram.h)
 void (*mu_commande)(mu_action_t action, int arg) = nullptr;
@@ -175,7 +173,7 @@ static void volume_cb(lv_event_t *e)
 #define VOL_FIN 0x0A0E14
 static void volume_bas_cb(lv_event_t *e)
 {
-    uc_cible_t * ctx = uc_cible_du(e); // 9.6 : la layer de l'événement (avant : lv_event_get_draw_ctx)
+    uc_cible_t * ctx = uc_cible_du(e);
     lv_area_t a;
     lv_obj_get_coords(o_vol_arc, &a);
     const lv_point_t c = {(lv_coord_t)(a.x1 + lv_area_get_width(&a) / 2), (lv_coord_t)(a.y1 + lv_area_get_height(&a) / 2)};
@@ -378,13 +376,7 @@ static void construire_lecture(lv_obj_t *z)
 // conteneur qui défile, sous les onglets (laisse la place à une barre d'actions en bas si besoin)
 static lv_obj_t *liste(lv_obj_t *z, lv_coord_t y, lv_coord_t h, bool grille)
 {
-    lv_obj_t *l = ui_conteneur(z);
-    lv_obj_set_size(l, UI_ZONE_L, h);
-    lv_obj_set_pos(l, 0, y);
-    lv_obj_add_flag(l, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(l, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(l, LV_SCROLLBAR_MODE_OFF);
-    ui_defilement_rapide(l); // 05/11 : scroll par bande (garde = style lu a la creation)
+    lv_obj_t *l = ui_conteneur_defilant(z, 0, y, UI_ZONE_L, h);
     lv_obj_set_flex_flow(l, grille ? LV_FLEX_FLOW_ROW_WRAP : LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_hor(l, UI_MARGE, 0);
     lv_obj_set_style_pad_bottom(l, 8, 0);
@@ -533,11 +525,7 @@ void page_musique_pochette_album(int i)
         return;
     lv_obj_t *p = o_cases[i];
     lv_obj_t *e = lv_obj_get_child(p, 0); // le nom écrit sur la case peinte, ou l'image déjà posée
-#if LVGL_VERSION_MAJOR >= 9
     if (e && lv_obj_check_type(e, &lv_image_class)) // 9.6 : lv_img_class -> lv_image_class (widgets/lv_image.h)
-#else
-    if (e && lv_obj_check_type(e, &lv_img_class))
-#endif
     {
         ui_img_src(e, mu_etat.albums[i].img);
         return;

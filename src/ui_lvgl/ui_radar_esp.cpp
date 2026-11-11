@@ -22,7 +22,6 @@
 
 #define RX_PIN 41
 #define TX_PIN 40
-#define RADAR_COMM_PC 1 // trames « PC » : énergie par zone (comme la production : RADAR_COMM_MODE_PC)
 
 static LD2410S ld2410s(Serial1, RX_PIN, TX_PIN);
 static WebServer g_web(80);
@@ -93,11 +92,8 @@ static const uint8_t MAINTIEN[RD_ZONES] = {0};
 
 static void mode_comm()
 {
-#if RADAR_COMM_PC
+    // trames « PC » : énergie par zone (comme la production : RADAR_COMM_MODE_PC)
     ld2410s.setCommMode(LD2410SCommMode::PC);
-#else
-    ld2410s.setCommMode(LD2410SCommMode::Minimal);
-#endif
 }
 
 static bool lire_config()
@@ -538,11 +534,6 @@ static void cmd_diag(bool actif)
         rd_etat.diag_nb = 0;
         const uint32_t t = (uint32_t)time(nullptr);
         rd_etat.diag_fin = t > 1700000000u ? t + DIAG_MS / 1000 : 0;
-        // 27/10 : le diag du 27 n'a reçu AUCUNE énergie (18 « zone inconnue ») : capteur resté en trames réduites ; on le
-        // repasse en trames « PC » s'il n'en envoie pas. 28/10 : le 1er essai ratait (diag du 28 sans énergie) : voir
-        // LD2410S::purgeAvantCommande ; filet : 4 autres essais toutes les 2 s (diag_tache)
-        // 28/10 : les seuils du CAPTEUR pour dire quelle zone dépasse (après un démarrage court, rd_etat.detection = ceux
-        // de la production par défaut : la 1re mesure de bruit l'a montré)
         if (!g_config_lue)
             lire_config();
         const bool deja = ld2410s.hasEngineeringData();
@@ -679,13 +670,9 @@ void ui_radar_web_demarrer()
     g_web_pret = true;
 }
 
-// 01/11 : battement du capteur (retour d'usage : après un réveil, le radar se taisait, plus aucune trame jusqu'à une relecture ;
-// cause : l'ordre d'ouverture de sa liaison au réveil, voir radar_liaison_preparer dans ecran.cpp) : gardé en
-// filet. Une ligne au journal quand il se tait (6 s sans trame, 3 trames manquées à 0,5 Hz) et quand il reparle, avec le
-// temps depuis le démarrage, la dernière activité de l'écran, les octets reçus sans trame et la dernière commande
-// envoyée (gardée à travers la veille). Relance, qui dit en même temps dans quel état il était : d'abord la seule SORTIE
-// de configuration (celle qui suffisait le 01/11), 3 s après le seul MODE PC (entrée, mode, sortie), 3 s après une
-// relecture complète (le bouton « Lire »), puis de nouveau 60 s plus tard
+// Battement du capteur, filet de sécurité (après un réveil le radar se taisait) : une ligne au journal quand
+// il se tait (6 s sans trame) et quand il reparle ; relance en trois temps (sortie de configuration, puis
+// mode PC, puis relecture complète).
 #define CMD_RTC_MAGIC 0x434D4431u // « CMD1 »
 struct cmd_rtc_t
 {

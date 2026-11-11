@@ -20,14 +20,6 @@ static void construire();
 // couleur de charge façon btop, au thème : froid -> ambre -> rouge
 static uint32_t charge(int v) { return v < 40 ? UI_FROID : v < 75 ? UI_ACCENT : UI_ROUGE; }
 
-static void virgule(char *b, size_t n, float v, int dec)
-{
-    snprintf(b, n, "%.*f", dec, v);
-    for (char *p = b; *p; p++)
-        if (*p == '.')
-            *p = SEP_CAR;
-}
-
 static lv_obj_t *carte(lv_obj_t *z, lv_coord_t y, lv_coord_t h)
 {
     lv_obj_t *c = ui_conteneur(z);
@@ -147,7 +139,7 @@ static void construire_veille(lv_obj_t *z)
 static void graphe_cb(lv_event_t *e)
 {
     const uint8_t *h = pc_etat.h_cpu;
-    uc_cible_t * ctx = uc_cible_du(e); // 9.6 : la layer de l'événement (avant : lv_event_get_draw_ctx)
+    uc_cible_t * ctx = uc_cible_du(e);
     lv_area_t a;
     lv_obj_get_coords(uc_objet_du(e), &a);
     const lv_coord_t w = lv_area_get_width(&a), ht = lv_area_get_height(&a);
@@ -192,7 +184,7 @@ static void construire_systeme(lv_obj_t *z)
     // CPU : en-tête, graphe, fils
     lv_obj_t *c = carte(z, 52, 212);
     lv_obj_set_style_pad_ver(c, 8, 0);
-    lv_obj_t *n = ui_label(c, UI_POLICE_TEXTE, UI_TEXTE, "CPU #8B95A1 7800X3D#");
+    lv_obj_t *n = ui_label(c, UI_POLICE_TEXTE, UI_TEXTE, "CPU " UI_MARK_TEXTE3 " 7800X3D#");
     lv_label_set_recolor(n, true);
     o_cpu_info = ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, "");
     lv_obj_align(o_cpu_info, LV_ALIGN_TOP_MID, 10, 3);
@@ -264,7 +256,7 @@ static void maj_systeme()
 {
     const pc_etat_t &p = pc_etat;
     char t[64], a[16], b[16];
-    virgule(a, sizeof a, p.freq_mhz / 1000.0f, 1);
+    ui_fmt_float(a, sizeof a, p.freq_mhz / 1000.0f, 1);
     ui_label_texte_fmt(o_cpu_info, "%s GHz · %d° · %d W", a, p.cpu_temp, p.cpu_watts);
     ui_label_texte_fmt(o_cpu_val, "%d%%", p.cpu);
     ui_style_text_color(o_cpu_val, ui_c(charge(p.cpu) == UI_FROID ? UI_TEXTE : charge(p.cpu)), 0);
@@ -275,15 +267,14 @@ static void maj_systeme()
     }
     for (int i = 0; i < PC_COEURS; i++)
         barre_maj(o_coeurs[i], p.coeurs[i], charge(p.coeurs[i]));
-    virgule(a, sizeof a, p.ram, 1);
+    ui_fmt_float(a, sizeof a, p.ram, 1);
     ui_label_texte_fmt(o_ram_val, "%s / %d", a, (int)p.ram_total);
     barre_maj(o_ram_barre, (int)(p.ram * 100 / p.ram_total), UI_ACCENT, (int)(p.cache * 100 / p.ram_total));
     for (int k = 0; k < 2; k++)
     {
-        virgule(a, sizeof a, k ? p.disque_l : p.net_bas, 1);
-        virgule(b, sizeof b, k ? p.disque_e : p.net_haut, 1);
-        snprintf(t, sizeof t, k ? TXT("#4FC3F7 L %sM#  #FFB547 É %sM#", "#4FC3F7 R %sM#  #FFB547 W %sM#")
-                            : "#4FC3F7 ↓ %sM#  #FFB547 ↑ %sM#", a, b);
+        ui_fmt_float(a, sizeof a, k ? p.disque_l : p.net_bas, 1);
+        ui_fmt_float(b, sizeof b, k ? p.disque_e : p.net_haut, 1);
+        snprintf(t, sizeof t, k ? TXT(UI_MARK_FROID " L %sM#  " UI_MARK_ACCENT " É %sM#", UI_MARK_FROID " R %sM#  " UI_MARK_ACCENT " W %sM#") : UI_MARK_FROID " ↓ %sM#  " UI_MARK_ACCENT " ↑ %sM#", a, b);
         ui_label_texte(o_io_val[k], t);
         const uint8_t *h = k ? p.h_disque : p.h_net;
         for (int i = 0; i < PC_HIST; i++)
@@ -325,17 +316,6 @@ static void construire_gpu(lv_obj_t *z)
         ui_style_bg_color(o.barre, ui_c(UI_CARTE2), 0);
         ui_style_bg_opa(o.barre, LV_OPA_COVER, 0);
         lv_obj_set_style_clip_corner(o.barre, true, 0);
-        // 08/11 (maquette GPU) : fréquence GPU sur la première ligne de légende, fréquence mémoire sur la
-        // deuxième — les « lignes 3 et 4 » de la carte. Chacune précédée d'une icône de bibliothèque de 16x16
-        // (Material Design Icons mdi:chip et mdi:memory), couleur UI_TEXTE3, à la hauteur de la police de légende
-        // (montserrat_sb_12_ui, line_height 16). La valeur (72 px, alignée à droite) finit à L, le bord droit.
-        // 2e tour (retour d'usage) : la consommation en Go passe à gauche, juste après le carré de couleur, alignée à droite
-        // dans sa colonne, puis vient le nom tronqué. Les fréquences restent à droite des lignes 3 et 4.
-        // 3e tour (08/11 19:45) : icônes inversées (la carrée à pattes sur les quatre côtés = mémoire ->
-        // fréquence GPU ; la rectangulaire à pattes en haut et en bas = puce -> fréquence mémoire) ; Go collées à la
-        // pastille (même écart de 6 px que la pastille et son texte ailleurs dans l'interface) et alignées à gauche ;
-        // le nom ne peut jamais atteindre la colonne des icônes (largeur calculée depuis FREQ_X) ; écart icône ->
-        // valeur ramené à 4 px, comme les autres paires icône + valeur de l'interface.
         const lv_coord_t FREQ_X = L - 92;          // 264 : icône 16 px (264..280)
         const lv_coord_t ECU_ICONE = 4;            // écart icône -> valeur
         const lv_coord_t GO_L = 16, GO_W = 28;     // pastille 0..10, Go 16..44, alignées à gauche
@@ -409,7 +389,7 @@ static void maj_gpu()
         ui_style_text_color(o.charge, ui_c(x.charge >= 75 ? 0xFF8A7A : UI_TEXTE), 0);
         ui_label_texte_fmt(o.temp, "%d° · %d W · %s", x.temp, x.puissance, x.ps[0] ? x.ps : "-");
         ui_style_text_color(o.temp, ui_c(x.temp >= 75 ? UI_ROUGE : x.temp >= 65 ? UI_ACCENT : UI_TEXTE2), 0);
-        virgule(a, sizeof a, x.vram, 1);
+        ui_fmt_float(a, sizeof a, x.vram, 1);
         ui_label_texte_fmt(o.vram, TXT("%s / %d Go", "%s / %d GB"), a, (int)(x.vram_total + 0.5f));
         // 08/11 (maquette GPU) : fréquence actuelle seule — la fréquence GPU sur la ligne 3, la mémoire sur la ligne 4
         if (o.freq_val[0])
@@ -441,7 +421,7 @@ static void maj_gpu()
                 ui_label_texte_fmt(o.legende[l], TXT("%d autres", "%d more"), x.nb_blocs - GPU_LIGNES + 1);
             else
                 ui_label_texte(o.legende[l], b.nom);
-            virgule(a, sizeof a, (groupe ? reste : b.mo) / 1024.0f, 1);
+            ui_fmt_float(a, sizeof a, (groupe ? reste : b.mo) / 1024.0f, 1);
             ui_label_texte(o.go[l], a);
         }
     }
@@ -483,13 +463,7 @@ static void construire_processus(lv_obj_t *z)
         lv_obj_add_event_cb(b, tri_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
     }
 
-    lv_obj_t *l = ui_conteneur(z);
-    lv_obj_set_size(l, UI_ZONE_L, UI_ZONE_H - 92);
-    lv_obj_set_pos(l, 0, 92);
-    lv_obj_add_flag(l, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(l, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(l, LV_SCROLLBAR_MODE_OFF);
-    ui_defilement_rapide(l); // 05/11 : scroll par bande (garde = style lu a la creation)
+    lv_obj_t *l = ui_conteneur_defilant(z, 0, 92, UI_ZONE_L, UI_ZONE_H - 92);
     lv_obj_set_flex_flow(l, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_hor(l, UI_MARGE, 0);
     lv_obj_set_style_pad_row(l, 4, 0);
@@ -539,11 +513,11 @@ static void maj_processus()
         ui_label_texte(o.nom, p.nom);
         ui_label_texte(o.role, p.role);
         barre_maj(o.barre, (int)(p.cpu * 100 / max_cpu), charge((int)LV_MIN(100, p.cpu)));
-        virgule(a, sizeof a, p.cpu, p.cpu < 10 ? 1 : 0);
+        ui_fmt_float(a, sizeof a, p.cpu, p.cpu < 10 ? 1 : 0);
         ui_label_texte_fmt(o.cpu, "%s %%", a);
-        virgule(a, sizeof a, p.mem, p.mem < 10 ? 1 : 0);
+        ui_fmt_float(a, sizeof a, p.mem, p.mem < 10 ? 1 : 0);
         ui_label_texte_fmt(o.mem, TXT("%s Go", "%s GB"), a);
-        virgule(a, sizeof a, p.vram, p.vram < 10 ? 1 : 0);
+        ui_fmt_float(a, sizeof a, p.vram, p.vram < 10 ? 1 : 0);
         if (p.vram > 0)
             ui_label_texte_fmt(o.vram, TXT("%s Go", "%s GB"), a);
         else

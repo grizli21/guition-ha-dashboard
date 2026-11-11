@@ -10,10 +10,5 @@
 // y est posé), les deux bouts s'estompent vers le fond sur leurs 10 derniers degrés
 // 05/11/2026 portage 9.6 (étape 2-vague B) : lv_draw_ctx_t a disparu en v9, le dessin se fait sur la LAYER du draw
 // task — voir les correspondances (avec les lignes des en-têtes 9.6) documentées dans ui_courbe.h.
-#if LVGL_VERSION_MAJOR >= 9
 void ui_anneau_dessiner(lv_layer_t *layer, const lv_point_t *centre, lv_coord_t diametre, lv_coord_t epaisseur,
                         float t_coupure, bool ouverture_vide = false);
-#else
-void ui_anneau_dessiner(lv_draw_ctx_t *ctx, const lv_point_t *centre, lv_coord_t diametre, lv_coord_t epaisseur,
-                        float t_coupure, bool ouverture_vide = false);
-#endif

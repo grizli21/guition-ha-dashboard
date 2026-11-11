@@ -97,28 +97,8 @@ static void lancer(int x0, int y0, int x1, int y1, int ms)
     g_serveur.send(200, "text/plain", "ok\n");
 }
 
-// 05/11 : lv_obj_hit_test() de la v8 repond OUI/NON, il faut descendre l'arbre soi-meme pour trouver
-// l'objet le plus profond sous un point (le banc doit pouvoir repondre « qu'est-ce qu'il y a la ? »).
-// La v8 ne donne pas le nom des classes d'objets : on les reconnait aux classes connues. Suffisant pour
-// distinguer « un bouton » de « du texte dans un conteneur » avant de poser un geste synthetique.
-//
-// 05/11/2026 (etape 2-vague E) — SECURITE, le verrou doit rester aussi strict en 9.6 qu'en 8.4 :
-//  • « lv_obj_hit_test(obj, point) » rend toujours un booleen en 9.6 (include/lvgl/core/lv_obj_pos.h:530,
-//    src/core/lv_obj_pos.c:1231) et exige toujours CLICKABLE (src/core/lv_obj_pos.c:1236, comme
-//    lib/lvgl-8.4.0/src/core/lv_obj_pos.c:960). Seule difference lue dans le code : le test 8.4 ecartait aussi
-//    les objets DESACTIVES (lib/lvgl-8.4.0/src/core/lv_obj_pos.c:961), pas celui de 9.6. Le 9.6 donc entre dans
-//    PLUS d'objets : la descente trouve au moins autant d'objets cliquables, le verrou refuse au moins autant —
-//    jamais moins. L'echange est dans le bon sens (refuser trop est sur, laisser passer ne l'est pas).
-//  • « lv_obj_has_flag » est deprecie en 9.6 ET cause un avertissement a chaque appel
-//    (LV_LOG_DEPRECATED dans src/core/lv_obj.c:861 ; la conf 9.6 du banc tient LV_LOG_LEVEL = LV_LOG_LEVEL_WARN) :
-//    on bascule sur le successeur public « lv_obj_is_clickable » (include/lvgl/core/lv_obj.h:567).
-//  • les symboles de classe ont ete renomes : « lv_btn_class » -> « lv_button_class »
-//    (include/lvgl/widgets/lv_button.h:25), « lv_btnmatrix_class » -> « lv_buttonmatrix_class » (:69),
-//    « lv_img_class » -> « lv_image_class » (include/lvgl/widgets/lv_image.h:33). « lv_obj_check_type » reste
-//    public et rend exactement le meme service (include/lvgl/core/lv_obj.h:833, src/core/lv_obj.c:1272 :
-//    comparaison stricte de « class_p », comme en 8.4) ; le nom de classe textuel n'est pas publie en 9.6
-//    (le champ « name » est dans src/core/lv_obj_class_private.h:54), donc la reconnaissance par classes
-//    connues est conservee, pas remplacee.
+// Descente d'arbre manuelle sous un point : lv_obj_hit_test ne rend qu'un booléen et le verrou doit rester
+// strict (analyse de portage 8.4 -> 9.6, 05/11).
 #if LVGL_VERSION_MAJOR >= 9
 static bool est_cliquable(lv_obj_t *o) { return lv_obj_is_clickable(o); }
 // 06/11 (etape 3- cran bis) : idem pour SCROLLABLE — « lv_obj_has_flag » est deprecie en 9.6 et le
@@ -185,26 +165,7 @@ static lv_obj_t *objet_sous(lv_obj_t *o, const lv_point_t *p)
     return o;
 }
 
-// ── 06/11/2026 ETAPE 3- cran bis : /defiler, le DEFILEMENT sans DOIGT ─────────────────────────
-// Pourquoi cette commande existe. Depuis le verrou de geste (16c0cff, apres l incident du 05/11
-// 20 h 25 ou un glisse a change une lumiere), plus aucun « glisser » ni « toucher » du banc n est
-// accepte : « lv_obj_hit_test » exige CLICKABLE et le constructeur de lv_obj le pose sur TOUT objet
-// (8.4 lib/lvgl-8.4.0/src/core/lv_obj.c:436, 9.6 src/core/lv_obj.c:1496), donc « objet_sous » ne
-// peut remonter qu un objet cliquable et « appui_dangereux » refuse partout — mesuree ici : 42 points
-// sur 42 refusés sur la page Informations, sur LES DEUX lignes, 6 × 403 sur le protocole valide.
-// Or la question qui reste ouverte — le « scroll par bande » (simu/v9/scroll_bande_9.6.patch)
-// divise-t-il reellement les pixels peints sur la dalle ? — n a besoin d AUCUN doigt : elle a besoin
-// du DEPLACEMENT du contenu. « lv_obj_scroll_by_raw » est exactement l appel que la librairie elle-
-// meme emploie pour un glisse (9.6 src/core/lv_obj_scroll.c:1017 pour l elan, 8.4 src/core/
-// lv_indev_scroll.c:103 pour le suivi du doigt) et c est lui qui declenche le chemin rapide sur un
-// conteneur marque LV_OBJ_FLAG_USER_1 (accroche de lv_obj_pos.c). Ce chemin ne touche ni « g_doigt »,
-// ni « lv_indev », ni un point d appui : RIEN ne peut etre actionne — ni bouton, ni curseur, ni
-// interrupteur. Le banc ne cherche meme pas ce qui se trouve sous un point, il ne pose aucun geste.
-//
-// L objet vise n est pas codé en dur : on descend l arbre de l ecran courant et on prend le premier
-// descendant SCROLLABLE qui a de la marge verticale reelle (scroll_top + scroll_bottom > 0). Sur la
-// page Informations c est le conteneur marque a la creation par « ui_defilement_rapide() »
-// (page_infos.cpp:189) — donc le seul objet dont le deplacement interesse la mesure.
+// ── /défiler : le DÉFILEMENT sans DOIGT (route de banc) ────────────────────────
 static lv_obj_t *defilable_dabord(lv_obj_t *o)
 {
     if (!o)
@@ -462,12 +423,6 @@ void banc_demarrer(void (*lire)(int y, int n, uint16_t *px))
         ui_trace("[banc] defiler FIN demande=%d applique=%d marge_bas=%d\n", dy, lv_obj_get_scroll_y(o) - debut_y,
                  lv_obj_get_scroll_bottom(o));
         g_serveur.send(200, "text/plain", "ok\n"); });
-    // 06/11 (retour d'usage : « glissé horizontal dans le graph ») : le graphe de la page Graphes n'est PAS un
-    // conteneur deroulant — ui_conteneur retire LV_OBJ_FLAG_SCROLLABLE (ui_theme.cpp:372-378) et /defiler
-    // n'y trouverait que le rail. Le seul geste horizontal du graph est la LECTURE AU DOIGT (graphe_cb :
-    // x du doigt -> point -> rafraichir). Cette route balaie cette lecture pas a pas, sans indev, sans
-    // /glisser, sans /toucher, sans forcer — precedent : page_thermostat_banc_glisse pour l'anneau.
-    // x0/x1 par defaut = le domaine de la courbe : T_X0 44 + T_L 352 (page_graphe.cpp:46-47), o_graph en x 0.
     g_serveur.on("/scrubgraph", []()
                  {
         if (!autorise())
@@ -493,11 +448,8 @@ void banc_demarrer(void (*lire)(int y, int n, uint16_t *px))
         lv_timer_handler();
         ui_trace("[banc] scrubgraph FIN pas=%d ms=%d\n", pas, ms);
         g_serveur.send(200, "text/plain", "ok\n"); });
-    // 07/11 (mesure du calque, garde-fou « changement de pièce ») : la page Graphes ne commande RIEN de
-    // réel (seul o_graph est CLICKABLE, page_graphe.cpp, cible du curseur de lecture ; o_hum ne l'est pas)
-    // mais ses flèches de pièce sont des BOUTONS : le verrou refuse tout appui synthétique (,
-    // 07/11 : « l'agent ne doit pas scroller pour faire des screenshot pour ne pas risquer d'appuyer sur
-    // un bouton »). Cette route appelle le code même de piece_cb (page_graphe_banc_piece), aucun geste.
+    // Route de banc sans geste : le verrou refuserait les boutons de pièce du graphe (page Graphes ne commande
+    // rien de réel) ; on appelle le code même de piece_cb.
     g_serveur.on("/piecegraphe", []()
                  {
         if (!autorise())
@@ -507,12 +459,6 @@ void banc_demarrer(void (*lire)(int y, int n, uint16_t *px))
         page_graphe_banc_piece(sens);
         lv_timer_handler();
         g_serveur.send(200, "text/plain", "ok\n"); });
-    // 06/11 (chantier 2, audit e58325f) : le même outil que /scrubgraph pour les trois graphes
-    // encore invalidés EN ENTIER sous le doigt. Entrée par défaut identique d'une page à l'autre
-    // (pas=30, ms=700, balayage de la pleine largeur de courbe), aucune injection de geste.
-    // Ballon (page « Eau chaude », vue Courbe) : o_graphe x 0..403, courbe x0=a.x1+40 à x1=a.x2-8
-    // (page_ballon.cpp:367-373) -> domaine 40..395. L'onglet Courbe est ouvert par le code de
-    // onglet_cb lui-même (page_ballon_banc_courbe), pas par un geste.
     g_serveur.on("/scrubballon", []()
                  {
         if (!autorise())

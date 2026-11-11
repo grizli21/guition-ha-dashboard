@@ -4,15 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#if LVGL_VERSION_MAJOR >= 9
 // 05/11/2026 (étape 2-vague E) : « lv_mem_alloc / lv_mem_free » ont disparu de l'API 9.6 ; les allocateurs
 // publics sont « lv_malloc » (include/lvgl/stdlib/lv_mem.h:67) et « lv_free » (:95).
 #define UI_ALLOC(n) lv_malloc(n)
 #define UI_LIBERE(p) lv_free(p)
-#else
-#define UI_ALLOC(n) lv_mem_alloc(n) // 8.4 : lib/lvgl-8.4.0/src/misc/lv_mem.h
-#define UI_LIBERE(p) lv_mem_free(p)
-#endif
 
 lv_style_t ui_st_nu;
 lv_style_t ui_st_carte;
@@ -72,26 +67,9 @@ void ui_theme_init()
 }
 
 // --- Mises à jour gardées (voir ui_theme.h) ---
-#if LVGL_VERSION_MAJOR >= 9
-// 05/11/2026 (étape 2-vague E) : en 9.6 « lv_color_t » est un RGB888 de 3 octets sans champ « full »
-// (include/lvgl/draw/lv_color.h:109-113, « blue/green/red » — et il n'y a plus de LV_COLOR_DEPTH dans lv_conf.h).
-// Le 8.4 « .full » comparait l'entier encodé (uint16_t RGB565 : lib/lvgl-8.4.0/src/misc/lv_color.h:221).
-// L'égalité publique 9.6 est « lv_color_eq » (include/lvgl/draw/lv_color.h:268) : elle compare les trois
-// composantes, donc même sens et même résultat pour deux couleurs déjà passées par la même rampe.
 #define UI_COULEUR_IDENTIQUE(a, b) lv_color_eq((a), (b))
-#else
-#define UI_COULEUR_IDENTIQUE(a, b) ((a).full == (b).full) // 8.4 : lv_color16_t.union « full » (RGB565)
-#endif
 static void si_change(lv_obj_t *o, lv_style_prop_t p, lv_style_value_t v, lv_style_selector_t s, bool couleur)
 {
-    // 05/11/2026 (étape 2-vague E) : CORRECTION lue dans les deux en-têtes. « lv_obj_get_local_style_prop » rend un
-    // « lv_style_res_t » — pas un « lv_res_t » (9.6 : include/lvgl/core/lv_obj_style.h:256, enum
-    // include/lvgl/core/lv_style.h:347-348 ; 8.4 : src/core/lv_obj_style.h:146, enum src/misc/lv_style.h:288-289).
-    // Or « LV_STYLE_RES_NOT_FOUND = 0 » et « LV_RES_OK = 0 » : l'ancien « == LV_RES_OK » voulait donc dire
-    // « introuvable » — on comparait une valeur non initialisée dans ce cas, et on ne comparait RIEN quand la
-    // valeur était trouvée (le garde-fou ne servait jamais à rien, il re-écrivait la propriété à chaque appel).
-    // Le compilateur 9.6 le signalait : « warning: comparison between 'enum lv_style_res_t' and 'enum lv_result_t' »
-    // (mesuré dans la construction de l'objet, journal .banc_v9_esp/logs/objets_E/ui_theme.cpp.o.log).
     lv_style_value_t a = {};
     if (lv_obj_get_local_style_prop(o, p, &a, s) == LV_STYLE_RES_FOUND && (couleur ? UI_COULEUR_IDENTIQUE(a.color, v.color) : a.num == v.num))
         return;
@@ -271,17 +249,6 @@ void ui_label_texte_fmt(lv_obj_t *label, const char *fmt, ...)
     UI_LIBERE(grand);
 }
 
-#if LVGL_VERSION_MAJOR >= 9
-// 05/11/2026 (étape 2-vague E) : « lv_obj_t » est devenu un type opaque en 9.6 (include/lvgl/core/lv_obj.h
-// déclare seulement « struct _lv_obj_t » ; les champs style_cnt/styles sont dans src/core/lv_obj_private.h,
-// non public). Le garde-fou « ne pas ajouter deux fois la même feuille de style » n'a plus lieu d'être écrit
-// ici : « lv_obj_add_style » retire d'abord la feuille pour être sûr qu'elle ne soit pas ajoutée deux fois
-// (src/core/lv_obj_style.c:130-131, commentaire « Try removing the style first to be sure it won't be added
-// twice ») et « lv_obj_remove_style » ne dit rien quand la feuille est absente (remove_style_core se tait si
-// rien n'a été supprimé, src/core/lv_obj_style.c:1667-1669). Les deux appels sont donc déjà idempotents.
-// Piège relevé : « lv_obj_get_style_enabled » (l'autre sonde publique) aurait rendu le même service mais
-// appelle find_style, qui émet un LV_LOG_WARN quand la feuille est absente (src/core/lv_obj_style.c:1695) —
-// avec LV_LOG_LEVEL = LV_LOG_LEVEL_WARN (conf 9.6 du banc), chaque premier ajout polluerait la console.
 void ui_style_ajouter(lv_obj_t *o, lv_style_t *style, lv_style_selector_t s)
 {
     lv_obj_add_style(o, style, s);
@@ -290,25 +257,6 @@ void ui_style_retirer(lv_obj_t *o, lv_style_t *style, lv_style_selector_t s)
 {
     lv_obj_remove_style(o, style, s);
 }
-#else
-static bool present(lv_obj_t *o, lv_style_t *style, lv_style_selector_t s)
-{
-    for (uint32_t i = 0; i < o->style_cnt; i++)
-        if (o->styles[i].style == style && o->styles[i].selector == s)
-            return true;
-    return false;
-}
-void ui_style_ajouter(lv_obj_t *o, lv_style_t *style, lv_style_selector_t s)
-{
-    if (!present(o, style, s))
-        lv_obj_add_style(o, style, s);
-}
-void ui_style_retirer(lv_obj_t *o, lv_style_t *style, lv_style_selector_t s)
-{
-    if (present(o, style, s))
-        lv_obj_remove_style(o, style, s);
-}
-#endif
 
 // --- Curseur dans une page qui défile (voir ui_theme.h) ---
 #define CURSEUR_SEUIL 10 // px avant de décider : réglage (horizontal) ou défilement de la page (vertical)
@@ -380,11 +328,9 @@ lv_obj_t *ui_conteneur(lv_obj_t *parent)
     return o;
 }
 
-// 05/11/2026 : scroll par bande — statue à la création du conteneur (jamais en cours de geste : mesuré,
-// une exclusion déclenchée pendant le geste ne défait pas les images déjà sautées — 84 images / 3,7 Mpx).
-// Le style du conteneur lui-même doit être neutre : un fond, une bordure, un rayon, une ombre, un contour
-// ou une barre de défilement dessinés dans l'aire restent en place pendant que le contenu défile, et le
-// décalage les étirerait (cas « fond » et « barre » du prototype : 84 images / 3 712 609 px chacun).
+// Scroll par bande : statue à la CRÉATION du conteneur, jamais en cours de geste (une exclusion déclenchée
+// pendant le geste ne défait pas les images déjà sautées). Le style du conteneur doit rester neutre : un
+// fond ou une barre dessinés dans l'aire resteraient en place et s'étireraient pendant le défilement.
 bool ui_defilement_rapide(lv_obj_t *o)
 {
     if (!o)
@@ -417,11 +363,35 @@ bool ui_defilement_rapide(lv_obj_t *o)
     return true;
 }
 
-// 11/11 (retour d'usage : « améliorer la cliquabilité de la barre des onglets ») : c'est la BARRE ENTIÈRE qui reçoit
-// l'appui (marges et jointures comprises, + 6 px autour), et l'onglet se déduit de la position du doigt : les zones des
-// boutons ne se chevauchent pas. Le changement part à l'APPUI (un glissé de plus de 10 px annulait le clic au relâcher),
-// différé d'un tour (lv_async_call) : la page reconstruit sa zone, barre comprise (construire() -> lv_obj_clean), et ne
-// doit pas la détruire pendant qu'elle traite le doigt. Les pages reçoivent le même LV_EVENT_CLICKED qu'avant.
+// Conteneur « défilable » standard (mesuré lot 3 : même mise en place sur 8 pages, flex et marges seuls à varier).
+lv_obj_t *ui_conteneur_defilant(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h)
+{
+    lv_obj_t *o = ui_conteneur(parent);
+    lv_obj_set_size(o, w, h);
+    lv_obj_set_pos(o, x, y);
+    lv_obj_add_flag(o, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scroll_dir(o, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(o, LV_SCROLLBAR_MODE_OFF);
+#ifndef DEFILERAPIDE_OFF // outil de mesure remis le 11/11 : -DDEFILERAPIDE_OFF enlève le marqueur.
+                         // Avant le lot 3, la garde n'entourait l'appel que dans page_infos ; l'appel étant
+                         // devenu partagé ici, la garde agit sur toutes les pages défilantes — signalé, mesure
+                         // de même nature (A-B-A : marqueur de défilement rapide enlevé).
+    ui_defilement_rapide(o); // scroll par bande (garde = style lu à la création)
+#endif
+    return o;
+}
+
+void ui_fmt_float(char *b, size_t n, float v, int dec, const char *suffixe)
+{
+    snprintf(b, n, "%.*f%s", dec, v, suffixe);
+    for (char *p = b; *p; p++)
+        if (*p == '.')
+            *p = SEP_CAR; // virgule en français, point en anglais (ui_langue.h)
+}
+
+// C'est la BARRE ENTIÈRE qui reçoit l'appui (marges et jointures, + 6 px autour), l'onglet se déduit de la
+// position du doigt. Le changement part à l'APPUI, différé d'un tour (lv_async_call) : la page reconstruit
+// sa zone et ne doit pas détruire la barre pendant qu'elle traite le doigt.
 static void onglet_differe(void *b)
 {
     if (lv_obj_is_valid((lv_obj_t *)b))

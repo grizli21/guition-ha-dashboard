@@ -19,6 +19,15 @@
 #define UI_ROUGE 0xFF6B5B       // alerte, danger
 #define UI_FROID 0x4FC3F7       // froid, eau
 #define UI_CHAUFFE 0xFF8A4B     // chauffe en cours
+// Mêmes couleurs, écrites pour le balisage LVGL (« #RRGGBB texte # » des textes riches, bulles et
+// journal). Changer les deux lignes ensemble (mesuré lot 3 : 10 sites les répétaient en dur).
+#define UI_MARK_TEXTE3 "#8B95A1"
+#define UI_MARK_ACCENT "#FFB547"
+#define UI_MARK_VERT "#5BD08A"
+#define UI_MARK_FROID "#4FC3F7"
+#define UI_MARK_CHAUFFE "#FF8A4B"
+#define UI_MARK_RELIS "#E5484D" // « Chauffe » (relais) des bulles du ballon : rouge soutenu, pas la constante UI_ROUGE
+#define UI_MARK_EXT "#7CC4F2" // « Extérieur » des bulles du graphe : pas de constante UI_ (balisage seul)
 #define UI_HUMIDITE 0xF2A0B4    // humidité (goutte du chauffage) : distincte du bleu de l'extérieur et du froid
 #define UI_ETEINT 0x3A424D      // 02/11 : éléments éteints ou inactifs (interrupteur coupé, points, barres), gris des dessins
 #define UI_POIGNEE 0xF4F5F6     // 02/11 : poignées des interrupteurs et curseurs, traits clairs
@@ -112,6 +121,9 @@ void ui_aligner(lv_obj_t *o, lv_align_t align, lv_coord_t x, lv_coord_t y);
 // à enchaîner : ui_empreinte(b, nb, ui_empreinte(a, na))
 uint32_t ui_empreinte(const void *donnees, size_t n, uint32_t h = 2166136261u);
 void ui_label_texte_fmt(lv_obj_t *label, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+// Nombre pour les écrans : « %.*f » (decimales = dec) puis point -> SEP_CAR (virgule en français), suffixe
+// optionnel collé (unité). Quatre copies identiques vivaient dans les pages (mesuré lot 3, D5).
+void ui_fmt_float(char *b, size_t n, float v, int dec, const char *suffixe = "");
 void ui_style_ajouter(lv_obj_t *o, lv_style_t *style, lv_style_selector_t s); // rien s'il y est déjà
 void ui_style_bg_grad_color(lv_obj_t *o, lv_color_t c, lv_style_selector_t s);
 void ui_style_bg_grad_dir(lv_obj_t *o, lv_grad_dir_t v, lv_style_selector_t s);
@@ -135,6 +147,10 @@ lv_obj_t *ui_conteneur(lv_obj_t *parent);                                      /
 // conteneur casserait le décalage : fond non transparent, bordure, rayon, ombre, contour, barre de
 // défilement. Renvoie true si accepté (drapeau posé).
 bool ui_defilement_rapide(lv_obj_t *o);
+// Conteneur « défilable » standard des pages : taille (x,y,w,h) + défilement vertical sans barre +
+// garde du scroll par bande (statue ici, à la création — voir ui_defilement_rapide). Le flux flex et
+// les marges intérieures se règlent sur place : ils diffèrent d'une page à l'autre (mesuré lot 3).
+lv_obj_t *ui_conteneur_defilant(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h);
 lv_obj_t *ui_label(lv_obj_t *parent, const lv_font_t *police, uint32_t couleur, const char *texte);
 // 24/10 (harmonie) : nombre en police pixel + unité en police normale collée à droite (la police pixel n'a pas de vraies
 // minuscules : « 118 G », « 62 GO ») ; *valeur = le libellé du nombre ; renvoie la rangée, à placer comme l'était le libellé

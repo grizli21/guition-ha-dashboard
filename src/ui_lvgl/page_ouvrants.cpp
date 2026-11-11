@@ -33,7 +33,7 @@ static int deroule(int i) { return ov_ouvrants[i].banne ? ov_ouvrants[i].pos : 1
 static void store_dessin_cb(lv_event_t *e)
 {
     ui_diag_point("dessin store");
-    uc_cible_t * ctx = uc_cible_du(e); // 9.6 : la layer de l'événement (avant : lv_event_get_draw_ctx)
+    uc_cible_t * ctx = uc_cible_du(e);
     int i = (int)(intptr_t)lv_event_get_user_data(e);
     lv_area_t a;
     lv_obj_get_coords(uc_objet_du(e), &a);
@@ -243,16 +243,8 @@ void page_ouvrants_creer(lv_obj_t *zone)
         lv_obj_set_style_clip_corner(o_store[i], true, 0);
         lv_obj_set_style_border_post(o_store[i], true, 0); // bordure dessinée APRÈS l'enfant (comme le ballon, 1ce763d)
         lv_obj_add_flag(o_store[i], LV_OBJ_FLAG_CLICKABLE);
-        // 06/11 (audit 9.6, chantier 3) : le dessin passe dans un ENFANT du cadre arrondi, patron éprouvé
-        // de la cuve du ballon (1ce763d). En 8.4, clip_corner posait un masque rayonné au DRAW_MAIN par
-        // défaut (8.4 core/lv_obj.c:554-566), retiré au DRAW_POST (:588-594), et les callbacks normaux
-        // tournent après le défaut (8.4 core/lv_event.c:452-470) : store_dessin_cb était rogné. En 9.6,
-        // clip_corner ne rogne plus que les ENFANTS (9.6 core/lv_refr.c:171-263) : le caisson et les
-        // lames peignaient les angles en carré (mesuré capture avant, .banc_v9_esp/grandes_repeintes/
-        // cc_avant_ouvrants.raw : à (58,93) et (149,93) obtenu (74,80,98) = caisson, attendu (24,32,32)
-        // = fond de carte ; à (254,242) et (345,242) obtenu (57,64,74) = lames). L'enfant est rogné dans
-        // les DEUX lignes. Il n'est pas cliquable : le contact — et store_cb, qui commande le store
-        // réel — restent sur le cadre, inchangés.
+        // Dessin dans un ENFANT du cadre arrondi : clip_corner 9.6 ne rogne que les enfants (8.4 rognait aussi les
+        // callbacks). L'enfant n'est pas cliquable : le contact — et store_cb — restent sur le cadre.
         lv_obj_t *store_grad = ui_conteneur(o_store[i]);
         lv_obj_set_size(store_grad, LV_PCT(100), LV_PCT(100));
         lv_obj_clear_flag(store_grad, LV_OBJ_FLAG_CLICKABLE);

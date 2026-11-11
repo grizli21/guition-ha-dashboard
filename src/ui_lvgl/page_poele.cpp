@@ -45,7 +45,7 @@ static void envoyer(const char *quoi)
 // =====================================================================  FEU
 static void anneau_cb(lv_event_t *e)
 {
-    uc_cible_t *ctx = uc_cible_du(e); // 9.6 : la layer du draw task (avant : lv_event_get_draw_ctx)
+    uc_cible_t *ctx = uc_cible_du(e);
     lv_area_t a;
     lv_obj_get_coords(uc_objet_du(e), &a);
     lv_point_t c = {(lv_coord_t)(a.x1 + lv_area_get_width(&a) / 2), (lv_coord_t)(a.y1 + lv_area_get_height(&a) / 2)};
@@ -382,15 +382,8 @@ static void rafraichir_courbe()
     ui_style_text_color(o_cval, ui_c(g_scrub >= 0 ? UI_ACCENT : UI_TEXTE), 0);
     // 25/10 : plus d'heure à côté de la valeur pendant la lecture au doigt (doublon de la bulle), comme le graphe
     // min / max sur ce qui est montré
-    int imin = -1, imax = -1;
-    for (int k = deb; k < PL_HIST; k++)
-        if (pl_etat.h_fumees[k] != PL_VIDE)
-        {
-            if (imin < 0 || pl_etat.h_fumees[k] < pl_etat.h_fumees[imin])
-                imin = k;
-            if (imax < 0 || pl_etat.h_fumees[k] > pl_etat.h_fumees[imax])
-                imax = k;
-        }
+    int imin, imax;
+    uc_min_max(pl_etat.h_fumees, deb, PL_HIST - deb, PL_VIDE, &imin, &imax);
     if (imin >= 0)
     {
         uc_texte_heure(h, sizeof h, imin, PL_HIST - 1, pl_etat.h_fin, 5);
@@ -421,11 +414,8 @@ static void rafraichir_courbe()
         if (pl_etat.h_corps[i] != PL_VIDE)
             snprintf(p, sizeof p, "%d", pl_etat.h_corps[i]);
         uc_texte_heure(h, sizeof h, i, PL_HIST - 1, pl_etat.h_fin, 5);
-        snprintf(b, sizeof b, TXT("%s\n#FFB547 Fumées %s°#\nPoêle %s°\nConsigne %d°", "%s\n#FFB547 Flue %s°#\nStove %s°\nSetpoint %d°"), h, f, p, pl_etat.r.consigne);
-        ui_label_texte(o_bulle_txt, b);
-        lv_area_t z;
-        lv_obj_get_coords(g_zone, &z);
-        uc_bulle_placer(o_bulle, cadre_courbe(nullptr, o_graphe, T_Y0, T_H, 0, 400).x(i) - z.x1, G_Y + 4, UI_ZONE_L);
+        snprintf(b, sizeof b, TXT("%s\n" UI_MARK_ACCENT " Fumées %s°#\nPoêle %s°\nConsigne %d°", "%s\n" UI_MARK_ACCENT " Flue %s°#\nStove %s°\nSetpoint %d°"), h, f, p, pl_etat.r.consigne);
+        uc_bulle_ecrire(o_bulle, o_bulle_txt, b, cadre_courbe(nullptr, o_graphe, T_Y0, T_H, 0, 400), i, g_zone, G_Y + 4, UI_ZONE_L);
     }
     else
         ui_cacher(o_bulle, true);
@@ -446,17 +436,8 @@ static void rafraichir_courbe()
     }
 }
 
-// 06/11 correctif chantier 2 (b) — glissé horizontal de lecture sur la courbe du poêle.
-// Baseline mesurée le même soir (traces grandes_repeintes/traces_scrubpoele_base_0611.txt, build
-// 667dcada, uptime 165 s) : rafraichir_courbe() invalide o_graphe ET o_tir_bande EN ENTIER, soit
-// 109 888 px médians (88 880 + 21 008, la somme exacte des deux objets) repeints en 51 ms par pas
-// de doigt (~17,4 images/s). Or le geste ne déplace que : le curseur (uc_curseur dessiné dans le
-// graphe en :354-355 ET dans la bande de tirage en :364-365), la bulle (texte + repositionnement),
-// la valeur o_cval et le texte o_tir_txt (tous deux étiquettes, auto-invalidées). Grille, heures,
-// min/max, pastilles de couches et échelles ne bougent pas. Ce chemin léger ne repeint que les
-// deux colonnes du curseur (avant/après) sur chaque objet, plus l'ancienne place de la bulle —
-// lv_obj_set_pos n'invalidant que la NOUVELLE position en 9.6 (core/lv_obj_pos.c:68-90), c'est ici
-// qu'on efface l'ancienne. Patron éprouvé : graphe des pièces (2d58d44), ballon (2f4d7f2).
+// Chemin léger du glissé de lecture : ne repeint que les deux colonnes du curseur (avant/après) et
+// l'ancienne place de la bulle (9.6 : lv_obj_set_pos n'invalidite que la nouvelle position).
 static void rafraichir_scrub(int i_avant)
 {
     const int i = g_scrub;
@@ -474,29 +455,11 @@ static void rafraichir_scrub(int i_avant)
         if (pl_etat.h_corps[i] != PL_VIDE)
             snprintf(p, sizeof p, "%d", pl_etat.h_corps[i]);
         uc_texte_heure(h, sizeof h, i, PL_HIST - 1, pl_etat.h_fin, 5);
-        snprintf(b, sizeof b, TXT("%s\n#FFB547 Fumées %s°#\nPoêle %s°\nConsigne %d°", "%s\n#FFB547 Flue %s°#\nStove %s°\nSetpoint %d°"), h, f, p, pl_etat.r.consigne);
-        lv_area_t avant_bulle;
-        lv_obj_get_coords(o_bulle, &avant_bulle);
-        const bool etait_visible = !lv_obj_has_flag(o_bulle, LV_OBJ_FLAG_HIDDEN);
-        ui_label_texte(o_bulle_txt, b);
-        lv_area_t z;
-        lv_obj_get_coords(g_zone, &z);
-        uc_bulle_placer(o_bulle, cadre_courbe(nullptr, o_graphe, T_Y0, T_H, 0, 400).x(i) - z.x1, G_Y + 4, UI_ZONE_L);
-        if (etait_visible)
-            lv_obj_invalidate_area(o_graphe, &avant_bulle);
+        snprintf(b, sizeof b, TXT("%s\n" UI_MARK_ACCENT " Fumées %s°#\nPoêle %s°\nConsigne %d°", "%s\n" UI_MARK_ACCENT " Flue %s°#\nStove %s°\nSetpoint %d°"), h, f, p, pl_etat.r.consigne);
+        uc_bulle_poser(o_bulle, o_bulle_txt, b, cadre_courbe(nullptr, o_graphe, T_Y0, T_H, 0, 400), i, g_zone, G_Y + 4, UI_ZONE_L, o_graphe);
     }
-    const uc_cadre_t cg = cadre_courbe(nullptr, o_graphe, T_Y0, T_H, 0, 400);
-    const uc_cadre_t cb = cadre_courbe(nullptr, o_tir_bande, 10, H_H - 12, 0, 100); // même cadre que bande_tirage_cb
-    for (int k = 0; k < 2; k++)
-    {
-        const int j = k == 0 ? i_avant : i;
-        if (j < 0)
-            continue;
-        lv_area_t bande = {(lv_coord_t)(cg.x(j) - 8), cg.haut, (lv_coord_t)(cg.x(j) + 8), cg.bas}; // ±8 : trait 1 px + pastille rayon 6
-        lv_obj_invalidate_area(o_graphe, &bande);
-        bande = {(lv_coord_t)(cb.x(j) - 8), cb.haut, (lv_coord_t)(cb.x(j) + 8), cb.bas};
-        lv_obj_invalidate_area(o_tir_bande, &bande);
-    }
+    uc_repeindre_bandes(cadre_courbe(nullptr, o_graphe, T_Y0, T_H, 0, 400), o_graphe, i_avant, i);
+    uc_repeindre_bandes(cadre_courbe(nullptr, o_tir_bande, 10, H_H - 12, 0, 100), o_tir_bande, i_avant, i); // même cadre que bande_tirage_cb
 }
 
 static void echelle_cb(lv_event_t *e)
@@ -515,66 +478,19 @@ static void couche_cb(lv_event_t *e)
 
 static void doigt_cb(lv_event_t *e)
 {
-    const lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING)
-    {
-        const int i = uc_point_du_doigt(cadre_courbe(nullptr, o_graphe, T_Y0, T_H, 0, 400));
-        if (i != g_scrub)
-        {
-            const int avant = g_scrub;
-            g_scrub = i;
-            // 06/11 (chantier 2) : premier appui (avant < 0) -> chemin complet ;
-            // PRESSING avec curseur déjà posé -> chemin léger (colonnes du curseur + bulle).
-            if (avant >= 0)
-                rafraichir_scrub(avant);
-            else
-                rafraichir_courbe();
-        }
-    }
-    else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
-    {
-        g_scrub = -1;
-        rafraichir_courbe();
-    }
+    // 06/11 (chantier 2) : premier appui -> chemin complet ; curseur déjà posé -> léger (colonnes + bulle).
+    uc_lecture_doigt(e, { &g_scrub, [] { return cadre_courbe(nullptr, o_graphe, T_Y0, T_H, 0, 400); },
+                          [](int) { return true; }, rafraichir_scrub, [] { rafraichir_courbe(); } });
 }
 
-// 06/11 (mesure du chantier 2, audit e58325f) : un pas de la lecture au doigt sur la courbe du
-// poêle, sans indev ni /glisser ni /toucher ni forcer — précédent : /scrubgraph (4f41058).
-// Emprunte le chemin du doigt (doigt_cb : PRESSED/PRESSING -> uc_point_du_doigt du même cadre ->
-// g_scrub -> rafraichir_courbe()), avec la MÊME correspondance x -> point que uc_point_du_doigt
-// (ui_courbe.cpp:399-405, calcul recopié car uc_point_du_doigt exige un événement de doigt).
-// Fonctions appelées par le pas (celles du doigt, rien de plus) : rafraichir_courbe() = valeur
-// o_cval + couleur, min/max, bulle (texte + repositionnement), étiquettes, puis empreinte
-// (fumées/corps/tirage/fin/r + vue [g_echelle, g_scrub, couches]) -> lv_obj_invalidate(o_graphe)
-// ET lv_obj_invalidate(o_tir_bande) EN ENTIER (page_poele.cpp:440-441, 88 880 + 21 008 px).
-// La repeinte passe par le dessin du graphe (grille, heures, fumées, corps, consigne, tirage,
-// curseur) et par celui de la bande de tirage : chemin réel du geste.
+// Hook de banc : un pas de lecture au doigt sans indev — même machine à états que doigt_cb, branchement
+// compris (le banc mesure le chemin réel du geste).
 void page_poele_banc_scrub(int x_doigt)
 {
     if (!o_graphe)
         return;
-    if (x_doigt < 0) // relâcher, comme LV_EVENT_RELEASED / PRESS_LOST
-    {
-        if (g_scrub != -1)
-        {
-            g_scrub = -1;
-            rafraichir_courbe();
-        }
-        return;
-    }
-    const uc_cadre_t c = cadre_courbe(nullptr, o_graphe, T_Y0, T_H, 0, 400);
-    const int i = c.premier + (int)lroundf((float)(x_doigt - c.x0) * (c.n - 1) / (c.x1 - c.x0));
-    const int borne = LV_CLAMP(c.premier, i, c.premier + c.n - 1);
-    if (borne != g_scrub)
-    {
-        const int avant = g_scrub;
-        g_scrub = borne;
-        // comme le doigt, branchement compris (le banc mesure le chemin réel du geste)
-        if (avant >= 0)
-            rafraichir_scrub(avant);
-        else
-            rafraichir_courbe();
-    }
+    uc_lecture_banc(x_doigt, { &g_scrub, [] { return cadre_courbe(nullptr, o_graphe, T_Y0, T_H, 0, 400); },
+                               [](int) { return true; }, rafraichir_scrub, [] { rafraichir_courbe(); } });
 }
 
 // La vue Courbe du poêle s'ouvre d'habitude par un appui sur l'onglet (onglet_cb). Le banc ne peut
@@ -700,10 +616,7 @@ static void rafraichir_reglages()
     char b[16];
     for (int i = 0; i < 7; i++)
     {
-        snprintf(b, sizeof b, "%.*f%s", LIGNES[i].decimales, lire(i), LIGNES[i].unite);
-        for (char *p = b; *p; p++)
-            if (*p == '.')
-                *p = SEP_CAR;
+        ui_fmt_float(b, sizeof b, lire(i), LIGNES[i].decimales, LIGNES[i].unite);
         ui_label_texte(o_vals[i], b);
     }
 }
@@ -725,13 +638,7 @@ static void pas_cb(lv_event_t *e)
 
 static void construire_reglages(lv_obj_t *z)
 {
-    lv_obj_t *page = ui_conteneur(z);
-    lv_obj_set_size(page, UI_ZONE_L, UI_ZONE_H - 50);
-    lv_obj_set_pos(page, 0, 50);
-    lv_obj_add_flag(page, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(page, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(page, LV_SCROLLBAR_MODE_OFF);
-    ui_defilement_rapide(page); // 05/11 : scroll par bande (garde = style lu a la creation)
+    lv_obj_t *page = ui_conteneur_defilant(z, 0, 50, UI_ZONE_L, UI_ZONE_H - 50);
     lv_obj_set_flex_flow(page, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_hor(page, UI_MARGE, 0);
     lv_obj_set_style_pad_bottom(page, 16, 0);

@@ -204,24 +204,10 @@ static bool lire(int canal, const char *url, uint8_t *buf, size_t max, size_t *n
     return *n > 2 && buf[0] == 0xFF && buf[1] == 0xD8;
 }
 
-// 26/10 : deux tâches de fond qui attendent leur travail : 0 = décodage (cœur 1, comme la production qui
-// décodait dans loop() ; sur le cœur 0, avec la lecture, elles affamaient sa tâche inactive : chien de garde),
-// 1 = lecture continue (cœur 0, près du Wi-Fi) ;
-// piles en RAM interne (la plus juste : 27 Ko au plus bas pendant la lecture de la bibliothèque musicale, chambre 1) :
-// 8 Ko pour le décodage (esp_new_jpeg alloue sur le tas), 4 Ko pour la lecture.
-// 08/11 : elles n'étaient « permanentes » que jusqu'à la première ouverture — elles sont créées à la demande par
-// lancer() et rendues à la fermeture de la caméra (voir l'arrêt plus bas) : leur pile ne doit pas rester prise caméra
-// fermée (mesuré : 87 ko de RAM interne libre contre ~110 ko au démarrage, chambre 1).
+// Deux tâches de fond créées à la demande et rendues à la fermeture : 0 = décodage (cœur 1), 1 = lecture
+// continue (cœur 0, près du Wi-Fi) ; piles en RAM interne (8 Ko décodage, 4 Ko lecture).
 static TaskHandle_t g_tache[2] = {nullptr, nullptr};
 static void (*volatile g_travail[2])(void *) = {nullptr, nullptr};
-// 08/11 (retour d'usage : « on ne libère pas et ça me gêne, ce n'est pas propre ») : les deux piles restent en vie tant que la
-// tâche existe. Une tâche de fond ne se tue JAMAIS de l'extérieur — vTaskDelete(g_tache[c]) depuis la boucle de l'écran
-// la détruirait en plein recv() ou en plein décodage, la main sur g_jpg, g_px ou la bande de décodage. On lui demande de
-// se rendre elle-même : notification + drapeau, elle sort de sa boucle au premier réveil (donc l'image en cours a fini)
-// et fait vTaskDelete(NULL).
-// Verrou : les deux appelants (lancer, arreter_taches) tournent dans la tâche de la boucle, donc ne se disputent rien ;
-// seul le départ de la tâche, sur l'autre cœur, écrit ces drapeaux. Le portMUX sert à ce que « en vie / poignée /
-// demande » se lise et s'écrive d'un bloc, et à ce que la boucle ne voie pas une poignée dont la tâche est déjà morte.
 static volatile bool g_arret[2] = {false, false};  // demande : la tâche sort de sa boucle au prochain réveil
 static volatile bool g_en_vie[2] = {false, false}; // la tâche existe (sa pile de RAM interne est prise)
 static volatile size_t g_piles_rendues = 0;        // octets de pile rendus depuis la demande d'arrêt

@@ -48,13 +48,7 @@ static int repas_prevus()
     return n;
 }
 
-static void fmt_g(char *b, size_t n, float g)
-{
-    snprintf(b, n, "%.1f", g);
-    for (char *p = b; *p; p++)
-        if (*p == '.')
-            *p = SEP_CAR;
-}
+static void fmt_g(char *b, size_t n, float g) { ui_fmt_float(b, n, g, 1); }
 
 static void rafraichir()
 {
