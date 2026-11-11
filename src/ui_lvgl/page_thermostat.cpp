@@ -618,6 +618,32 @@ static void piece_cb(lv_event_t *e)
     rafraichir();
 }
 
+// 11/11 (retour d'usage : même amélioration que la barre d'onglets) : toute la bande d'en-tête choisit la pièce, à
+// l'APPUI. Moitié gauche = précédente, moitié droite = suivante ; un appui sur la rangée de points saute à ce point
+// (cellule de 18 px par point). Les flèches ne sont plus que des repères. Pas de reconstruction de page ici
+// (rafraichir) : rien à différer.
+#define BANDE_PIECE_H 60 // en-tête : nom + points (≈49) ; l'anneau commence à 72
+#define POINTS_Y 40      // haut de la rangée de points (lv_obj_align … 0, 40)
+#define POINT_PAS 18     // point de 9 px + écart de 9 px
+static void bande_piece_cb(lv_event_t *e)
+{
+    lv_indev_t *indev = lv_indev_active();
+    if (!indev)
+        return;
+    lv_point_t p;
+    lv_indev_get_point(indev, &p);
+    lv_area_t z;
+    lv_obj_get_coords((lv_obj_t *)lv_event_get_target(e), &z);
+    const int x = p.x - z.x1, y = p.y - z.y1, l = lv_area_get_width(&z);
+    transition_arreter();
+    const int rangee = TH_NB_PIECES * POINT_PAS, x0 = (l - rangee) / 2;
+    if (y >= POINTS_Y - 10 && x >= x0 - 4 && x < x0 + rangee + 4)
+        th_piece_affichee = LV_CLAMP(0, (x - x0) / POINT_PAS, TH_NB_PIECES - 1);
+    else
+        th_piece_affichee = (th_piece_affichee + TH_NB_PIECES + (x < l / 2 ? -1 : 1)) % TH_NB_PIECES;
+    rafraichir();
+}
+
 static void mode_cb(lv_event_t *e)
 {
     th_mode_t m = (th_mode_t)(intptr_t)lv_event_get_user_data(e);
@@ -693,6 +719,9 @@ void page_thermostat_creer(lv_obj_t *zone)
     lv_obj_set_pos(suiv, UI_ZONE_L - 8 - 56, 0);
     lv_obj_center(ui_label(suiv, UI_POLICE_CHEVRONS, UI_TEXTE2, LV_SYMBOL_RIGHT));
     lv_obj_add_event_cb(suiv, piece_cb, LV_EVENT_CLICKED, (void *)(intptr_t)1);
+    // 11/11 : les flèches deviennent des repères ; la bande transparente ci-dessous (créée plus bas, donc au-dessus) reçoit l'appui
+    lv_obj_clear_flag(prec, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(suiv, LV_OBJ_FLAG_CLICKABLE);
 
     o_nom = ui_label(zone, UI_POLICE_NOM_PIECE, UI_TEXTE, ""); // essai 3x5 refusé (18/10) ; 27/10 : en gras (retour d'usage)
     lv_obj_align(o_nom, LV_ALIGN_TOP_MID, 0, 2);
@@ -708,6 +737,12 @@ void page_thermostat_creer(lv_obj_t *zone)
         lv_obj_set_style_radius(o_points[i], LV_RADIUS_CIRCLE, 0);
         ui_style_bg_opa(o_points[i], LV_OPA_COVER, 0);
     }
+    lv_obj_t *bande = ui_conteneur(zone); // 11/11 : toute l'en-tête choisit la pièce (bande_piece_cb)
+    lv_obj_set_size(bande, UI_ZONE_L, BANDE_PIECE_H);
+    lv_obj_set_pos(bande, 0, 0);
+    lv_obj_add_flag(bande, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(bande, LV_OBJ_FLAG_SCROLL_CHAIN);
+    lv_obj_add_event_cb(bande, bande_piece_cb, LV_EVENT_PRESSED, nullptr);
 
     // Anneau dessiné + arc transparent par-dessus pour le bouton à faire glisser
     const lv_coord_t ax = (UI_ZONE_L - ANNEAU_D) / 2 + DECALAGE_X, ay = 72; // sous l'en-tête (points à ≈49), trait du bas au-dessus des pastilles (414)

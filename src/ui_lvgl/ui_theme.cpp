@@ -417,10 +417,43 @@ bool ui_defilement_rapide(lv_obj_t *o)
     return true;
 }
 
+// 11/11 (retour d'usage : « améliorer la cliquabilité de la barre des onglets ») : c'est la BARRE ENTIÈRE qui reçoit
+// l'appui (marges et jointures comprises, + 6 px autour), et l'onglet se déduit de la position du doigt : les zones des
+// boutons ne se chevauchent pas. Le changement part à l'APPUI (un glissé de plus de 10 px annulait le clic au relâcher),
+// différé d'un tour (lv_async_call) : la page reconstruit sa zone, barre comprise (construire() -> lv_obj_clean), et ne
+// doit pas la détruire pendant qu'elle traite le doigt. Les pages reçoivent le même LV_EVENT_CLICKED qu'avant.
+static void onglet_differe(void *b)
+{
+    if (lv_obj_is_valid((lv_obj_t *)b))
+        lv_obj_send_event((lv_obj_t *)b, LV_EVENT_CLICKED, nullptr);
+}
+static void onglets_appui(lv_event_t *e)
+{
+    lv_obj_t *sel = (lv_obj_t *)lv_event_get_target(e);
+    const int n = (int)lv_obj_get_child_count(sel);
+    lv_indev_t *indev = lv_indev_active();
+    if (!indev || n <= 0)
+        return;
+    lv_point_t p;
+    lv_indev_get_point(indev, &p);
+    lv_area_t z;
+    lv_obj_get_coords(sel, &z);
+    const lv_coord_t l = (lv_area_get_width(&z) - 8) / n; // même pas que la construction (larg = n * l + 8)
+    int i = l > 0 ? (p.x - z.x1 - 4) / l : 0;
+    i = LV_CLAMP(0, i, n - 1);
+    lv_obj_t *b = lv_obj_get_child(sel, i);
+    if (b && !lv_obj_has_state(b, LV_STATE_CHECKED))
+        lv_async_call(onglet_differe, b);
+}
+
 void ui_onglets(lv_obj_t *parent, const char *const *noms, int n, int choisi, lv_event_cb_t cb, const int *donnees, lv_obj_t **boutons)
 {
     const lv_coord_t l = n <= 2 ? 127 : n == 3 ? 101 : 88, larg = n * l + 8;
     lv_obj_t *sel = ui_conteneur(parent);
+    lv_obj_add_flag(sel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(sel, LV_OBJ_FLAG_SCROLL_CHAIN); // l'appui sur la barre ne fait pas défiler la page
+    lv_obj_set_ext_click_area(sel, 6);
+    lv_obj_add_event_cb(sel, onglets_appui, LV_EVENT_PRESSED, nullptr);
     lv_obj_add_style(sel, &ui_st_carte, 0);
     lv_obj_set_size(sel, larg, 40);
     lv_obj_set_pos(sel, (UI_ZONE_L - larg) / 2, 4);
@@ -431,6 +464,7 @@ void ui_onglets(lv_obj_t *parent, const char *const *noms, int n, int choisi, lv
     for (int i = 0; i < n; i++)
     {
         lv_obj_t *b = ui_bouton(sel, l, 32);
+        lv_obj_clear_flag(b, LV_OBJ_FLAG_CLICKABLE); // 11/11 : l'appui va à la barre (onglets_appui)
         lv_obj_set_style_radius(b, 9, 0);
         lv_obj_set_style_border_width(b, 0, 0);
         lv_obj_set_style_bg_opa(b, LV_OPA_TRANSP, 0);
