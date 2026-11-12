@@ -7,34 +7,125 @@ un radar de présence qui réveille l'écran quand quelqu'un approche, et un fir
 de son temps en veille profonde. C'est le même firmware que les écrans muraux, avec la page « Batterie et
 capteur » en plus.
 
-![Les quatre pièces du boîtier dans le trancheur](apercu_boitier.jpg)
-
-*Page en cours de rédaction : références de la batterie, du module de charge et de l'ampli, et photos à venir.*
+![L'écran sur batterie sur son pivot, à côté d'un écran sur son support de bureau](../../docs/images/ecran-batterie-pivot.jpg)
 
 ## Matériel
 
 | Élément | Détail |
 |---|---|
 | Écran | Guition ESP32-S3-4848S040 (le même que les écrans muraux) |
-| Mesure de la tension | pont diviseur 100 kΩ / 47 kΩ sur le GPIO 1 (ADC) ([ui_batterie_esp.cpp](../../src/ui_lvgl/ui_batterie_esp.cpp)) |
+| Batterie | 4 cellules 18650 LiitoKala de 4000 mAh (annoncés), en parallèle |
+| Charge de la batterie | circuit de charge d'origine de la carte (connecteur batterie) |
+| Mesure de la tension | pont diviseur 100 kΩ / 47 kΩ sur le GPIO 1 (ADC), avec un condensateur de 1 µF ([ui_batterie_esp.cpp](../../src/ui_lvgl/ui_batterie_esp.cpp)) |
 | Détection de présence | radar 24 GHz **HLK-LD2410S** : sortie OUT sur le GPIO 2 (réveille l'ESP32-S3 de sa veille profonde, réveil ext0) ; port série sur les GPIO 41 (RX de l'ESP32) et 40 (TX), 115 200 bauds, pour les mesures et les réglages |
 | Boîtier | dessiné de A à Z, 4 pièces imprimées en 3D : voir [Boîtier](#boîtier) |
 
+![Les quatre cellules 18650 dans le boîtier](photos/interieur_cellules.jpg)
+
 ## Modifications de la carte
 
-- **Amplificateur audio de la carte décâblé.**
-- **Pont diviseur** ajouté pour lire la tension de la batterie sur le GPIO 1.
-- **Radar LD2410S** câblé : sortie OUT sur le GPIO 2 pour réveiller l'écran, port série sur les GPIO 40 et 41.
+Le but : libérer des broches pour le radar et la mesure de la batterie, et ne rien laisser consommer
+pendant la veille profonde.
+
+![La carte modifiée, repères numérotés](photos/carte_annotee.jpg)
+
+1. **Alimentation de l'ampli coupée** (piste de sa broche 6, VDD) : voir [L'ampli audio éteint](#lampli-audio-éteint).
+2. **Tirage de 10 kΩ du CS de la carte SD coupé**, près du réseau de résistances RN1.
+3. **Reset d'origine retiré** : sa résistance de tirage et son condensateur.
+4. **Fil rouge** : le GPIO 42 alimente le tactile GT911.
+5. **Piste d'alimentation du GT911 coupée**, sous la soudure du fil rouge sur le connecteur du tactile.
+6. **Rappel vers la masse** : deux résistances en parallèle sur la ligne du GPIO 42.
+7. **Reset retardé** : condensateur de 10 nF (avec sa résistance) vers le reset de la dalle et du GT911.
+8. **Mesure de la batterie** : pont diviseur 100 kΩ / 47 kΩ et condensateur de 1 µF, sur le GPIO 1.
+9. **Fils vers le radar**, dans le socle.
+
+### Les broches réutilisées
+
+| GPIO | Usage d'origine | Usage ici |
+|---|---|---|
+| 1 | sortie « relais » du connecteur Dupont (BCLK de l'ampli, résistance non montée) | mesure de la batterie |
+| 2 | sortie « relais » du connecteur Dupont (LRCLK de l'ampli, résistance non montée) | sortie OUT du radar, réveil |
+| 40 | sortie « relais » du connecteur Dupont (DIN de l'ampli, résistance non montée) | TX vers le radar |
+| 41 | MISO de la carte SD | RX depuis le radar |
+| 42 | CS de la carte SD | alimentation du tactile et reset de l'écran (voir plus bas) |
+
+La carte SD n'est plus utilisable.
+
+### Les fils vers le radar (dans le socle)
+
+| Fil | Côté radar | Côté carte |
+|---|---|---|
+| bleu | TX | GPIO 41 |
+| vert | RX | GPIO 40 |
+| blanc/vert | OUT | GPIO 2 |
+| orange | 3,3 V | 3,3 V |
+| blanc/orange | 0 V | GND |
+
+### Le tactile et l'écran éteints pendant la veille (GPIO 42)
+
+Le GPIO 42 alimente directement le contrôleur tactile GT911 (fil rouge, repère 4 ; la piste
+d'alimentation d'origine est coupée sous le fil, repère 5). À travers une résistance et un condensateur de 10 nF, il commande aussi
+le reset commun de la dalle et du GT911, qui se relâche ainsi avec un léger retard. Deux résistances en
+parallèle vers la masse tiennent la ligne basse quand la broche ne pilote rien (démarrage, veille).
+Le firmware la met à 0 V avant la veille profonde et la remet à 3,3 V au réveil.
+
+Pour que ce rappel vers la masse fonctionne, deux résistances de tirage vers le 3,3 V sont retirées :
+
+- celle du **reset d'origine** de l'écran (avec son condensateur), près du connecteur Dupont (repère 3) ;
+- celle du **CS de la carte SD** (piste coupée près du réseau de résistances RN1, repère 2).
+
+### L'ampli audio éteint
+
+L'ampli NS4168 de la carte n'est relié à aucune broche (ses résistances de liaison ne sont pas montées),
+mais il est alimenté et activé d'origine : il consomme environ **13 mA** à vide (fiche technique), soit
+sept fois la veille complète de l'écran. Sa piste d'alimentation (broche 6, VDD) est coupée (repère 1).
 
 ## Consommation mesurée
 
-Mesures faites à l'alimentation de laboratoire, réglée à la tension de la batterie.
+Mesures faites à l'alimentation de laboratoire, à 3,7 V, écran complet (radar compris).
 
-| État | Courant | Conditions |
+| Rétroéclairage | Processeur | Wi-Fi | Courant |
+|---|---|---|---|
+| 100 % | 240 MHz | allumé en permanence | **390 mA** |
+| 100 % | 80 MHz | économie (`PS_MIN`) | 320 mA |
+| 100 % | 240 MHz | coupé | 330 mA |
+| 100 % | 80 MHz | coupé | 310 mA |
+| 5 % | 240 MHz | allumé en permanence | 160 mA |
+| 5 % | 80 MHz | économie (`PS_MIN`) | **100 mA** |
+| Veille profonde | | | **2 mA** |
+
+- Le **rétroéclairage** est le plus gros poste : environ 230 mA entre 5 % et 100 %.
+- Le **Wi-Fi en économie** coûte peu : 320 mA contre 310 mA Wi-Fi coupé. Le Wi-Fi allumé en
+  permanence coûte bien plus (environ 60 mA à 5 %).
+- En **veille profonde**, l'essentiel vient du régulateur de la carte. Le tactile est hors tension
+  (tirages I2C mesurés à 0 V) ; le radar consomme 68 µA à 0,5 Hz d'après sa notice (V1.04).
+
+## Autonomie estimée
+
+Estimations faites à partir des mesures ci-dessus, pour 4 cellules 18650 de 4000 mAh (capacité
+annoncée) en parallèle, soit 16 000 mAh. La capacité réelle est souvent plus faible et une partie n'est pas
+utilisable (tension de coupure, vieillissement) : comptez 15 à 20 % de moins. L'autodécharge des
+cellules n'est pas comptée.
+
+Ce que coûte chaque situation, réglages par défaut (économie après 10 s, veille après 30 s) :
+
+| Situation | Coût |
+|---|---|
+| Veille profonde | 48 mAh par jour |
+| Un passage devant l'écran, sans le toucher (10 s allumé, puis 20 s au repos à 5 %) | ~1,6 mAh |
+| Quelqu'un reste dans le champ du radar sans toucher (écran au repos à 5 %) | 100 mAh par heure |
+| Utilisation (rétroéclairage 100 %) | 6,5 mAh par minute |
+
+| Usage type | Par jour | Autonomie |
 |---|---|---|
-| Veille profonde | **1,86 mA** à 3,7 V | radar actif (une trame toutes les 2 s) ; mesuré avec l'ancien firmware |
-| Éveillé | **~70 mA** | ESP32-S3 à 80 MHz, **sans** rétroéclairage |
-| Radar LD2410S seul | 68 µA à 0,5 Hz, 635 µA à 8 Hz | valeurs de la notice du fabricant (V1.04), non mesurées ici |
+| Veille seule | 48 mAh | ~330 jours |
+| 20 passages par jour | ~80 mAh | ~200 jours |
+| 20 passages + 1 h de présence | ~180 mAh | ~90 jours |
+| 20 passages + 3 h de présence + 15 min d'utilisation | ~480 mAh | ~34 jours |
+
+Le temps passé **dans le champ du radar** décide de l'autonomie : l'écran reste éveillé tant qu'il voit
+quelqu'un. Placez-le là où l'on passe plutôt que là où l'on reste assis, ou réglez la portée du radar
+(onglet Radar de la page Batterie).
 
 ## Ce que fait le firmware pour économiser
 
@@ -42,11 +133,14 @@ Mesures faites à l'alimentation de laboratoire, réglée à la tension de la ba
   profonde (commande DSTB du ST7701), et le radar la réveille (GPIO 2).
 - **Démarrage court** au réveil : pas d'écran de démarrage, borne Wi-Fi et canal gardés en mémoire RTC
   pour se reconnecter sans balayage. Mesuré : **0,69 à 0,72 s** jusqu'à l'écran prêt, contre 1,39 s
-  avec l'ancien firmware (avant le passage à LVGL).
+  avec l'ancien firmware (sous Arduino 2).
+- **Bibliothèque musicale à la demande** : elle n'est pas chargée au démarrage, seulement à l'ouverture
+  de la liste.
 - **Mode économie** après 10 s sans toucher : luminosité de repos, processeur à 80 MHz, Wi-Fi en
   économie légère (`WIFI_PS_MIN_MODEM`).
 - **Wi-Fi coupé après la synchronisation** (option) : la radio s'éteint une fois les données reçues de
-  Home Assistant, et se rallume au premier toucher.
+  Home Assistant, et se rallume au premier toucher. Gain mesuré faible (10 mA à 80 MHz) : l'économie
+  `PS_MIN` coûte déjà peu.
 - **Puissance d'émission Wi-Fi réglable** (option : 7 dBm, moins de courant, moins de portée).
 - Essayé sans gain : `WIFI_PS_MAX_MODEM` (tout le trafic est rattrapé d'un coup au réveil de la radio).
 
@@ -72,6 +166,8 @@ La bibliothèque [HLK-LD2410S](https://github.com/phuongnamzz/HLK-LD2410S) est i
 - **Points de mesure** (trames brutes, commandes acquittées, compteurs) pour le journal et la page web du radar.
 
 ## Boîtier
+
+![Les quatre pièces du boîtier dans le trancheur](apercu_boitier.jpg)
 
 Dessiné de A à Z sous Fusion, pour l'écran avec sa batterie et le radar. Quatre pièces, au format STL
 (sur GitHub, ouvrez un fichier : il s'affiche en 3D) :

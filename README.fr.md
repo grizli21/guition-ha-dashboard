@@ -9,6 +9,9 @@ qualité de l'air, ouvrants, croquettes, café, eau chaude, VMC, poêle à bois,
 panneau LED, imprimante 3D, PC, réglages, informations, batterie — plus la page radar des écrans
 sur batterie.
 
+Il existe aussi en **version sans fil** : batterie, radar de présence, veille profonde à 2 mA, réveil
+en 0,7 s — voir [Écran sur batterie](#écran-sur-batterie).
+
 English version of this page: **[README.md](README.md)**.
 
 [![Licence : MIT](https://img.shields.io/badge/licence-MIT-4b714f)](LICENSE)
@@ -21,7 +24,7 @@ English version of this page: **[README.md](README.md)**.
 
 ## Sommaire
 
-- [Galerie](#galerie) · [Navigation](#navigation) · [Matériel](#matériel) · [Architecture](#architecture) · [Sous le capot](#sous-le-capot)
+- [Galerie](#galerie) · [Écran sur batterie](#écran-sur-batterie) · [Navigation](#navigation) · [Matériel](#matériel) · [Architecture](#architecture) · [Sous le capot](#sous-le-capot)
 - [Démarrage rapide](#démarrage-rapide) · [Aller plus loin](#aller-plus-loin) · [Limites connues](#limites-connues) · [Licence et crédits](#licence-et-crédits)
 - Pages détaillées : [Installation](docs/INSTALLATION.md) · [Sous le capot](docs/SOUS_LE_CAPOT.md) · [Développement](docs/DEVELOPPEMENT.md) · [Crédits](docs/CREDITS.md) · [Écran sur batterie](materiel/ecran-batterie/) · [Support 3D](materiel/support-bureau/)
 
@@ -73,6 +76,27 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
 
 </details>
 
+## Écran sur batterie
+
+<img src="docs/images/ecran-batterie-pivot.jpg" width="640" alt="L'écran sur batterie sur son pivot, à côté d'un écran sur son support de bureau">
+
+Une variante **sans fil** du même écran, dans un boîtier imprimé en 3D : quatre cellules 18650, un radar
+de présence qui le réveille quand quelqu'un approche, et la veille profonde le reste du temps. C'est le même
+firmware que les écrans muraux : l'écran se reconnaît à son adresse MAC.
+
+- **2 mA en veille profonde**, réveillé par le radar HLK-LD2410S, sans avoir à le toucher.
+- **Écran prêt en 0,7 s environ** au réveil : la borne Wi-Fi est gardée en mémoire, pas de balayage.
+- **Autonomie estimée** sur 16 000 mAh : environ 200 jours pour 20 passages par jour, un mois environ si
+  quelqu'un reste 3 h par jour dans le champ du radar.
+- **Deux pages à lui** : Batterie (charge, réveils sur 24 h, détail du dernier réveil en millisecondes) et
+  Radar (zones, sensibilité, réglage automatique).
+- **Carte modifiée** pour libérer des broches et ne rien laisser consommer en veille ; **boîtier dessiné de
+  A à Z**, fichiers STL fournis.
+
+<img src="docs/images/ecran-batterie-et-support.jpg" width="640" alt="À gauche un écran sur son support de bureau, à droite l'écran sur batterie">
+
+Câblage, modifications de la carte, mesures et boîtier : [materiel/ecran-batterie/](materiel/ecran-batterie/).
+
 ## Navigation
 
 Le rail de droite est un **carrousel d'icônes** défilable au doigt : 16 icônes de 64 px dans une
@@ -97,7 +121,8 @@ relance entre deux pas de l'élan espaçait les pas (47 → 135-300 ms) et étir
   (classe `Panel_ST7701_guition_esp32_4848S040`, voir [include/LGFX_ESP32S3_RGB_TFT_SPI_ST7701_GT911.h](include/LGFX_ESP32S3_RGB_TFT_SPI_ST7701_GT911.h)).
 - Carte PlatformIO : [board/esp32-s3-devkitc-1-n16r8v.json](board/esp32-s3-devkitc-1-n16r8v.json)
   (devkitc-1, 16 Mo / 8 Mo). Partitions : `large_spiffs_16MB.csv`, ~10 Mo de LittleFS.
-- Alimentation : 5 V (les écrans sur batterie ajoutent un module batterie + radar HLK-LD2410S).
+- Alimentation : 5 V. Les écrans sur batterie ajoutent 4 cellules 18650 (chargées par le circuit d'origine de la carte)
+  et un radar HLK-LD2410S.
 - Sur ces puces, les eFuses verrouillent la flash en **DIO** (2 fils) : les tentatives QIO/QOUT retombent
   en DIO au démarrage — documenté dans les commentaires de [platformio.ini](platformio.ini).
 

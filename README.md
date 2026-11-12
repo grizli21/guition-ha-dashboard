@@ -8,6 +8,9 @@ Wall-mounted dashboard for **Guition ESP32-S3-4848S040** screens: LVGL 9.6 firmw
 covers, feeder, coffee, hot water, ventilation, wood stove, music, lights, LED panel, 3D printer,
 PC, settings, info, battery — plus the radar page for battery-powered screens.
 
+It also comes in a **wireless version**: battery, presence radar, 2 mA deep sleep, 0.7 s wake-up —
+see [Battery-powered display](#battery-powered-display).
+
 [![License: MIT](https://img.shields.io/badge/license-MIT-4b714f)](LICENSE)
 [![LVGL 9.6.0](https://img.shields.io/badge/LVGL-9.6.0-41c17c)](lib/lvgl-9.6.0)
 [![ESP32-S3](https://img.shields.io/badge/ESP32--S3-N16R8v-2c6e91)](board/esp32-s3-devkitc-1-n16r8v.json)
@@ -18,7 +21,7 @@ PC, settings, info, battery — plus the radar page for battery-powered screens.
 
 ## Contents
 
-- [Gallery](#gallery) · [Navigation](#navigation) · [Hardware](#hardware) · [Architecture](#architecture) · [Under the hood](#under-the-hood)
+- [Gallery](#gallery) · [Battery-powered display](#battery-powered-display) · [Navigation](#navigation) · [Hardware](#hardware) · [Architecture](#architecture) · [Under the hood](#under-the-hood)
 - [Quick start](#quick-start) · [Going further](#going-further) · [Known limitations](#known-limitations) · [License and credits](#license-and-credits)
 - Detailed pages: [Installation](docs/en/INSTALLATION.md) · [Under the hood](docs/en/SOUS_LE_CAPOT.md) · [Development](docs/en/DEVELOPPEMENT.md) · [Credits](docs/en/CREDITS.md) · [Battery-powered display](materiel/ecran-batterie/README.en.md) · [3D stand](materiel/support-bureau/README.en.md)
 
@@ -70,6 +73,27 @@ Montserrat Bold — see [tools/fonts/README.en.md](tools/fonts/README.en.md#opti
 
 </details>
 
+## Battery-powered display
+
+<img src="docs/images/ecran-batterie-pivot.jpg" width="640" alt="The battery-powered display on its pivot, next to a display on its desk stand">
+
+A **wireless** version of the same display, in a 3D-printed case: four 18650 cells, a presence radar that
+wakes it when someone comes near, and deep sleep the rest of the time. It runs the same firmware as the wall
+displays: the display recognizes itself by its MAC address.
+
+- **2 mA in deep sleep**, woken by the HLK-LD2410S radar, no touch needed.
+- **Screen ready in about 0.7 s** on wake: the Wi-Fi access point is kept in memory, no scan.
+- **Estimated battery life** on 16,000 mAh: about 200 days for 20 walk-bys a day, about a month if someone
+  stays in the radar's field 3 h a day.
+- **Two pages of its own**: Battery (charge, wake-ups over 24 h, breakdown of the last wake-up in
+  milliseconds) and Radar (zones, sensitivity, automatic tuning).
+- **Modified board** to free pins and leave nothing drawing current in sleep; **case designed from
+  scratch**, STL files included.
+
+<img src="docs/images/ecran-batterie-et-support.jpg" width="640" alt="Left, a display on its desk stand; right, the battery-powered display">
+
+Wiring, board modifications, measurements and case: [materiel/ecran-batterie/README.en.md](materiel/ecran-batterie/README.en.md).
+
 ## Navigation
 
 The right-hand rail is a swipeable **carousel of icons**: 16 icons of 64 px in a 76 px column,
@@ -94,7 +118,8 @@ restart between two fling steps spread the steps apart (47 → 135-300 ms) and s
   (class `Panel_ST7701_guition_esp32_4848S040`, see [include/LGFX_ESP32S3_RGB_TFT_SPI_ST7701_GT911.h](include/LGFX_ESP32S3_RGB_TFT_SPI_ST7701_GT911.h)).
 - PlatformIO board: [board/esp32-s3-devkitc-1-n16r8v.json](board/esp32-s3-devkitc-1-n16r8v.json)
   (devkitc-1, 16 MB / 8 MB). Partitions: `large_spiffs_16MB.csv`, ~10 MB of LittleFS.
-- Power supply: 5 V (battery-powered screens add a battery module + HLK-LD2410S radar).
+- Power supply: 5 V. Battery-powered displays add four 18650 cells (charged by the board's own circuit)
+  and an HLK-LD2410S radar.
 - On these chips, the eFuses lock the flash to **DIO** (2 wires): QIO/QOUT attempts fall back
   to DIO at boot — documented in the comments of [platformio.ini](platformio.ini).
 
