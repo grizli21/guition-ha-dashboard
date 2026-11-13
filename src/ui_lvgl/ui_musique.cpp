@@ -621,7 +621,7 @@ static void lire_etat()
     mu_etat_t &m = mu_etat;
     if (!demander(r, f, "player_queues/get", "{\"queue_id\":\"%s\"}", LECTEURS[g_lecteur].id) || r["current_item"].isNull())
     {
-        snprintf(m.titre, sizeof m.titre, "%s", "Rien en lecture");
+        snprintf(m.titre, sizeof m.titre, "%s", TXT("Rien en lecture", "Nothing playing"));
         m.artiste[0] = m.album[0] = 0;
         m.duree = m.position = 0;
         m.lecture = false;

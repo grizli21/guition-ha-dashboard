@@ -743,7 +743,7 @@ static void recevoir_air(int i, JsonDocument &j)
     lire(j["en_ligne"], en_ligne);
     p.en_ligne = en_ligne;
     if (!en_ligne)
-        snprintf(p.info, sizeof p.info, "Hors ligne");
+        snprintf(p.info, sizeof p.info, TXT("Hors ligne", "Offline"));
     else
     {
         if (j["info"].is<const char *>())

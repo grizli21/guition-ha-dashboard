@@ -400,7 +400,8 @@ static void web_brancher()
         }
         const bool relu = lire_config(); // ce que le capteur a vraiment gardé
         const bool juste = relu && !memcmp(rd_etat.detection, USINE_D, RD_ZONES);
-        snprintf(rd_etat.message, sizeof rd_etat.message, juste ? "déclenchement d'usine écrit" : "usine : relecture différente");
+        snprintf(rd_etat.message, sizeof rd_etat.message, juste ? TXT("déclenchement d'usine écrit", "factory trigger values written")
+                                                       : TXT("usine : relecture différente", "factory: readback differs"));
         ui_trace("[radar] valeurs d'usine %s, relecture %s\n", ok ? "écrites" : "NON écrites", juste ? "identique" : "DIFFÉRENTE");
         page_radar_maj();
         g_web.send(200, "application/json", String("{\"ok\":") + (ok ? "true" : "false") + ",\"identique\":" + (juste ? "true" : "false") + "}"); });
@@ -829,16 +830,17 @@ void ui_radar_tache()
         {
             verif_ms = 0;
             if (mouvement)
-                ui_journal(false, "Radar relu : présence toujours là (%u cm)", (unsigned)distance);
+                ui_journal(false, TXT("Radar relu : présence toujours là (%u cm)", "Radar re-read: presence still there (%u cm)"), (unsigned)distance);
             else
-                ui_journal(true, "Radar relu : plus de présence (il était bloqué)");
+                ui_journal(true, TXT("Radar relu : plus de présence (il était bloqué)", "Radar re-read: no presence anymore (it was stuck)"));
         }
         if (presence_depuis && t - presence_depuis >= CHIEN_MS && lv_disp_get_inactive_time(NULL) >= CHIEN_MS &&
             (!derniere_relance || t - derniere_relance >= CHIEN_MS) && !ld2410s.isAutoThresholdRunning() && !g_auto_a_finir &&
             !rd_etat.diag)
         {
             derniere_relance = t | 1;
-            ui_journal(true, "Radar : présence ininterrompue depuis %lu min sans toucher (%u cm) : relecture",
+            ui_journal(true, TXT("Radar : présence ininterrompue depuis %lu min sans toucher (%u cm) : relecture",
+                          "Radar: uninterrupted presence for %lu min without touch (%u cm): re-read"),
                        (unsigned long)((t - presence_depuis) / 60000), (unsigned)distance);
             lire_config();
             verif_ms = millis() | 1;
@@ -885,9 +887,9 @@ void ui_radar_tache()
                 if (!ok)
                     ui_journal(true, TXT("Réglage auto : seuils non relus après 5 essais, marge NON posée", "Auto-tune: thresholds not reread after 5 tries, margin NOT set"));
                 if (ok && g_auto_interrompu)
-                    snprintf(rd_etat.message, sizeof rd_etat.message, "réglage auto interrompu à %u %%", (unsigned)g_auto_interrompu);
+                    snprintf(rd_etat.message, sizeof rd_etat.message, TXT("réglage auto interrompu à %u %%", "auto-tune interrupted at %u %%"), (unsigned)g_auto_interrompu);
                 else
-                    snprintf(rd_etat.message, sizeof rd_etat.message, ok ? "réglage auto terminé" : "réglage auto : le radar ne répond pas");
+                    snprintf(rd_etat.message, sizeof rd_etat.message, ok ? TXT("réglage auto terminé", "auto-tune done") : TXT("réglage auto : le radar ne répond pas", "auto-tune: radar not responding"));
                 g_auto_a_finir = false;
                 g_auto_interrompu = 0;
                 essais = 0;
