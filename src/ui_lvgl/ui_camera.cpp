@@ -765,14 +765,40 @@ void ui_camera_afficher(lv_obj_t *zone, const char *url)
 // créés après elle, s'ils la recouvrent) ; refait à chaque tour de boucle pendant l'enchaînement (une étiquette qui change)
 // 27/10 : photos des éléments posés sur la caméra (reprises toutes les 300 ms : un texte qui change) ; une photo remplacée
 // n'est libérée qu'une seconde plus tard (le décodeur, sur l'autre tâche, a pu la prendre pour l'image en cours)
-#define CALQUE_MS 300
 static struct
 {
     lv_obj_t *obj;
     cam_photo_t *img;
     lv_area_t zone;
     uint32_t quand;
+    uint32_t sig; // 13/11 : empreinte de l'élément photographié (position, visibilité, textes, images, valeurs)
 } g_calques[CAM_EXCLUS_MAX];
+// 13/11 (PSRAM à zéro sur la page Imprimante, caméra vide, à l'allumage de l'imprimante) : les photos étaient reprises
+// toutes les 300 ms, changées ou non, en ARGB8888, l'ancienne gardée 1 s (jusqu'à 24 vivantes). Désormais reprises
+// seulement quand l'élément a changé (empreinte), ou au plus tard toutes les 5 s (un changement que l'empreinte ne voit pas).
+#define CALQUE_SECOURS_MS 5000
+static uint32_t empreinte(lv_obj_t *o, uint32_t h = 2166136261u)
+{
+    auto mel = [&](uint32_t v) { h = (h ^ v) * 16777619u; };
+    lv_area_t a;
+    lv_obj_get_coords(o, &a);
+    mel((uint32_t)a.x1), mel((uint32_t)a.y1), mel((uint32_t)a.x2), mel((uint32_t)a.y2);
+    mel(lv_obj_is_hidden(o));
+    mel(lv_color_to_u32(lv_obj_get_style_bg_color(o, LV_PART_MAIN))), mel(lv_obj_get_style_bg_opa(o, LV_PART_MAIN));
+    mel(lv_color_to_u32(lv_obj_get_style_text_color(o, LV_PART_MAIN))), mel(lv_obj_get_style_opa(o, LV_PART_MAIN));
+    if (lv_obj_check_type(o, &lv_label_class))
+        for (const char *t = lv_label_get_text(o); t && *t; t++)
+            mel((uint8_t)*t);
+    else if (lv_obj_check_type(o, &lv_image_class))
+        mel((uint32_t)(uintptr_t)lv_image_get_src(o));
+    else if (lv_obj_check_type(o, &lv_arc_class))
+        mel((uint32_t)lv_arc_get_value(o)), mel((uint32_t)lv_arc_get_angle_end(o));
+    else if (lv_obj_check_type(o, &lv_bar_class))
+        mel((uint32_t)lv_bar_get_value(o));
+    for (uint32_t i = 0; i < lv_obj_get_child_cnt(o); i++)
+        h = empreinte(lv_obj_get_child(o, i), h);
+    return h;
+}
 static struct
 {
     cam_photo_t *img;
@@ -816,9 +842,10 @@ static void figer_zone()
         lv_obj_get_coords(o, &a);
         if (!cam_zone_intersecte(&a, &a, &g_job.zone))
             return;
-        // sa photo (reprise si c'est un autre élément, ou au bout de CALQUE_MS)
+        // sa photo : reprise si c'est un autre élément, s'il a changé (empreinte), ou au bout de CALQUE_SECOURS_MS
         auto &k = g_calques[nb];
-        if (k.obj != o || !k.img || lv_tick_elaps(k.quand) >= CALQUE_MS)
+        const uint32_t sig = empreinte(o);
+        if (k.obj != o || !k.img || k.sig != sig || lv_tick_elaps(k.quand) >= CALQUE_SECOURS_MS)
         {
             cam_photo_t *img = lv_snapshot_take(o, CAM_PHOTO_CF);
             if (img)
@@ -829,6 +856,7 @@ static void figer_zone()
                 lv_area_increase(&k.zone, ext, ext);
                 k.img = img;
                 k.obj = o;
+                k.sig = sig;
                 k.quand = lv_tick_get();
             }
         }
@@ -1054,6 +1082,19 @@ void ui_camera_tache()
 #endif
                  (unsigned)g_images, (unsigned)(g_somme_octets / n), (unsigned)(g_somme_tele / n), (unsigned)(g_somme_attente / n),
                  (unsigned)(g_somme_reception / n), (unsigned)(g_somme_deco / n), (unsigned)g_doublons);
+        { // 13/11 : photos des éléments posés sur la caméra (vivantes + en attente de libération) et PSRAM libre
+            unsigned nb = 0, octets = 0;
+            for (auto &k : g_calques)
+                if (k.img)
+                    nb++, octets += (unsigned)CAM_PHOTO_OCTETS(k.img);
+            for (auto &l : g_a_liberer)
+                if (l.img)
+                    nb++, octets += (unsigned)CAM_PHOTO_OCTETS(l.img);
+#ifdef ARDUINO
+            ui_trace("[camera] calques : %u photos, %u Ko ; PSRAM libre %u Ko\n", nb, octets / 1024,
+                     (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
+#endif
+        }
         g_doublons = 0;
         g_images = 0;
         g_somme_tele = g_somme_deco = g_somme_attente = g_somme_reception = g_somme_octets = 0;
