@@ -9,8 +9,8 @@ qualité de l'air, ouvrants, croquettes, café, eau chaude, VMC, poêle à bois,
 panneau LED, imprimante 3D, PC, IA, réglages, informations, batterie — plus la page radar des écrans
 sur batterie.
 
-Il existe aussi en **version sans fil** : batterie, radar de présence, veille profonde à 2 mA, réveil
-en 0,7 s — voir [Écran sur batterie](#écran-sur-batterie).
+Il existe aussi en **version sans fil** : batterie, radar de présence, veille profonde à 2 mA, écran
+allumé en 0,7 s au réveil — voir [Écran sur batterie](#écran-sur-batterie).
 
 English version of this page: **[README.md](README.md)**.
 
@@ -53,7 +53,7 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
   </tr>
   <tr>
     <td><img src="docs/images/ia-orage-anime.gif" width="234" alt="Page IA sous l'orage : pluie et éclair animés"><br><b>IA</b> — Clawd et l'activité de l'agent Claude du PC : état, jetons, sessions, histogramme. Le ciel suit la météo de Home Assistant — GIF : averse et éclair, animation du simulateur</td>
-    <td><img src="docs/images/page-batterie.png" width="234" alt="Page Batterie, détail du dernier réveil en millisecondes"><br><b>Batterie</b> — le dernier réveil (radar) décomposé en millisecondes, capture du simulateur. C'est la vitesse de ce réveil qui rend l'écran sans fil utilisable : mesuré sur l'écran réel, affichage prêt en 0,7 s</td>
+    <td><img src="docs/images/page-batterie.png" width="234" alt="Page Batterie, détail du dernier réveil en millisecondes"><br><b>Batterie</b> — le dernier réveil (radar) décomposé en millisecondes, capture du simulateur. C'est la vitesse de ce réveil qui rend l'écran sans fil utilisable : mesuré sur l'écran réel, écran allumé en 0,7 s, données à jour en 1,3 à 1,8 s</td>
   </tr>
 </table>
 
@@ -112,7 +112,7 @@ de présence qui le réveille quand quelqu'un approche, et la veille profonde le
 firmware que les écrans muraux : l'écran se reconnaît à son adresse MAC.
 
 - **2 mA en veille profonde**, réveillé par le radar HLK-LD2410S, sans avoir à le toucher.
-- **Écran prêt en 0,7 s environ** au réveil : la borne Wi-Fi est gardée en mémoire, pas de balayage.
+- **Écran allumé en 0,7 s environ** au réveil (la borne Wi-Fi est gardée en mémoire, pas de balayage), données à jour en 1,3 à 1,8 s.
 - **Autonomie estimée** sur 16 000 mAh : environ 200 jours pour 20 passages par jour, un mois environ si
   quelqu'un reste 3 h par jour dans le champ du radar.
 - **Deux pages à lui** : Batterie (charge, réveils sur 24 h, détail du dernier réveil en millisecondes) et

@@ -8,7 +8,7 @@ Wall-mounted dashboard for **Guition ESP32-S3-4848S040** screens: LVGL 9.6 firmw
 covers, feeder, coffee, hot water, ventilation, wood stove, music, lights, LED panel, 3D printer,
 PC, AI, settings, info, battery — plus the radar page for battery-powered screens.
 
-It also comes in a **wireless version**: battery, presence radar, 2 mA deep sleep, 0.7 s wake-up —
+It also comes in a **wireless version**: battery, presence radar, 2 mA deep sleep, screen on 0.7 s after wake-up —
 see [Battery-powered display](#battery-powered-display).
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4b714f)](LICENSE)
@@ -50,7 +50,7 @@ Montserrat Bold — see [tools/fonts/README.en.md](tools/fonts/README.en.md#opti
   </tr>
   <tr>
     <td><img src="docs/images/ia-orage-anime.gif" width="234" alt="AI page in a storm: animated rain and lightning"><br><b>AI</b> — Clawd and the Claude agent on your PC: state, tokens, sessions, histogram. The sky follows the Home Assistant weather — GIF: downpour and lightning, simulator animation</td>
-    <td><img src="docs/images/page-batterie.png" width="234" alt="Battery page, last wake-up broken down in milliseconds"><br><b>Battery</b> — the last wake-up (radar) broken down in milliseconds, simulator capture. That wake-up speed is what makes the wireless display practical: measured on the real screen, display ready in 0.7 s</td>
+    <td><img src="docs/images/page-batterie.png" width="234" alt="Battery page, last wake-up broken down in milliseconds"><br><b>Battery</b> — the last wake-up (radar) broken down in milliseconds, simulator capture. That wake-up speed is what makes the wireless display practical: measured on the real screen, screen on in 0.7 s, data up to date in 1.3 to 1.8 s</td>
   </tr>
 </table>
 
@@ -109,7 +109,7 @@ wakes it when someone comes near, and deep sleep the rest of the time. It runs t
 displays: the display recognizes itself by its MAC address.
 
 - **2 mA in deep sleep**, woken by the HLK-LD2410S radar, no touch needed.
-- **Screen ready in about 0.7 s** on wake: the Wi-Fi access point is kept in memory, no scan.
+- **Screen on in about 0.7 s** on wake (the Wi-Fi access point is kept in memory, no scan), data up to date in 1.3 to 1.8 s.
 - **Estimated battery life** on 16,000 mAh: about 200 days for 20 walk-bys a day, about a month if someone
   stays in the radar's field 3 h a day.
 - **Two pages of its own**: Battery (charge, wake-ups over 24 h, breakdown of the last wake-up in

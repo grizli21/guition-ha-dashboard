@@ -133,8 +133,8 @@ tab of the Battery page).
 - **Deep sleep** as soon as nobody is around, after the configured sleep delay: the panel goes into
   deep sleep (the ST7701's DSTB command), and the radar wakes it (GPIO 2).
 - **Short boot** on wake: no startup screen, Wi-Fi endpoint and channel kept in RTC memory to
-  reconnect without scanning. Measured: **0.69 to 0.72 s** until the screen is ready, against 1.39 s
-  with the old firmware (on Arduino 2).
+  reconnect without scanning. Measured: **0.69 to 0.76 s** until the screen is on, against 1.39 s
+  with the old firmware (on Arduino 2); Home Assistant data is up to date 1.3 to 1.8 s after wake-up.
 - **Music library on demand**: it is not loaded at startup, only when the list is opened.
 - **Economy mode** after 10 s without touching: idle brightness, processor at 80 MHz, Wi-Fi in
   light power save (`WIFI_PS_MIN_MODEM`).

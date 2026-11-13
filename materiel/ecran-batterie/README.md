@@ -134,8 +134,8 @@ quelqu'un. Placez-le là où l'on passe plutôt que là où l'on reste assis, ou
 - **Veille profonde** dès que personne n'est là, après le délai de veille réglé : la dalle passe en veille
   profonde (commande DSTB du ST7701), et le radar la réveille (GPIO 2).
 - **Démarrage court** au réveil : pas d'écran de démarrage, borne Wi-Fi et canal gardés en mémoire RTC
-  pour se reconnecter sans balayage. Mesuré : **0,69 à 0,72 s** jusqu'à l'écran prêt, contre 1,39 s
-  avec l'ancien firmware (sous Arduino 2).
+  pour se reconnecter sans balayage. Mesuré : **0,69 à 0,76 s** jusqu'à l'écran allumé, contre 1,39 s
+  avec l'ancien firmware (sous Arduino 2) ; les données de Home Assistant sont à jour 1,3 à 1,8 s après le réveil.
 - **Bibliothèque musicale à la demande** : elle n'est pas chargée au démarrage, seulement à l'ouverture
   de la liste.
 - **Mode économie** après 10 s sans toucher : luminosité de repos, processeur à 80 MHz, Wi-Fi en
