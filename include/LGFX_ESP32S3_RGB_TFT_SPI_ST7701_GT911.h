@@ -63,7 +63,9 @@ public:
       cfg.pin_vsync = GPIO_NUM_17;
       cfg.pin_hsync = GPIO_NUM_16;
       cfg.pin_pclk = GPIO_NUM_21;
-      cfg.freq_write = 17000000; // 17 MHz = 59,9 images/s (était 12). Tenu grâce au XIP (platformio.ini, custom_sdkconfig) :
+      cfg.freq_write = 17000000; // 17 MHz = 59,9 images/s (15 MHz = 52,9). 13/11 : le seul glitch restant à 17 venait des
+      // écritures NVS, remplacées par la mémoire brute (memoire_brute.h) ; plus de glitch constaté à l'œil depuis.
+      // 17 MHz tenait grâce au XIP (platformio.ini, custom_sdkconfig) :
       // A/B du 11/11 à 17 MHz, sans XIP l'image saute fort, avec XIP propre. Le glissement vu à 14 MHz le 10/11 (sans
       // XIP) venait de là : bus flash/PSRAM partagé, DMA de l'écran affamé. Le calage de LVGL sur la bascule
       // (LV_DEF_REFR_PERIOD 2) ne corrige qu'un petit sautillement (trame 20,3 ms ≈ 20 ms de LVGL) : effet faible.
