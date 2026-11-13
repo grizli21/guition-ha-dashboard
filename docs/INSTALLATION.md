@@ -1,6 +1,6 @@
 # Installation
 
-**English** | [Français](en/INSTALLATION.md)
+[English](en/INSTALLATION.md) | **Français**
 
 [← Retour au README](../README.fr.md)
 
@@ -54,6 +54,78 @@ réservé aux mesures de rendu — ne pas le flasher sans savoir pourquoi.
 **Langue** : l'interface est en français par défaut. Pour l'anglais, décommentez `-D UI_LANG_EN` dans
 `platformio.ini` (au simulateur : `make -C simu UI_LANG_EN=1`). Le dialogue MQTT avec Home Assistant ne
 change pas : seuls les textes affichés sont traduits.
+
+## Sous Windows 10/11
+
+**Ce qui est vérifié ici : la chaîne de compilation est exercée par l'atelier CI
+(`.github/workflows/compilation.yml`, qui compile l'env `ecran` sur `windows-latest`). Le reste —
+flash USB/OTA, pilote, mode démo vus depuis un vrai poste Windows — n'a pas encore été exécuté sur
+Windows : à valider en conditions réelles.**
+
+### Outillage
+
+1. [Git pour Windows](https://git-scm.com/install/windows). Son installateur règle `core.autocrlf=true` :
+   le dépôt contient un `.gitattributes` qui garde scripts, Makefile et données du simulateur en LF —
+   ne le supprimez pas, sinon `make -C simu` casse sous WSL.
+2. [Python 3](https://www.python.org/downloads/windows/) (3.11 ou plus récent) — les réglages par
+   défaut de l'installeur conviennent.
+3. PlatformIO, au choix :
+   - **VS Code** : extension « PlatformIO IDE » (logo fourmi en bas à gauche, puis son terminal) ;
+   - **ligne de commande** : `pip install platformio`, puis `pio` partout où cette page écrit `pio`
+     (c'est ce que fait l'atelier CI).
+
+### Chemins longs — le piège n° 1
+
+L'env `ecran` recompile les bibliothèques ESP-IDF (`custom_sdkconfig` de `platformio.ini`) et leurs
+chemins dépassent vite les **260 caractères** (`MAX_PATH`) que Windows impose par défaut : la
+compilation échoue en plein milieu. Dans ce ordre :
+
+- **clonez près de la racine** : `git clone … C:\gd` — chaque dossier économisé compte ;
+- **activez les chemins longs** : la clé `HKLM\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled`
+  à `1` (commande PowerShell dans la doc Microsoft :
+  [Maximum Path Length Limitation](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation) ;
+  un redémarrage est recommandé, la valeur est mise en cache par les processus) ;
+- **prévenez git** : `git config --system core.longpaths true` (le dépôt contient des chemins profonds
+  sous `lib/`).
+
+Le outillage ESP-IDF affiche d'ailleurs une alerte explicite « Windows Long Path Support is disabled »
+lorsque la clé est absente (retour d'expérience : [PlatformIO community](https://community.platformio.org/t/build-inconsistency-despite-pinned-versions-esp32-s3-arduino-framework/52949)).
+
+### Compiler et flasher
+
+Comme sous Linux, avec les ports Windows :
+
+```bat
+pio device list                                           (ou Gestionnaire de périphériques > « Ports (COM & LPT) »)
+pio run -e ecran-usb -t upload --upload-port COM5         premier flash, par câble
+pio run -e ecran -t upload --upload-port 192.168.1.41     ensuite, OTA sans câble
+```
+
+Si aucun port COM n'apparaît après le branchement : l'adaptateur USB-série de ces cartes est
+généralement un **CH340/CH341** (vérifiez la référence marquée sur votre carte) ; installez le pilote
+officiel CH341SER chez le fabricant, [WCH](https://www.wch-ic.com/downloads/CH341SER_EXE.html).
+
+Rappel valable partout : l'env `ecran` **exige** un `upload_port` (`upload_port = 192.168.1.43` dans
+`platformio.ini`) même pour une simple compilation — sans lui, PlatformIO échoue pendant la
+recompilation des bibliothèques. Une compilation ne tente jamais d'envoyer quoi que ce soit.
+
+**Mode démo** : exactement comme décrit plus bas (décommenter `-D MODE_DEMO`, flasher par câble).
+
+### Simulateur : par WSL, pas natif
+
+Le simulateur est écrit pour Linux (g++, Makefile). Sous Windows 10/11 :
+
+```bat
+wsl --install -d Ubuntu
+```
+
+puis, dans Ubuntu — de préférence dans le disque Linux (`~`), pas sous `/mnt/c` (lent) :
+
+```bash
+sudo apt-get update && sudo apt-get install -y build-essential zlib1g-dev git
+git clone https://github.com/grizli21/guition-ha-dashboard.git && cd guition-ha-dashboard
+make -C simu        # ecrit simu/captures/*.png, pas besoin d'écran graphique
+```
 
 ## Réglages : 64 Ko de la partition spiffs leur sont réservés
 

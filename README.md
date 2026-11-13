@@ -216,9 +216,12 @@ You then declare your screens by MAC address (`ECRANS[]` table) and connect Home
 **Just want to see?** **Demo mode** (`-D MODE_DEMO`) fills every page without Home Assistant, without an
 MQTT broker and without Wi-Fi, and the main buttons respond ([see how](docs/en/INSTALLATION.md#demo-mode-try-it-without-home-assistant)).
 
+**On Windows 10/11?** Tooling and pitfalls (long paths, COM ports, driver, WSL for the simulator):
+**[dedicated guide](docs/en/INSTALLATION.md#on-windows-1011)**.
+
 ## Going further
 
-- [docs/en/INSTALLATION.md](docs/en/INSTALLATION.md) — step-by-step installation: secrets, screens by MAC, USB then OTA flashing, Home Assistant, language, simulator.
+- [docs/en/INSTALLATION.md](docs/en/INSTALLATION.md) — step-by-step installation: secrets, screens by MAC, USB then OTA flashing, Home Assistant, language, simulator, **Windows guide**.
 - [docs/en/SOUS_LE_CAPOT.md](docs/en/SOUS_LE_CAPOT.md) — all the technical points in full, with their measurements.
 - [docs/en/DEVELOPPEMENT.md](docs/en/DEVELOPPEMENT.md) — tooling, adding a page, diagnostics, the simulator in detail, file tree.
 - [docs/en/CREDITS.md](docs/en/CREDITS.md) — license, libraries, fonts and icons, with their licenses.

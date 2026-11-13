@@ -218,9 +218,12 @@ Il faut ensuite déclarer ses écrans par leur adresse MAC (table `ECRANS[]`) et
 **Juste pour voir ?** Le **mode démo** (`-D MODE_DEMO`) remplit toutes les pages sans Home Assistant, sans
 broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](docs/INSTALLATION.md#mode-démo--essayer-sans-home-assistant)).
 
+**Sous Windows 10/11 ?** Outillage, pièges (chemins longs, ports COM, pilote, WSL pour le simulateur) :
+**[mode d'emploi dédié](docs/INSTALLATION.md#sous-windows-1011)**.
+
 ## Aller plus loin
 
-- [docs/INSTALLATION.md](docs/INSTALLATION.md) — installation pas à pas : secrets, écrans par MAC, flash USB puis OTA, Home Assistant, langue, simulateur.
+- [docs/INSTALLATION.md](docs/INSTALLATION.md) — installation pas à pas : secrets, écrans par MAC, flash USB puis OTA, Home Assistant, langue, simulateur, **mode d'emploi Windows**.
 - [docs/SOUS_LE_CAPOT.md](docs/SOUS_LE_CAPOT.md) — tous les points techniques, avec leurs mesures.
 - [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md) — outillage, ajouter une page, diagnostics, simulateur en détail, arborescence.
 - [docs/CREDITS.md](docs/CREDITS.md) — licence, bibliothèques, polices et icônes, avec leurs licences.

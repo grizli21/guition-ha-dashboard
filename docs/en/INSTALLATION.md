@@ -55,6 +55,76 @@ environment is reserved for rendering measurements — do not flash it without k
 `platformio.ini` (in the simulator: `make -C simu UI_LANG_EN=1`). The MQTT dialogue with Home Assistant
 does not change: only the displayed texts are translated.
 
+## On Windows 10/11
+
+**What is verified here: the build chain is exercised by the CI workflow
+(`.github/workflows/compilation.yml`, which builds the `ecran` environment on `windows-latest`).
+Everything else — USB/OTA flashing, the driver, demo mode seen from a real Windows machine — has not
+been run on Windows yet: to be validated in real conditions.**
+
+### Tooling
+
+1. [Git for Windows](https://git-scm.com/install/windows). Its installer sets `core.autocrlf=true`:
+   the repository ships a `.gitattributes` that keeps scripts, the Makefile and the simulator data
+   files LF — don't delete it, or `make -C simu` breaks under WSL.
+2. [Python 3](https://www.python.org/downloads/windows/) (3.11 or newer) — the installer defaults are fine.
+3. PlatformIO, your choice:
+   - **VS Code**: the “PlatformIO IDE” extension (ant logo in the status bar, then its terminal);
+   - **command line**: `pip install platformio`, then `pio` wherever this page says `pio`
+     (that is what the CI workflow does).
+
+### Long paths — pitfall no. 1
+
+The `ecran` environment recompiles the ESP-IDF libraries (`custom_sdkconfig` in `platformio.ini`) and
+their paths quickly exceed the **260 characters** (`MAX_PATH`) Windows enforces by default: the build
+fails halfway through. In this order:
+
+- **clone near the root**: `git clone … C:\gd` — every saved folder counts;
+- **enable long paths**: set `HKLM\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled`
+  to `1` (PowerShell command in Microsoft's doc:
+  [Maximum Path Length Limitation](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation);
+  a reboot is recommended, the value is cached per process);
+- **tell git**: `git config --system core.longpaths true` (the repository has deep paths under `lib/`).
+
+The ESP-IDF tooling even prints an explicit “Windows Long Path Support is disabled” warning when the
+key is missing (field report: [PlatformIO community](https://community.platformio.org/t/build-inconsistency-despite-pinned-versions-esp32-s3-arduino-framework/52949)).
+
+### Build and flash
+
+Same as Linux, with Windows ports:
+
+```bat
+pio device list                                           (or Device Manager > “Ports (COM & LPT)”)
+pio run -e ecran-usb -t upload --upload-port COM5         first flash, over cable
+pio run -e ecran -t upload --upload-port 192.168.1.41     afterwards, OTA without a cable
+```
+
+If no COM port shows up after plugging in: the USB-serial adapter on these boards is usually a
+**CH340/CH341** (check the part number printed on your board); install the official CH341SER driver
+from the manufacturer, [WCH](https://www.wch-ic.com/downloads/CH341SER_EXE.html).
+
+Reminder that applies everywhere: the `ecran` environment **requires** an `upload_port`
+(`upload_port = 192.168.1.43` in `platformio.ini`) even for a plain compile — without it PlatformIO
+fails while recompiling the libraries. A compile never tries to send anything.
+
+**Demo mode**: exactly as described below (uncomment `-D MODE_DEMO`, flash over cable).
+
+### Simulator: through WSL, not natively
+
+The simulator is written for Linux (g++, Makefile). On Windows 10/11:
+
+```bat
+wsl --install -d Ubuntu
+```
+
+then, inside Ubuntu — preferably on the Linux disk (`~`), not under `/mnt/c` (slow):
+
+```bash
+sudo apt-get update && sudo apt-get install -y build-essential zlib1g-dev git
+git clone https://github.com/grizli21/guition-ha-dashboard.git && cd guition-ha-dashboard
+make -C simu        # writes simu/captures/*.png, no graphical display needed
+```
+
 ## Settings: 64 Ko of the spiffs partition is reserved for them
 
 Since 13 Nov 2026 the display's settings (brightness, sleep timer, radar, battery) no longer live in
