@@ -55,6 +55,16 @@ environment is reserved for rendering measurements — do not flash it without k
 `platformio.ini` (in the simulator: `make -C simu UI_LANG_EN=1`). The MQTT dialogue with Home Assistant
 does not change: only the displayed texts are translated.
 
+## Settings: 64 Ko of the spiffs partition is reserved for them
+
+Since 13 Nov 2026 the display's settings (brightness, sleep timer, radar, battery) no longer live in
+NVS but in **raw flash memory**: the last 16 sectors (64 Ko) of the `spiffs` partition are reserved
+for them. That partition has been unused since the move to LVGL: if it contains anything else (old
+LittleFS files), it is erased on the first boot. Why this detour: a normal NVS write (about fifteen
+flash operations, 3.5 to 6 ms) made the image **glitch at 16-17 MHz — seen by eye — while a raw write
+(32 bytes, 0.2 ms) or erasing a sector (34 ms) does not glitch it; the exact cause inside NVS was
+never found.** NVS is still used, for Wi-Fi and radio calibration only.
+
 ## Demo mode: try it without Home Assistant
 
 Copy the three secrets templates (step 1) **without filling them in**, uncomment `-D MODE_DEMO` in
@@ -70,7 +80,7 @@ the simulator: `make -C simu MODE_DEMO=1`.
 
 The full contract (topics, JSON, conventions) is in [CONTRAT_MQTT.en.md](../../CONTRAT_MQTT.en.md):
 two automations per page (« Écran · page · état », which publishes `etat` with retain, and « Écran ·
-page · commandes », which executes the `set`). [ha_propositions/](../../ha_propositions/) contains **23
+page · commandes », which executes the `set`). [ha_propositions/](../../ha_propositions/) contains **24
 ready-to-use automations** for HA (mine, adapted: replace the example entities with your own). The Music
 page does not go through MQTT: the screen talks directly to **Music Assistant** (HTTP + token).
 

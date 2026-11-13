@@ -55,6 +55,17 @@ réservé aux mesures de rendu — ne pas le flasher sans savoir pourquoi.
 `platformio.ini` (au simulateur : `make -C simu UI_LANG_EN=1`). Le dialogue MQTT avec Home Assistant ne
 change pas : seuls les textes affichés sont traduits.
 
+## Réglages : 64 Ko de la partition spiffs leur sont réservés
+
+Depuis le 13/11/2026, les réglages de l'écran (luminosité, veille, radar, batterie) ne vivent plus dans le
+NVS mais en **mémoire flash brute** : les 16 derniers secteurs (64 Ko) de la partition `spiffs` leur sont
+réservés. Cette partition est inutilisée depuis LVGL : si elle contient autre chose (anciens fichiers
+LittleFS), elle est effacée au premier démarrage. Pourquoi ce détour : une écriture NVS normale (une
+quinzaine d'opérations flash, 3,5 à 6 ms) faisait **glitcher l'image à 16-17 MHz — constaté à l'œil —,
+tandis qu'une écriture brute (32 o, 0,2 ms) ou l'effacement d'un secteur (34 ms) ne la font pas
+glitcher ; la cause exacte dans NVS n'a pas été trouvée.** Le NVS sert toujours, pour le Wi-Fi et la
+calibration radio uniquement.
+
 ## Mode démo : essayer sans Home Assistant
 
 Copiez les trois gabarits de secrets (étape 1) **sans les remplir**, décommentez `-D MODE_DEMO` dans
@@ -70,7 +81,7 @@ pochettes et logos de radios (ils arrivent par le réseau). Au simulateur : `mak
 
 Le contrat complet (topics, JSON, conventions) tient dans [CONTRAT_MQTT.md](../CONTRAT_MQTT.md) :
 deux automatisations par page (« Écran · page · état » qui publie `etat` en retain, « Écran · page ·
-commandes » qui exécute les `set`). [ha_propositions/](../ha_propositions/) contient **23 automatisations
+commandes » qui exécute les `set`). [ha_propositions/](../ha_propositions/) contient **24 automatisations
 prêtes à l'emploi** pour HA (les miennes, adaptées : remplacez les entités d'exemple par les vôtres).
 La page Musique ne passe pas par MQTT : l'écran parle directement à **Music Assistant** (HTTP + jeton).
 
