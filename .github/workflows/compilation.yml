@@ -46,16 +46,25 @@ jobs:
           git config --system core.longpaths true
 
       - name: PlatformIO Core
-        # 13/11 (1er run) : « pip install platformio » donnait 6.2.0.post1, refusé par la plateforme (« depends on
-        # PlatformIO Core >=6.2.0 » : le suffixe post compte comme préversion). Version figée, celle qui compile chez nous.
-        run: pip install platformio==6.2.0
+        # 13/11 (2e run) : la plateforme crée son propre environnement Python (~/.platformio/penv) et y installe le
+        # dernier « pioarduino » : 6.2.0.post1 depuis le 26/10, qu'elle refuse ensuite (« depends on PlatformIO Core
+        # >=6.2.0 » : le suffixe post compte comme préversion), au moment de relancer la compilation Arduino. Parade :
+        # créer cet environnement AVANT, avec pioarduino 6.2.0 (la plateforme garde un paquet déjà installé s'il convient).
+        shell: bash
+        run: |
+          python -m venv ~/.platformio/penv
+          if [ "$RUNNER_OS" = Windows ]; then B=~/.platformio/penv/Scripts; else B=~/.platformio/penv/bin; fi
+          "$B/python" -m pip install --upgrade pip
+          "$B/python" -m pip install "pioarduino==6.2.0" "platformio==6.2.0"
+          # GITHUB_PATH attend un chemin du système : sous Windows, celui de Git Bash (/c/Users/…) est converti
+          if [ "$RUNNER_OS" = Windows ]; then cygpath -w "$B" >> "$GITHUB_PATH"; else echo "$B" >> "$GITHUB_PATH"; fi
 
       - name: Cache PlatformIO
         uses: actions/cache@v4
         with:
           path: ~/.platformio
-          key: pio-${{ runner.os }}-v1-${{ hashFiles('platformio.ini') }}
-          restore-keys: pio-${{ runner.os }}-v1-
+          key: pio-${{ runner.os }}-v2-${{ hashFiles('platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-v2-
 
       - name: Secrets factices (gabarits du dépôt, aucun secret GitHub)
         shell: bash

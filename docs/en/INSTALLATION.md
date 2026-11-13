@@ -12,6 +12,33 @@ Everything needed to go from a cloned repository to a screen that talks to Home 
 - A Linux PC with `g++` and `zlib` for the simulator; `python3` (and `pillow` for `tools/banc.py`).
 - An MQTT broker and Home Assistant with the MQTT integration.
 
+### Before the first build: pin `pioarduino` to 6.2.0
+
+The platform (pioarduino 55.03.312) creates its own Python environment, `~/.platformio/penv`, and installs
+the latest `pioarduino` package in it. Since 26 Oct 2026 that is **6.2.0.post1**, which the same platform
+then rejects (“not compatible with PlatformIO Core v6.2.0-post.1 and depends on PlatformIO Core >=6.2.0”):
+the build fails after about ten minutes, right after the ESP-IDF libraries are recompiled (seen by the CI on
+13 Nov 2026). Workaround: create that environment **before** the first build, with 6.2.0 — the platform keeps
+an already installed package when it fits.
+
+Linux / macOS:
+
+```bash
+python3 -m venv ~/.platformio/penv
+~/.platformio/penv/bin/python -m pip install "pioarduino==6.2.0" "platformio==6.2.0"
+```
+
+Windows (PowerShell):
+
+```powershell
+py -m venv "$env:USERPROFILE\.platformio\penv"
+& "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m pip install "pioarduino==6.2.0" "platformio==6.2.0"
+```
+
+If the VS Code extension has already created `penv`, keep it and run only the second command (it brings
+`pioarduino` back to 6.2.0). Then use the `pio` from that environment (`~/.platformio/penv/bin/pio`, or
+`...\penv\Scripts\pio.exe`), or the VS Code extension's, which is the same one.
+
 ## 1. Set up the secrets
 
 The secrets files are **not** in the repository — copy the templates and fill them in:
@@ -70,9 +97,10 @@ been run on Windows yet: to be validated in real conditions.**
 2. [Python 3](https://www.python.org/downloads/windows/) (3.11 or newer) — the installer defaults are fine.
 3. PlatformIO, your choice:
    - **VS Code**: the “PlatformIO IDE” extension (ant logo in the status bar, then its terminal);
-   - **command line**: `pip install platformio==6.2.0`, then `pio` wherever this page says `pio`
-     (that is what the CI workflow does). Keep **6.2.0**: the `6.2.0.post1` that pip installs without a
-     version is rejected by the platform (“depends on PlatformIO Core >=6.2.0”, seen by the CI on 13 Nov 2026).
+   - **command line**: PlatformIO's Python environment created as in
+     [Before the first build](#before-the-first-build-pin-pioarduino-to-620), then its `pio` wherever this
+     page says `pio` (that is what the CI workflow does). With the VS Code extension, do that step too:
+     without it, the first build fails.
 4. **The terminal**: run `pio` from **PowerShell** or the VS Code terminal, **never from Git Bash** (MSYS):
    the ESP-IDF tooling stops there with “MSys/Mingw is not supported” (seen by the CI on 13 Nov 2026).
 
