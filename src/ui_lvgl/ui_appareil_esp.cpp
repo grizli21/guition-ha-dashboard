@@ -12,27 +12,25 @@
 #include <sys/time.h>
 #include <time.h>
 #include "version_git.h" // 02/11 : écrit par version_git.py à la compilation
+#include "memoire_brute.h" // 13/11 : réglages en flash sans NVS (glitch de l'image pendant une écriture NVS)
 
 static const char *ESPACE = "guition"; // espace de la mémoire flash (NVS)
 
 static bool charger(void *donnees, size_t taille)
 {
+    if (mb_lire(MB_ECRAN, donnees, taille)) // 13/11 : mémoire brute d'abord ; NVS seulement pour la migration
+        return true;
     Preferences p;
     if (!p.begin(ESPACE, true))
         return false;
     const bool ok = p.getBytesLength("reglages") == taille && p.getBytes("reglages", donnees, taille) == taille;
     p.end();
+    if (ok)
+        mb_noter(MB_ECRAN, donnees, taille);
     return ok;
 }
 
-static void sauver(const void *donnees, size_t taille)
-{
-    Preferences p;
-    if (!p.begin(ESPACE, false))
-        return;
-    p.putBytes("reglages", donnees, taille);
-    p.end();
-}
+static void sauver(const void *donnees, size_t taille) { mb_ecrire(MB_ECRAN, donnees, taille); } // 13/11 : plus de NVS
 
 static void sante(ui_sante_t &s)
 {
@@ -55,6 +53,7 @@ static void sante(ui_sante_t &s)
 
 static void effacer_memoire()
 {
+    mb_oublier(MB_ECRAN); // 13/11 : la mémoire brute, puis l'ancien NVS (sinon il serait relu au démarrage)
     Preferences p;
     if (p.begin(ESPACE, false))
     {
@@ -80,6 +79,7 @@ static struct branchement_appareil_t // 26/10 : nom propre au fichier (deux « b
     {
         ui_appareil_charger = charger;
         ui_appareil_sauver = sauver;
+        ui_appareil_mhz = []() { return (int)getCpuFrequencyMhz(); };
         ui_appareil_sante = sante;
         ui_appareil_redemarrer = []()
         {

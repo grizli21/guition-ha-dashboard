@@ -17,6 +17,9 @@
 #include <esp_heap_caps.h>
 #include <ArduinoOTA.h>
 #include <Preferences.h>
+#include "../ui_lvgl/memoire_brute.h" // 13/11 : réglages en flash sans NVS
+#include <esp_flash.h>
+#include <spi_flash_chip_driver.h>
 #include <LGFX_ESP32S3_RGB_TFT_SPI_ST7701_GT911.h>
 #include <lvgl.h>
 #include "icones.h"
@@ -756,26 +759,32 @@ static void emission_appliquer() { WiFi.setTxPower(bt_reglages.wifi_reduit ? WIF
 
 static void energie_charger()
 {
-    Preferences p;
-    if (p.begin("energie", true)) // n'aboutit pas tant que rien n'a été enregistré : les valeurs par défaut restent
+    uint8_t m[3]; // 13/11 : mémoire brute (coupure, économie en s, émission réduite) ; NVS seulement pour la migration
+    if (mb_lire(MB_ENERGIE, m, sizeof m))
     {
-        bt_reglages.coupure_wifi = p.getBool("coupure", false);
-        bt_reglages.economie_s = p.getUChar("economie", 10);
-        bt_reglages.wifi_reduit = p.getBool("tx7", false);
-        p.end();
+        bt_reglages.coupure_wifi = m[0];
+        bt_reglages.economie_s = m[1];
+        bt_reglages.wifi_reduit = m[2];
+    }
+    else
+    {
+        Preferences p;
+        if (p.begin("energie", true)) // n'aboutit pas tant que rien n'a été enregistré : les valeurs par défaut restent
+        {
+            bt_reglages.coupure_wifi = p.getBool("coupure", false);
+            bt_reglages.economie_s = p.getUChar("economie", 10);
+            bt_reglages.wifi_reduit = p.getBool("tx7", false);
+            p.end();
+            const uint8_t n[3] = {(uint8_t)bt_reglages.coupure_wifi, (uint8_t)bt_reglages.economie_s, (uint8_t)bt_reglages.wifi_reduit};
+            mb_noter(MB_ENERGIE, n, sizeof n);
+        }
     }
     g_economie_ms = bt_reglages.economie_s * 1000u;
     ui_appareil_repos_ms = g_economie_ms;
     bt_regler = [](const char *quoi)
     {
-        Preferences p;
-        if (p.begin("energie", false))
-        {
-            p.putBool("coupure", bt_reglages.coupure_wifi);
-            p.putUChar("economie", bt_reglages.economie_s);
-            p.putBool("tx7", bt_reglages.wifi_reduit);
-            p.end();
-        }
+        const uint8_t m[3] = {(uint8_t)bt_reglages.coupure_wifi, (uint8_t)bt_reglages.economie_s, (uint8_t)bt_reglages.wifi_reduit};
+        mb_ecrire(MB_ENERGIE, m, sizeof m); // 13/11 : plus de NVS
         g_economie_ms = bt_reglages.economie_s * 1000u;
         ui_appareil_repos_ms = g_economie_ms;
         if (!strcmp(quoi, "wifi_reduit") && !g_wifi_coupe)
@@ -1174,6 +1183,12 @@ void setup()
     ui_diag_ram_etape("diag"); // 28/10 : AUDIT RAM
     ui_trace("[ram] %d tableaux de texte : %u octets en PSRAM\n", psram_nb, (unsigned)psram_octets);
     ecran_reconnaitre(); // 26/10 : IP, pièce et sens de montage d'après la MAC
+    // 13/11 : puce flash de la carte (glitch de l'écran pendant une écriture en flash : la suspension automatique
+    // d'ESP-IDF ne marche qu'avec certaines puces, cf. spi_flash_chip_gd.c / _generic.c / _winbond.c)
+    if (esp_flash_default_chip)
+        ui_trace("[flash] puce %06lx (%s), %lu Mo\n", (unsigned long)esp_flash_default_chip->chip_id,
+                 esp_flash_default_chip->chip_drv ? esp_flash_default_chip->chip_drv->name : "?",
+                 (unsigned long)(esp_flash_default_chip->size >> 20));
     if (g_ecran && g_ecran->batterie) // 26/10 : la cause du réveil (radar sur GPIO 2, minuterie si le Wi-Fi manquait)
     {
         const esp_sleep_wakeup_cause_t r = esp_sleep_get_wakeup_cause();

@@ -6,6 +6,7 @@
 #include "ui_diag.h"
 #include <Arduino.h>
 #include <Preferences.h>
+#include "memoire_brute.h" // 13/11 : réglages en flash sans NVS
 #include <esp_attr.h>
 #include <stdlib.h>
 #include <string.h>
@@ -122,28 +123,42 @@ static float mesurer()
     return brut / ADC_MAX * ADC_VREF * DIVIDER_RATIO * ADC_CORRECTION;
 }
 
+// 13/11 : mémoire brute (memoire_brute.h) : débranchement (u32), tension max (float), en charge (u8) ; NVS seulement pour
+// la migration
 static void sauver(uint32_t debranche, float tension, bool charge)
 {
-    Preferences p;
-    if (!p.begin("batterie", false))
-        return;
-    p.putUInt("debranche", debranche);
-    p.putFloat("tension", tension);
-    p.putBool("charge", charge);
-    p.end();
+    uint8_t m[9];
+    memcpy(m, &debranche, 4);
+    memcpy(m + 4, &tension, 4);
+    m[8] = charge;
+    mb_ecrire(MB_BATTERIE, m, sizeof m);
 }
 
 static void charger()
 {
-    Preferences p;
-    if (!p.begin("batterie", true))
-        return;
-    g_debranche = p.getUInt("debranche", 0);
+    uint8_t m[9];
+    if (mb_lire(MB_BATTERIE, m, sizeof m))
+    {
+        memcpy(&g_debranche, m, 4);
+        memcpy(&g_tension_max, m + 4, 4);
+        g_charge_nvs = m[8];
+    }
+    else
+    {
+        Preferences p;
+        if (!p.begin("batterie", true))
+            return;
+        g_debranche = p.getUInt("debranche", 0);
+        g_tension_max = p.getFloat("tension", 0);
+        g_charge_nvs = p.getBool("charge", false);
+        p.end();
+        memcpy(m, &g_debranche, 4);
+        memcpy(m + 4, &g_tension_max, 4);
+        m[8] = g_charge_nvs;
+        mb_noter(MB_BATTERIE, m, sizeof m);
+    }
     if (g_debranche < 1700000000u) // 31/10 : notée sans heure (1970) par une version précédente : inconnue
         g_debranche = 0;
-    g_tension_max = p.getFloat("tension", 0);
-    g_charge_nvs = p.getBool("charge", false);
-    p.end();
 }
 
 // processChargeStatusPostBoot (la production : 3 s après le démarrage, le temps de remplir sa moyenne ; 31/10 : remplie

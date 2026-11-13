@@ -24,6 +24,7 @@ struct ui_sante_t
 // Fournis par la plateforme (ESP32 : ui_appareil_esp.cpp et le programme ; simulateur : rien, la mémoire ne survit pas)
 extern bool (*ui_appareil_charger)(void *donnees, size_t taille); // mémoire flash -> réglages ; false si rien de valable
 extern void (*ui_appareil_sauver)(const void *donnees, size_t taille);
+extern int (*ui_appareil_mhz)(); // 13/11 : fréquence du processeur (MHz), lue chaque seconde
 extern void (*ui_appareil_sante)(ui_sante_t &s);
 extern void (*ui_appareil_redemarrer)();
 extern void (*ui_appareil_effacer_memoire)(); // remise à zéro : réglages effacés, puis redémarrage

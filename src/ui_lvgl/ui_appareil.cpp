@@ -17,6 +17,7 @@
 
 bool (*ui_appareil_charger)(void *donnees, size_t taille) = nullptr;
 void (*ui_appareil_sauver)(const void *donnees, size_t taille) = nullptr;
+int (*ui_appareil_mhz)() = nullptr;
 void (*ui_appareil_sante)(ui_sante_t &s) = nullptr;
 void (*ui_appareil_redemarrer)() = nullptr;
 void (*ui_appareil_effacer_memoire)() = nullptr;
@@ -32,6 +33,7 @@ static const char *const PIECES[TH_NB_PIECES] = {"cuisine", "sejour", "chambre1"
 static const int VEILLES_S[] = {30, 60, 300, 0};  // page_reglages : 30 s / 1 min / 5 min / Jamais
 static const int RETOURS_S[] = {30, 60, 120, 0};  // page_reglages : après 30 s / 60 s / 2 min / jamais
 #define SANTE_MS 60000
+#define INFOS_MS 10000 // 13/11 : affichage de la page Informations
 #define HA_SILENCE_MS 180000 // HA republie la liste des appareils chaque minute : 3 min sans rien = HA muet
 
 // Ce qui est gardé en mémoire flash (seulement les réglages de l'écran ; ceux de la maison sont tenus par HA)
@@ -314,7 +316,7 @@ static void journal_tic()
 }
 
 // ---------------------------------------------------------------------------------------------------- santé, liaisons, lumière
-static bool sante()
+static bool sante(bool vers_ha = true) // 13/11 : vers_ha = false -> affichage seul (page Informations toutes les 10 s)
 {
     if (!ui_appareil_sante)
         return false;
@@ -357,7 +359,7 @@ static bool sante()
         n += snprintf(m + n, sizeof m - n, ",\"batterie\":%d,\"tension\":%.2f,\"en_charge\":%d,\"debranche\":%u", bt_etat.pourcent,
                       bt_etat.tension, bt_etat.charge ? 1 : 0, (unsigned)bt_etat.depuis);
     snprintf(m + n, sizeof m - n, "}");
-    return publier("infos", m, true);
+    return vers_ha ? publier("infos", m, true) : true;
 }
 
 bool ui_appareil_synchroniser()
@@ -573,12 +575,25 @@ static void tic(lv_timer_t *)
     journal_tic();
     if (g_reglages_a_publier)
         publier_reglages();
+    // 13/11 (retour d'usage : « 60 s trop long ») : la page Informations toutes les 10 s, et tout de suite quand la fréquence du
+    // processeur change (80 <-> 240 MHz) ; l'envoi à HA reste toutes les 60 s
+    static uint32_t dernier_affichage = 0;
+    static int mhz = 0;
+    const int m = ui_appareil_mhz ? ui_appareil_mhz() : 0;
+    const bool freq_changee = m != mhz;
+    mhz = m;
     if (!derniere_sante || lv_tick_elaps(derniere_sante) >= SANTE_MS)
     {
-        derniere_sante = lv_tick_get() | 1;
+        derniere_sante = dernier_affichage = lv_tick_get() | 1;
         sante();
         page_infos_maj();
         page_reglages_maj();
+    }
+    else if (freq_changee || lv_tick_elaps(dernier_affichage) >= INFOS_MS)
+    {
+        dernier_affichage = lv_tick_get() | 1;
+        sante(false);
+        page_infos_maj();
     }
 }
 

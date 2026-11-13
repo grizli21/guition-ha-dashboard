@@ -16,6 +16,7 @@
 #include <WebServer.h>
 #include <WiFi.h>
 #include <Preferences.h>
+#include "memoire_brute.h" // 13/11 : réglages en flash sans NVS
 #include <lvgl.h>
 #include <time.h>
 #include <math.h>
@@ -172,11 +173,15 @@ static uint8_t g_marge = MARGE_DEFAUT;
 
 static void marge_charger()
 {
-    Preferences p;
-    if (p.begin("radar", true)) // n'aboutit pas tant que rien n'a été enregistré : la valeur par défaut reste
+    if (!mb_lire(MB_RADAR, &g_marge, 1)) // 13/11 : mémoire brute ; NVS seulement pour la migration
     {
-        g_marge = p.getUChar("marge", MARGE_DEFAUT);
-        p.end();
+        Preferences p;
+        if (p.begin("radar", true)) // n'aboutit pas tant que rien n'a été enregistré : la valeur par défaut reste
+        {
+            g_marge = p.getUChar("marge", MARGE_DEFAUT);
+            p.end();
+            mb_noter(MB_RADAR, &g_marge, 1);
+        }
     }
     rd_etat.marge = g_marge;
 }
@@ -185,12 +190,7 @@ static void marge_sauver(uint8_t db)
 {
     g_marge = db;
     rd_etat.marge = db;
-    Preferences p;
-    if (p.begin("radar", false))
-    {
-        p.putUChar("marge", db);
-        p.end();
-    }
+    mb_ecrire(MB_RADAR, &db, 1); // 13/11 : plus de NVS
 }
 
 static bool finir_auto(bool avec_marge)
