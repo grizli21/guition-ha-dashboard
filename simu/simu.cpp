@@ -1690,7 +1690,7 @@ int main()
     recevoir("dashboard_guition/ouvrants/store_terrasse/etat", "{\"en_ligne\": 1, \"mouvement\": \"ouvre\", \"position\": 60}");
     avancer(300);
     capture("69_mqtt_store_banne_sort");
-    // Croquettes : automatisation pas encore dans HA -> message calculé par HA (API de rendu, 22/10 au soir : réservoir
+    // Croquettes : automatisation proposée (ha_propositions) -> message calculé par HA (API de rendu, 22/10 au soir : réservoir
     // annoncé vide, statistiques du distributeur douteuses : 0 g pour 6 repas aujourd'hui, 595 g hier)
     const char *cq_reel = "{\"autonomie\": 0, \"bol\": 63.0, \"jour_semaine\": 3, \"jours\": [{\"g\": 0, \"n\": 6}, {\"g\": 595, \"n\": 7}, "
                           "{\"g\": 16, \"n\": 4}, {\"g\": 44, \"n\": 10}, {\"g\": 0, \"n\": 9}, {\"g\": 50, \"n\": 8}, {\"g\": 1, \"n\": 10}], "
@@ -1717,7 +1717,7 @@ int main()
     toucher(330, 438); // Semaine
     lacher();
     capture("72_mqtt_croquettes_semaine");
-    // Café : automatisations pas encore dans HA ; format du rendu HA du 23/10 (cafetière et bouilloire hors ligne),
+    // Café : automatisations proposées (ha_propositions) ; format du rendu HA du 23/10 (cafetière et bouilloire hors ligne),
     // avec un café programmé à 6h45 et deux heures récentes pour l'essai
     cf_maintenant = 15 * 60 + 30;
     recevoir("dashboard_guition/cafe/etat", "{\"bouilloire\": {\"chauffe\": 0, \"en_ligne\": 1, \"h\": 420, \"prog\": 0, \"temp\": 70}, "
@@ -1744,7 +1744,7 @@ int main()
                                            "\"cafe\": {\"allumee\": 0, \"en_ligne\": 1, \"h\": 405, \"marche\": 0, \"prog\": 1}, \"recentes\": [405, 435]}");
     avancer(300);
     capture("75_mqtt_bouilloire");
-    // Poêle : automatisations pas encore dans HA -> état rendu par HA le 23/10 (poêle éteint, 19 °C) ; historique
+    // Poêle : automatisations proposées (ha_propositions) -> état rendu par HA le 23/10 (poêle éteint, 19 °C) ; historique
     // fabriqué au format du contrat : une soirée de feu, poêle hors ligne 40 min au milieu (-1 = pas de mesure)
     recevoir("dashboard_guition/poele/etat", "{\"brassage\": 0, \"consigne\": 240, \"corps\": 24.1, \"en_ligne\": 1, \"feu\": \"eteint\", "
                                             "\"fumees\": 19, \"kd\": 10.0, \"ki\": 0.01, \"kp\": 3.0, \"limite\": 30, \"mode\": \"auto\", "
@@ -1809,7 +1809,7 @@ int main()
     printf("[mqtt] panneau led : seance %d allumees %d longueurs %d mode %d duree %d restant %d radiateur %d ventilos %d\n",
            (int)pnl_etat.seance, (int)pnl_etat.allumees, pnl_etat.longueurs, pnl_etat.mode, pnl_etat.duree, pnl_etat.restant,
            pnl_etat.radiateur, pnl_etat.ventilos);
-    // Lumières : automatisations pas encore dans HA -> états rendus par HA le 23/10 (tout éteint ; lampadaires, bandeaux
+    // Lumières : automatisations proposées (ha_propositions) -> états rendus par HA le 23/10 (tout éteint ; lampadaires, bandeaux
     // WLED / Lidl et panneau de l'atelier hors ligne)
     {
         const char *ids[] = {"lampadaire_1", "lampadaire_2", "lampadaire_3", "lampe_fenetre", "globe_lunaire", "bandeau_wled",
@@ -1842,7 +1842,7 @@ int main()
              "{\"couleur\": 0, \"en_ligne\": 1, \"nom\": \"Lune du salon\", \"on\": 0, \"piece\": \"S\\u00e9jour\"}");
     avancer(300);
     capture("80_mqtt_lumieres_renommee");
-    // Imprimante : automatisation pas encore dans HA ; impression FABRIQUÉE au format du rendu HA (le capteur de Klipper
+    // Imprimante : automatisation proposée (ha_propositions) ; impression FABRIQUÉE au format du rendu HA (le capteur de Klipper
     // n'existe pas encore et l'imprimante est éteinte), puis l'état réel du 23/10 : éteinte
     recevoir("dashboard_guition/imprimante/etat",
              "{\"buse\": 235, \"buse_c\": 235, \"caisson\": 27, \"caisson_c\": 30, \"carte_mere\": 0, \"chauffage\": 1, \"couche\": 84, "

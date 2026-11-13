@@ -1,5 +1,5 @@
 # 22/10/2026, état mis à jour le 25/10/2026 (version « 3 onglets », cf. ballon_historique.yaml A/B/D) :
-# PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour l'eau chaude.
+# PROPOSITION (à intégrer chez vous) — automatisations du contrat dashboard_guition pour l'eau chaude.
 # À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
 # puis automation.reload ; vérifier le message retenu en lecture seule). Aucune commande de test sur …/set.
 # Les anciennes 1791000000179 / 173 (dashboard/ballon/…) restent en place pour l'ancien firmware.
