@@ -717,6 +717,39 @@ int main()
         return 0;
     }
 
+    // 13/11 (tâche « effet escalier de la courbe orange ») : SIMU_GRAPHE_JSON=<fichier> rejoue un
+    // historique RÉEL (format « Graphes » de CONTRAT_MQTT) sur la chambre 1 par le vrai chemin MQTT
+    // (ui_mqtt_recevoir), SIMU_GRAPHE_NOM nomme la capture, et seul le scénario Graphes est joué.
+    if (const char *chemin = getenv("SIMU_GRAPHE_JSON"))
+    {
+        const char *nom = getenv("SIMU_GRAPHE_NOM");
+        FILE *f = fopen(chemin, "r");
+        if (!f)
+            printf("[graphe] SIMU_GRAPHE_JSON introuvable : %s\n", chemin);
+        else
+        {
+            std::string payload;
+            char lu[2048];
+            size_t n;
+            while ((n = fread(lu, 1, sizeof lu, f)) > 0)
+                payload.append(lu, n);
+            fclose(f);
+            ui_mqtt_recevoir(UI_MQTT_PREFIXE "thermostats/chambre1/historique",
+                              reinterpret_cast<const uint8_t *>(payload.data()), static_cast<unsigned>(payload.size()));
+            aller("Graphes");
+            page_graphe_banc_piece(1); // cuisine -> séjour -> chambre 1 (ordre PIECES de ui_mqtt.cpp)
+            page_graphe_banc_piece(1);
+            avancer(600);
+            const char *base = (nom && *nom) ? nom : "90_graphe_reel";
+            capture(base);
+            toucher(250, 220, 300); // lecture au doigt : le curseur doit garder les valeurs MESURÉES
+            std::string nd = std::string(base) + "_doigt";
+            capture(nd.c_str());
+            lacher();
+        }
+        return 0;
+    }
+
 #ifdef PAGES_BANC
     // banc du scroll par bande : le scénario de capture n'est pas joué (compteurs, pas images)
     banc_pages();

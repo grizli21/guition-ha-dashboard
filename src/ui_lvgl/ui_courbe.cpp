@@ -69,6 +69,7 @@ void uc_heures(const uc_cadre_t &c, int minute_fin, int mpp, int ecart)
 }
 
 static bool valeur_en_x(const uc_cadre_t &c, const uc_serie_t &s, lv_coord_t x, float &v);
+static void uc_ancres(const uc_cadre_t &c, const uc_serie_t &s); // construit les ancres lissées (plus bas)
 static float y_exact(const uc_cadre_t &c, float v) { return c.bas - (LV_CLAMP(c.lo, v, c.hi) - c.lo) / (c.hi - c.lo) * (c.bas - c.haut); }
 
 // uc_trait et uc_degrade créent des tasks lv_draw_fill : en 9.6 le rendu n'est pas synchrone et le tampon
@@ -104,6 +105,7 @@ static void plage_trait(uc_cible_t *ctx, lv_coord_t xa, lv_coord_t xb, float hau
 
 void uc_trait(const uc_cadre_t &c, const uc_serie_t &s, uint32_t couleur, lv_coord_t largeur)
 {
+    uc_ancres(c, s); // lissage des paliers (valeur_en_x lit les ancres construites ici)
     const lv_color_t col = ui_c(couleur);
     const lv_area_t &clip = *uc_clip(c.ctx);
     const float demi = largeur / 2.0f;
@@ -146,6 +148,79 @@ void uc_trait(const uc_cadre_t &c, const uc_serie_t &s, uint32_t couleur, lv_coo
     }
 }
 
+// ---- 13/11/2026 : lissage des paliers (« effet escalier » de la courbe de pièce) --------------------
+// La sonde de la chambre ne remonte un changement (0,1 à 0,3 °C) qu'une fois par heure environ : les
+// données enchaînent 10-12 points identiques puis un saut (mesuré sur le message HA réel du 13/11).
+// L'interpolation brute dessinait des marches : palier horizontal, saut vertical. La VALEUR est
+// quantifiée, pas le phénomène : quand deux paliers LONGS (>= UC_PALIER_MIN points) sont contigus et
+// séparés par un petit saut (<= 3 unités brutes : 0,3 °C en x10, 3 % en humidité), on les relie par
+// leurs MILIEUX et la dérive lente devient une pente. Reste aux points mesurés : paliers courts
+// (1-2 points = mouvement réel, chauffe qui démarre), gros sauts (>= 0,4 °C, fenêtre ouverte), trous
+// (-999 : colonne touchant un trou non peinte, comme avant), pastille du bout et curseur (inchangés,
+// ils lisent la valeur brute). Construit une fois par appel de uc_trait / uc_degrade ; au plus une
+// ancre par point, tampon statique (le graphe et le ballon ont 288 points, les autres pages moins).
+#define UC_PALIER_MIN 3  // palier « long » : au moins 3 points identiques de suite
+#define UC_PETIT_SAUT 3  // petit saut entre paliers : 3 unités de la série (0,3 °C x10, 3 %)
+#define UC_ANCRE_MAX 288 // plus grande série dessinée (GR_POINTS) ; au-delà : interpolation brute
+static float s_ax[UC_ANCRE_MAX];   // ancres : abscisses en unités de point (demi-points possibles)
+static int16_t s_av[UC_ANCRE_MAX]; // valeurs brutes (avant diviseur)
+static int s_an = 0;               // 0 : pas d'ancres -> interpolation brute (comme avant)
+
+static int uc_brut(const uc_serie_t &s, int i)
+{
+    return s.octets ? (int)((const uint8_t *)s.donnees)[i] : (int)((const int16_t *)s.donnees)[i];
+}
+
+static void uc_ancres(const uc_cadre_t &c, const uc_serie_t &s)
+{
+    s_an = 0;
+    const int fin = c.premier + c.n - 1;
+    if (c.n < 2 || c.n > UC_ANCRE_MAX)
+        return;
+    int a0 = c.premier;
+    int pv = 0;     // valeur du run précédent (adjacent par construction)
+    bool p_long = false; // run précédent : non trou ET long
+    while (a0 <= fin)
+    {
+        const bool vide = s.trou(a0);
+        const int v = uc_brut(s, a0);
+        int a1 = a0;
+        while (a1 + 1 <= fin && s.trou(a1 + 1) == vide && (vide || uc_brut(s, a1 + 1) == v))
+            a1++;
+        // run suivant en avant : valeur et longueur (un trou casse la chaîne des paliers)
+        int nv = 0;
+        bool n_long = false;
+        if (a1 + 1 <= fin && !s.trou(a1 + 1))
+        {
+            nv = uc_brut(s, a1 + 1);
+            int b1 = a1 + 1;
+            while (b1 + 1 <= fin && !s.trou(b1 + 1) && uc_brut(s, b1 + 1) == nv)
+                b1++;
+            n_long = (b1 - a1 >= UC_PALIER_MIN);
+        }
+        if (!vide)
+        {
+            const bool long_l = (a1 - a0 + 1 >= UC_PALIER_MIN);
+            const bool a_gauche = long_l && p_long && abs(v - pv) <= UC_PETIT_SAUT;
+            const bool a_droite = long_l && n_long && abs(v - nv) <= UC_PETIT_SAUT;
+            const float milieu = 0.5f * (float)(a0 + a1);
+            float xs[2] = {a_gauche ? milieu : (float)a0, a_droite ? milieu : (float)a1};
+            const int nx = (xs[0] == xs[1]) ? 1 : 2; // point unique (palier court d'un point, milieu double)
+            if (s_an + nx > UC_ANCRE_MAX)
+            {
+                s_an = 0; // ne devrait pas arriver (ancres <= points) : repli sur l'interpolation brute
+                return;
+            }
+            for (int k = 0; k < nx; k++)
+                s_ax[s_an + k] = xs[k], s_av[s_an + k] = (int16_t)v;
+            s_an += nx;
+        }
+        p_long = (!vide) && (a1 - a0 + 1 >= UC_PALIER_MIN);
+        pv = v;
+        a0 = a1 + 1;
+    }
+}
+
 // Valeur interpolée sous la colonne de pixels x (false : trou de mesure de part et d'autre)
 static bool valeur_en_x(const uc_cadre_t &c, const uc_serie_t &s, lv_coord_t x, float &v)
 {
@@ -153,7 +228,30 @@ static bool valeur_en_x(const uc_cadre_t &c, const uc_serie_t &s, lv_coord_t x, 
     const int i0 = LV_CLAMP(c.premier, (int)f, c.premier + c.n - 1), i1 = LV_MIN(i0 + 1, c.premier + c.n - 1);
     if (s.trou(i0) || s.trou(i1))
         return false;
-    const float k = f - i0;
+    if (s_an >= 2)
+    {
+        // segment d'ancres [j, j+1] contenant f (abscisses strictement croissantes, bornées par
+        // premier et fin : toute colonne est dans un segment)
+        int j = 0, k = s_an - 1;
+        while (j < k)
+        {
+            const int m = (j + k + 1) >> 1;
+            if (s_ax[m] <= f)
+                j = m;
+            else
+                k = m - 1;
+        }
+        if (j >= s_an - 1)
+            v = (float)s_av[s_an - 1] / s.diviseur;
+        else
+        {
+            const float dx = s_ax[j + 1] - s_ax[j];
+            const float kk = dx > 0.0001f ? (f - s_ax[j]) / dx : 0.0f;
+            v = ((float)s_av[j] + ((float)s_av[j + 1] - (float)s_av[j]) * kk) / s.diviseur;
+        }
+        return true;
+    }
+    const float k = f - i0; // pas d'ancres (construction non faite ou série trop longue) : comme avant
     v = s.lire(i0) * (1 - k) + s.lire(i1) * k;
     return true;
 }
@@ -178,6 +276,7 @@ static void plage_degrade(uc_cible_t *ctx, lv_coord_t xa, lv_coord_t xb, float y
 
 void uc_degrade(const uc_cadre_t &c, const uc_serie_t &s, uint32_t couleur)
 {
+    uc_ancres(c, s); // dégradé sous la MÊME courbe lissée que uc_trait (mêmes ancres)
     const lv_color_t haut_c = lv_color_mix(ui_c(couleur), ui_c(UI_FOND), 105), fond = ui_c(UI_FOND);
     const lv_area_t &clip = *uc_clip(c.ctx);
     const lv_coord_t xa = LV_MAX(c.x0, clip.x1), xb = LV_MIN(c.x1, clip.x2);
