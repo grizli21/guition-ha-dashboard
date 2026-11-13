@@ -9,6 +9,8 @@ page on top.
 
 ![The battery-powered display on its pivot, next to a display on its desk stand](../../docs/images/ecran-batterie-pivot.jpg)
 
+![On the left a display on its desk stand, on the right the battery-powered display](photos/ecran-batterie-et-support.jpg)
+
 ## Hardware
 
 | Item | Detail |

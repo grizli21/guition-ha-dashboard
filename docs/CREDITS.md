@@ -1,6 +1,6 @@
 # Licence et crédits
 
-**English** | [Français](en/CREDITS.md)
+[English](en/CREDITS.md) | **Français**
 
 [← Retour au README](../README.fr.md)
 
@@ -33,8 +33,16 @@ régénérer les polices bitmap (`lib/ressources/*.c`, dans le dépôt). La poli
 seulement ([conditions](https://www.k-type.com/licences/)) : elle n'est **ni fournie ni générée** ici, c'est
 l'option `POLICE_3X5`. Sources
 d'icônes [Material Design Icons](https://pictogrammers.com/library/mdi/) (Apache 2.0) dans
-`tools/mdi/`. Les images de démonstration du simulateur (caméras, pochettes, logos) sont des mires
-générées, libres de droit.
+`tools/mdi/`. Les images de démonstration du simulateur (caméras, pochettes de test, logos) sont des
+mires générées, libres de droit — sauf deux médias pris sur Wikimedia Commons, sous licence **CC0**
+(lu sur leur page Commons), qui apparaissent dans les captures :
+
+- la pochette d'album de la page Musique : **« CommoNasm »** (mashup de TenDJiz, 2012), visuel publié
+  par le producteur lui-même —
+  [File:Commonasm mashup album artwork.jpg](https://commons.wikimedia.org/wiki/File:Commonasm_mashup_album_artwork.jpg) ;
+- la courte séquence d'impression 3D du GIF « navigation » (rail) : images tirées de
+  **« 3D printing time-lapse 2026.webm »** (imprimante FDM en gros plan, personne à l'image) —
+  [File:3D printing time-lapse 2026.webm](https://commons.wikimedia.org/wiki/File:3D_printing_time-lapse_2026.webm).
 
 La page « IA » est inspirée de [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) : l'idée
 d'afficher à l'écran l'activité d'un agent Claude. **Aucune ligne de code ni aucun fichier de ce projet

@@ -9,6 +9,8 @@ capteur » en plus.
 
 ![L'écran sur batterie sur son pivot, à côté d'un écran sur son support de bureau](../../docs/images/ecran-batterie-pivot.jpg)
 
+![À gauche un écran sur son support de bureau, à droite l'écran sur batterie](photos/ecran-batterie-et-support.jpg)
+
 ## Matériel
 
 | Élément | Détail |

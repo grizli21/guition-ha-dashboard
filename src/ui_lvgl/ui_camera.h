@@ -6,18 +6,18 @@
 
 #ifndef UI_CAM_IMPRIMANTE // 27/10 : remplaçable à la compilation (banc : source fixe rejouée depuis le PC, mesures A/B)
 // Caméra au-dessus de l'imprimante (sous-flux recadré par go2rtc), en FLUX MJPEG : 384 x 304 aux bonnes proportions pour la
-// zone 375 x 300 de la page Imprimante, ~30 Ko, 20 images/s, préchargé. ADAPTER : hôte et port de ton go2rtc.
+// zone 375 x 300 de la page Imprimante, ~30 Ko par image, préchargé (cadence : mesurer sur ton installation). ADAPTER : hôte et port de ton go2rtc.
 #define UI_CAM_IMPRIMANTE "http://192.168.1.12:1984/api/stream.mjpeg?src=imprimante_ecran"
 #endif
 // 08/11/2026 (retour d'usage) : la seconde caméra de l'imprimante, la face du PLATEAU (caméra USB « bed » de Klipper, recadrée
-// au centre par go2rtc sur le NAS). 384 x 304, ~14 images/s, ~13 Ko par image : même taille et même format que
+// au centre par go2rtc sur le NAS). 384 x 304, ~13 Ko par image : même taille et même format que
 // imprimante_ecran, préchargée. Mêmes remarques que ci-dessus : le recadrage de la page (375 x 300) prend 4 px de chaque
 // côté et 2 px en haut et en bas, sans mise à l'échelle (ui_camera.cpp:434).
 #ifndef UI_CAM_PLATEAU // remplaçable à la compilation, comme la caméra du caisson (banc : source fixe rejouée)
 #define UI_CAM_PLATEAU "http://192.168.1.12:1984/api/stream.mjpeg?src=plateau_ecran"
 #endif
 // 28/10 : l'entrée (caméra Terrasse) passe par go2rtc sur le NAS, en FLUX MJPEG : 480 x 480 aux bonnes
-// proportions (sous-flux recadré sur la puce graphique), ~28 Ko, 15 images/s, préchargé (1re image en 0,03 s)
+// proportions (sous-flux recadré sur la puce graphique), ~28 Ko par image, préchargée (1re image en 0,03 s)
 #define UI_CAM_ENTREE "http://192.168.1.12:1984/api/stream.mjpeg?src=terrasse_carre"
 
 // plateforme (ESP32 : ui_camera_esp.cpp) : lit l'image suivante du flux dans buf (max octets), par une connexion gardée

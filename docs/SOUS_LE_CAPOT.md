@@ -1,6 +1,6 @@
 # Sous le capot
 
-**English** | [Français](en/SOUS_LE_CAPOT.md)
+[English](en/SOUS_LE_CAPOT.md) | **Français**
 
 ← [Retour au README](../README.fr.md)
 

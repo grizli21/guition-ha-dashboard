@@ -46,14 +46,14 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
     <td><img src="docs/images/page-poele.png" width="234" alt="Page Poêle"><br><b>Poêle à bois</b> — régulation du tirage au PID sur la température des fumées, alerte recharge, courbes</td>
   </tr>
   <tr>
-    <td><img src="docs/images/page-musique.png" width="234" alt="Page Musique"><br><b>Musique</b> — Music Assistant : lecture, bibliothèque, albums, radios, sortie</td>
-    <td><img src="docs/images/page-lumieres.png" width="234" alt="Page Lumières"><br><b>Lumières</b> — disque chromatique, luminance, température de couleur</td>
-    <td><img src="docs/images/page-imprimante.png" width="234" alt="Page Imprimante 3D"><br><b>Imprimante 3D</b> — fichiers STL et vignettes d'impression, suivi de la couche en cours<br><small>Configurer une imprimante Klipper/Moonraker : <a href="docs/IMPRIMANTE.md">docs/IMPRIMANTE.md</a></small></td>
+    <td><img src="docs/images/page-musique.png" width="234" alt="Page Musique"><br><b>Musique</b> — Music Assistant : lecture (pochette d'album libre de droit, voir <a href="docs/CREDITS.md">docs/CREDITS.md</a>), bibliothèque, albums, radios, sortie</td>
+    <td><img src="docs/images/page-lumieres.png" width="234" alt="Page Lumières, curseur posé sur une couleur du disque"><br><b>Lumières</b> — une lampe sélectionnée, le curseur posé sur une couleur du disque chromatique, luminance au doigt</td>
+    <td><img src="docs/images/page-imprimante.png" width="234" alt="Page Imprimante 3D"><br><b>Imprimante 3D</b> — fichiers STL et vignettes d'impression, suivi de la couche en cours et direct de la caméra du caisson, image après image<br><small>Configurer une imprimante Klipper/Moonraker : <a href="docs/IMPRIMANTE.md">docs/IMPRIMANTE.md</a></small></td>
     <td><img src="docs/images/page-pc.png" width="234" alt="Page PC"><br><b>PC</b> — système, GPU, processus, IA locale, mise en veille</td>
   </tr>
   <tr>
-    <td><img src="docs/images/page-ia-jour.png" width="234" alt="Page IA, scène de jour"><br><b>IA</b> — Clawd et l'activité de l'agent Claude du PC : état, jetons, sessions, histogramme 30 × 10 min</td>
-    <td><img src="docs/images/page-ia-nuit.png" width="234" alt="Page IA, scène de nuit"><br><b>Le même ciel que dehors</b> — soleil et lune sur leur arc, phase de lune, aube, crépuscule, nuages, pluie, neige, brouillard, d'après Home Assistant</td>
+    <td><img src="docs/images/ia-orage-anime.gif" width="234" alt="Page IA sous l'orage : pluie et éclair animés"><br><b>IA</b> — Clawd et l'activité de l'agent Claude du PC : état, jetons, sessions, histogramme. Le ciel suit la météo de Home Assistant — GIF : averse et éclair, animation du simulateur</td>
+    <td><img src="docs/images/page-batterie.png" width="234" alt="Page Batterie, détail du dernier réveil en millisecondes"><br><b>Batterie</b> — le dernier réveil (radar) décomposé en millisecondes : Wi-Fi à 412 ms, MQTT à 574 ms, synchro à 1 386 ms, Wi-Fi coupé à 1 452 ms (valeurs du simulateur). Tout le réveil tient dans 1,5 s — c'est ce qui rend l'écran sans fil utilisable ; mesuré sur l'écran réel, affichage prêt en 0,7 s</td>
   </tr>
 </table>
 
@@ -73,8 +73,8 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
     <td><img src="docs/images/page-infos.png" width="234" alt="Page Informations"><br><b>Informations</b> — santé de l'écran, liaisons au vert ou au rouge, journal</td>
   </tr>
   <tr>
-    <td><img src="docs/images/page-batterie.png" width="234" alt="Page Batterie"><br><b>Batterie</b> — écran sur batterie : charge, réveils 24 h, latences Wi-Fi/MQTT</td>
     <td><img src="docs/images/page-radar.png" width="234" alt="Page Radar"><br><b>Radar</b> — capteur micro-ondes LD2410S : zones, sensibilité, test sur place</td>
+    <td></td>
   </tr>
 </table>
 
@@ -93,6 +93,8 @@ par Home Assistant (`maison/ciel`, automatisation fournie dans [ha_propositions/
 la lune porte sa vraie phase, l'aube et le crépuscule teintent le ciel, les nuages dérivent, la pluie
 tombe, la neige blanchit le sol et le brouillard estompe le buisson. Toutes les images sont des
 dessins pixel régénérés par [tools/gen_scene_ia.py](tools/gen_scene_ia.py).
+
+<img src="docs/images/page-ia-jour.png" width="234" alt="Page IA, scène de jour"> <img src="docs/images/page-ia-nuit.png" width="234" alt="Page IA, scène de nuit">
 
 <img src="docs/images/page-ia-pluie.png" width="234" alt="Page IA sous l'averse"> <img src="docs/images/page-ia-neige.png" width="234" alt="Page IA sous la neige">
 
@@ -118,8 +120,6 @@ firmware que les écrans muraux : l'écran se reconnaît à son adresse MAC.
 - **Carte modifiée** pour libérer des broches et ne rien laisser consommer en veille ; **boîtier dessiné de
   A à Z**, fichiers STL fournis.
 
-<img src="docs/images/ecran-batterie-et-support.jpg" width="640" alt="À gauche un écran sur son support de bureau, à droite l'écran sur batterie">
-
 Câblage, modifications de la carte, mesures et boîtier : [materiel/ecran-batterie/](materiel/ecran-batterie/).
 
 ## Navigation
@@ -127,9 +127,9 @@ Câblage, modifications de la carte, mesures et boîtier : [materiel/ecran-batte
 Le rail de droite est un **carrousel d'icônes** défilable au doigt : 17 icônes de 64 px dans une
 colonne de 76 px, sans aimantation ni élastique — il s'arrête pile sur la première et la dernière.
 Ce GIF, fabriqué par le simulateur aux instants réels du geste (30 ms par pas du glissé, puis 50 ms
-pendant l'élan), montre le glissé, l'élan qui s'éteint, puis l'appui sur l'icône Imprimante 3D :
-la page change d'un coup, le rail ne bouge pas. La page épinglée (ici la batterie, à 12 %) reste
-fixe en bas, sous le carrousel.
+pendant l'élan), montre le glissé, l'élan qui s'éteint, l'appui sur l'icône Imprimante 3D — la page
+change d'un coup, le rail ne bouge pas — puis une courte animation du direct de la caméra du caisson.
+La page épinglée (ici la batterie, à 12 %) reste fixe en bas, sous le carrousel.
 
 <img src="docs/images/rail-anime.gif" width="360" alt="Le rail d'icônes : glissé, élan, changement de page">
 
@@ -180,8 +180,8 @@ flowchart LR
   `docs/patches/` sont protégés par des drapeaux de compilation et non appliqués.
 - **Build hybride pioarduino** : plateforme figée `55.03.312-1` (Arduino 3.3.12 / ESP-IDF 5.5.5).
 - **Wi-Fi recompilé pour la caméra** (`custom_sdkconfig`) : la version précompilée bridait le flux vidéo.
-  Avec une fenêtre TCP plus grande et quelques réglages du flux, la caméra passe de 11-12 à 15-16 images/s.
-  En échange, le Wi-Fi occupe plus de RAM interne.
+  Avec une fenêtre TCP plus grande et quelques réglages du flux, le débit de la caméra augmente nettement
+  (avant/après, mesuré sur l'écran). En échange, le Wi-Fi occupe plus de RAM interne.
 - **Programme en PSRAM (XIP)** : sans lui, l'écran à 17 MHz saute dès que la flash travaille (Wi-Fi,
   réglages). Il coûte 2,55 Mo de PSRAM ([détails](docs/SOUS_LE_CAPOT.md)).
 - **`upload_port` obligatoire** dans `platformio.ini`, même pour compiler : sans adresse, la
@@ -240,8 +240,10 @@ broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](
   trois patchs appliqués de `docs/patches/` (défilement par bande — ce qui fait la fluidité —,
   tuiles limitées à la zone utile, élagage du parcours).
 - Flash verrouillée en DIO par eFuse sur ces modules N16R8V (voir platformio.ini).
-- Les captures du simulateur utilisent des images de démonstration synthétiques (caméras, pochettes,
-  logos) : remplacez `simu/donnees/cameras|pochettes|logos` par vos propres images pour vos essais.
+- Les captures du simulateur utilisent des images de démonstration : mires synthétiques (caméras,
+  pochettes de test, logos) plus deux médias libres de droit sous licence CC0 — pochette « CommoNasm »
+  et séquence d'impression 3D (sources dans [docs/CREDITS.md](docs/CREDITS.md)) : remplacez
+  `simu/donnees/cameras|pochettes|logos` par vos propres images pour vos essais.
 - L'automatisation « PC » suppose un petit agent publiant `dashboard_guition/pc/*` (contract
   documenté, agent non fourni).
 

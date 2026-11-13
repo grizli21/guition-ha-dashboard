@@ -106,7 +106,7 @@ Without thumbnails at those sizes, the list and the ring show “no thumbnail”
 ## 4. Cameras (optional)
 
 The two views (enclosure, bed) are **MJPEG streams** — at the author’s, go2rtc on the NAS (cropping
-and sub-streams prepared there, ~384×304, 15-20 fps). The URLs live in
+and sub-streams prepared there, ~384×304; the rate depends on each setup). The URLs live in
 [src/ui_lvgl/ui_camera.h](../../src/ui_lvgl/ui_camera.h) (`UI_CAM_IMPRIMANTE`, `UI_CAM_PLATEAU`,
 overridable with `-D` at compile time): adapt host, port and `src=`, then rebuild. With no camera (or
 a wrong URL), the corner button still cycles STL → enclosure → bed views; the zone simply stays empty

@@ -33,8 +33,16 @@ Bates / [K-Type](https://www.k-type.com/fonts/3x5/), visible in the captures, is
 only ([terms](https://www.k-type.com/licences/)): it is **neither provided nor generated** here, it is
 the `POLICE_3X5` option. Icon sources
 [Material Design Icons](https://pictogrammers.com/library/mdi/) (Apache 2.0) in
-`tools/mdi/`. The simulator's demo images (cameras, album art, logos) are generated test
-patterns, free of rights.
+`tools/mdi/`. The simulator's demo images (cameras, test album art, logos) are generated test
+patterns, free of rights — except two media taken from Wikimedia Commons under a **CC0** license
+(read on their Commons page), which appear in the captures:
+
+- the album cover on the Music page: **“CommoNasm”** (a TenDJiz mashup, 2012), artwork published by
+  the producer himself —
+  [File:Commonasm mashup album artwork.jpg](https://commons.wikimedia.org/wiki/File:Commonasm_mashup_album_artwork.jpg) ;
+- the short 3D-printing sequence in the “navigation” GIF (rail): frames from
+  **“3D printing time-lapse 2026.webm”** (an FDM printer close-up, nobody in shot) —
+  [File:3D printing time-lapse 2026.webm](https://commons.wikimedia.org/wiki/File:3D_printing_time-lapse_2026.webm).
 
 The "AI" page was inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter): the idea of
 showing a Claude agent's activity on a screen. **No line of code and no file from that project is

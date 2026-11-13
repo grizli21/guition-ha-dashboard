@@ -110,7 +110,8 @@ fonctionne.
 ## 4. Caméras (facultatif)
 
 Les deux vues (caisson, plateau) sont des **flux MJPEG** — chez l'auteur, go2rtc sur le NAS
-(recadrage et sous-flux préparés sur place, ~384×304, 15-20 images/s). Les adresses sont dans
+(recadrage et sous-flux préparés sur place, ~384×304 ; la cadence dépend de chaque installation).
+Les adresses sont dans
 [src/ui_lvgl/ui_camera.h](../src/ui_lvgl/ui_camera.h) (`UI_CAM_IMPRIMANTE`, `UI_CAM_PLATEAU`,
 remplaçables en `-D` à la compilation) : adaptez l'hôte, le port et le `src=`, puis recompilez.
 Sans caméra (ou avec une URL fausse), le bouton d'angle continue de tourner les vues STL → caisson →
