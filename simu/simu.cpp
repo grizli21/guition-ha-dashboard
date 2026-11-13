@@ -593,6 +593,54 @@ static void commande_fictive(int piece, th_mode_t mode, float consigne)
     page_thermostat_maj();
 }
 
+// 13/11 : serviceur d'images locales du simulateur — même code que le lambda installé le 23/10 avant la
+// section MQTT : imageproxy de Music Assistant -> donnees/pochettes/<clé>.jpg ; vignettes Moonraker ->
+// donnees/vignettes/<fichier, %XX décodés>. Installé dès la page Musique (la pochette en lecture en a
+// besoin), et réinstallé plus bas avant la section MQTT — fonction nommée pour ne pas dupliquer le corps.
+static bool servir_images_locale(const char *url, uint8_t **donnees, size_t *taille)
+{
+    const char *nom = strrchr(url, '/') + 1;
+    std::string chemin = "donnees/vignettes/";
+    if (strstr(url, "/imageproxy/")) // pochette de Music Assistant : donnees/pochettes/<clé>.jpg
+    {
+        std::string c = std::string("donnees/pochettes/") + std::string(nom, strcspn(nom, "?")) + ".jpg"; // JPEG, comme MA les sert
+        FILE *f = fopen(c.c_str(), "rb");
+        if (!f)
+            return false;
+        fseek(f, 0, SEEK_END);
+        *taille = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        *donnees = (uint8_t *)malloc(*taille);
+        bool ok = fread(*donnees, 1, *taille, f) == *taille;
+        fclose(f);
+        return ok;
+    }
+    for (const char *c = nom; *c; c++) // décodage des %XX
+        if (*c == '%' && c[1] && c[2])
+        {
+            char h[3] = {c[1], c[2], 0};
+            chemin += (char)strtol(h, nullptr, 16);
+            c += 2;
+        }
+        else
+            chemin += *c;
+    FILE *f = fopen(chemin.c_str(), "rb");
+    if (!f)
+        return false;
+    fseek(f, 0, SEEK_END);
+    *taille = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    *donnees = (uint8_t *)malloc(*taille);
+    bool ok = fread(*donnees, 1, *taille, f) == *taille;
+    fclose(f);
+    return ok;
+}
+
+// 13/11 : séquence servie par la caméra du simulateur (GIF « navigation » du README) : nom du dossier
+// donnees/cameras/<dossier>/NNN.jpg, vide = image fixe ; compteur d'image, bouclé sur 12.
+static char g_seq_cam[64] = "";
+static int g_seq_i = 0;
+
 int main()
 {
 #ifdef MODE_DEMO
@@ -609,6 +657,22 @@ int main()
                           : strstr(url, "src=plateau_ecran") ? "plateau" : nullptr;
         if (!cam)
             return false;
+        // 13/11 (GIF « navigation » du README) : g_seq_cam = dossier de la séquence servie image par image
+        // (donnees/cameras/<dossier>/NNN.jpg), vide = image fixe. La séquence de l'imprimante vient d'une
+        // vidéo libre de droit (CC0, Wikimedia Commons — source et auteur dans docs/CREDITS.md).
+        if (g_seq_cam[0])
+        {
+            char seq[128];
+            snprintf(seq, sizeof seq, "donnees/cameras/%s/%03d.jpg", g_seq_cam, g_seq_i++ % 12);
+            FILE *fs = fopen(seq, "rb");
+            if (fs)
+            {
+                *n = fread(buf, 1, max, fs);
+                fclose(fs);
+                if (*n > 0)
+                    return true; // séquence épuisée ? on retombe sur l'image fixe ci-dessous, mais elle boucle (% 12)
+            }
+        }
         FILE *f = fopen((std::string("donnees/cameras/") + cam + ".jpg").c_str(), "rb");
         if (!f)
             return false;
@@ -1249,24 +1313,40 @@ int main()
     toucher(160, 24); // pièce Atelier
     lacher();
     capture("36_lumieres_atelier");
+    // 13/11 (galerie du README) : « une lumière sélectionnée, le curseur posé sur une couleur de la roue ».
+    // Tap court sur une lampe = régler cette lampe seule ; appui sur la roue = teinte/saturation (le rond
+    // de 26 px, la pipette, se pose à la couleur réglée — src/ui_lvgl/page_lumieres.cpp:236-239).
+    toucher(40, 24); // onglet « Toutes » : la liste complète, Lampadaire 1 en première ligne
+    lacher();
+    avancer(200);
+    toucher(80, 52 + 23); // tap court : Lampadaire 1 seule sélectionnée
+    lacher();
+    avancer(200);
+    toucher(329, 81, 120); // roue (centre 282,162, rayon 110) : teinte 30° (orange chaud) à ~85 % de saturation
+    lacher();
+    glisser(172 + 30, 305, 172 + 160, 305, 8); // luminosité vers 75 %
+    lacher();
+    capture("208_lumieres_galerie");
 
-    // --- Musique : Air, Moon Safari, piste 4 ; bibliothèque, radios et lecteurs de Music Assistant ---
+    // --- Musique : CommoNasm (TenDJiz), piste 4 ; bibliothèque, radios et lecteurs de Music Assistant ---
+    // 13/11 : l'album en lecture et sa pochette sont libres de droit (voir plus bas et docs/CREDITS.md) ;
+    // les durées ci-dessous restent des valeurs de démonstration.
     {
         mu_etat_t &m = mu_etat;
-        const char *pistes[][2] = {{"La femme d'argent", "429"}, {"Sexy Boy", "298"}, {"All I Need", "268"}, {"Kelly Watch the Stars", "224"},
-                                   {"Talisman", "256"}, {"Remember", "154"}, {"You Make It Easy", "241"}, {"Ce matin-là", "218"},
-                                   {"New Star in the Sky", "340"}, {"Le voyage de Pénélope", "190"}};
+        const char *pistes[][2] = {{"Geto Heaven Can", "429"}, {"Shootouts 1999", "298"}, {"Nastra Dooinit", "268"}, {"Gladiator Made U Look", "224"},
+                                   {"U Gotta Love The Corner", "256"}, {"Purple Sun God", "154"}, {"You Gowe Me", "241"}, {"Gold Moment", "218"},
+                                   {"Reminding Me of Rule", "340"}, {"OneMic", "190"}};
         m.nb_file = 10;
         for (int i = 0; i < 10; i++)
         {
             snprintf(m.file[i].titre, 48, "%s", pistes[i][0]);
-            snprintf(m.file[i].artiste, 32, "Air");
+            snprintf(m.file[i].artiste, 32, "TenDJiz");
             m.file[i].duree = atoi(pistes[i][1]);
         }
         m.piste = 3;
         snprintf(m.titre, 64, "%s", m.file[3].titre);
-        snprintf(m.artiste, 40, "Air");
-        snprintf(m.album, 48, "Moon Safari");
+        snprintf(m.artiste, 40, "TenDJiz");
+        snprintf(m.album, 48, "CommoNasm");
         m.duree = 224; m.position = 85; m.lecture = true; m.volume = 42;
         const char *art[][2] = {{"Air", "6 albums"}, {"Bonobo", "5 albums"}, {"Daft Punk", "4 albums"}, {"Ibrahim Maalouf", "7 albums"},
                                 {"Jain", "3 albums"}, {"Massive Attack", "5 albums"}, {"Nina Simone", "9 albums"}, {"Portishead", "3 albums"}};
@@ -1298,6 +1378,22 @@ int main()
     }
     aller("Musique");
     avancer(600);
+    // 13/11 (galerie du README) : pochette d'album LIBRE DE DROIT à la place de la pochette dessinée :
+    // « CommoNasm » (TenDJiz, 2012), visuel CC0 par le producteur lui-même, Wikimedia Commons
+    // (source, auteur et licence : docs/CREDITS.md). Servie comme Music Assistant le fait :
+    // imageproxy/<proxy_id>?size=256 -> donnees/pochettes/<proxy_id>.jpg (le simulateur lit le fichier).
+    ui_images_telecharger = servir_images_locale; // le serviceur sert aussi les pochettes (installé ici depuis 13/11)
+    ui_images_demander(UI_IMG_LECTURE,
+                       "http://192.168.1.11:8095/imageproxy/6db41126bd6024f1c6bc9b5d83024bd91e0f7717a08ff3398d7adaa2ff26de84?size=256",
+                       228, // POCHETTE_LECTURE (src/ui_lvgl/ui_musique.cpp) : taille d'affichage de la pochette en cours
+                       [](int, const lv_img_dsc_t *img)
+                       {
+                           if (!img)
+                               return;
+                           mu_etat.pochette = img;
+                           page_musique_maj_lecture();
+                       });
+    avancer(1200); // l'image arrive par le minuteur de 100 ms de ui_images, le fondu de pose se termine
     capture("37_musique");
     glisser(202 + 120, 200 - 60, 202 + 130, 200 + 20, 8); // doigt sur l'anneau de volume (côté droit)
     capture("38_musique_volume");
@@ -1864,45 +1960,8 @@ int main()
     capture("82_mqtt_imprimante_eteinte");
     // Imprimante, 2e temps : liste rendue par HA sur les VRAIES métadonnées de Moonraker (23/10) ; les miniatures sont
     // les vraies, téléchargées dans donnees/vignettes/ (le simulateur lit le fichier au lieu du réseau)
-    ui_images_telecharger = [](const char *url, uint8_t **donnees, size_t *taille)
-    {
-        const char *nom = strrchr(url, '/') + 1;
-        std::string chemin = "donnees/vignettes/";
-        if (strstr(url, "/imageproxy/")) // pochette de Music Assistant : donnees/pochettes/<clé>.jpg
-            return [&]()
-            {
-                std::string c = std::string("donnees/pochettes/") + std::string(nom, strcspn(nom, "?")) + ".jpg"; // JPEG, comme MA les sert
-                FILE *f = fopen(c.c_str(), "rb");
-                if (!f)
-                    return false;
-                fseek(f, 0, SEEK_END);
-                *taille = ftell(f);
-                fseek(f, 0, SEEK_SET);
-                *donnees = (uint8_t *)malloc(*taille);
-                bool ok = fread(*donnees, 1, *taille, f) == *taille;
-                fclose(f);
-                return ok;
-            }();
-        for (const char *c = nom; *c; c++) // décodage des %XX
-            if (*c == '%' && c[1] && c[2])
-            {
-                char h[3] = {c[1], c[2], 0};
-                chemin += (char)strtol(h, nullptr, 16);
-                c += 2;
-            }
-            else
-                chemin += *c;
-        FILE *f = fopen(chemin.c_str(), "rb");
-        if (!f)
-            return false;
-        fseek(f, 0, SEEK_END);
-        *taille = ftell(f);
-        fseek(f, 0, SEEK_SET);
-        *donnees = (uint8_t *)malloc(*taille);
-        bool ok = fread(*donnees, 1, *taille, f) == *taille;
-        fclose(f);
-        return ok;
-    };
+    // (13/11 : le serviceur, nommé depuis, est déjà installé avant la page Musique — réinstallation identique)
+    ui_images_telecharger = servir_images_locale;
     for (int k = 0; k < PR_FICHIERS_MAX; k++) // oublie les fiches fictives du début du scénario
     {
         pr_etat.fichiers[k] = pr_fichier_t{};
@@ -2331,6 +2390,22 @@ int main()
             capture("206_ciel_orage");
             avancer(9000 + 250 + 60 - 300); // l'éclair : 60 ms après le début du 2e flash
             capture("207_ciel_orage_eclair");
+            // 13/11 (galerie du README, GIF « orage ») : une capture par tic du minuteur pluie+éclair
+            // (66 ms, src/ui_lvgl/page_ia.cpp:329). Le cycle fait 136 tics (8 976 ms), l'éclair dure
+            // 2 tics (132 ms). 207 est prise 60 ms après le début de l'éclair : le prochain commence
+            // 8 916 ms plus tard ; on place 6 captures de pluie avant, l'éclair tombe dans les
+            // 3 suivantes (fenêtre de 132 ms > pas de 66 ms : impossible de le manquer), puis la
+            // pluie continue — 40 frames, 2,6 s d'animation.
+            {
+                char nom[48];
+                avancer(8916 - 6 * 66);
+                for (int i = 0; i < 40; i++)
+                {
+                    snprintf(nom, sizeof nom, "anim_orage_%03d", i);
+                    capture(nom);
+                    avancer(66);
+                }
+            }
             // 12/11 : surface redessinée par seconde, 5 s par météo (le temps de dessin du PC ne dit rien de
             // l'écran ; la surface, si : sur l'écran ~0,66 µs par pixel, mesuré le 12/11 : 230 400 px en 151 ms)
             {
@@ -2839,7 +2914,10 @@ int main()
             snprintf(nom, sizeof nom, "anim_rail_%03d", t);
             capture(nom);
         }
-        // appui sur l'icône qui se trouve au centre du rail après l'arrêt : navigation réelle par le rail
+        // 13/11 (vitrine du README) : l'appui doit aboutir sur la page Imprimante 3D, plus sur IA. On vise
+        // l'icône elle-même là où le carrousel s'est arrêté : enfant 12 du rail = pages[12] « Imprimante 3D »
+        // (les pages épinglées ne sont pas dans le carrousel), coordonnées ÉCRAN (le scroll_y des enfants
+        // ne bouge pas, pas leurs coords).
         lv_obj_t *rail = nullptr;
         for (uint32_t i = 0; !rail && i < lv_obj_get_child_cnt(lv_scr_act()); i++)
         {
@@ -2847,29 +2925,15 @@ int main()
             if (lv_obj_get_x(c) == UI_ZONE_L && lv_obj_get_width(c) == UI_RAIL_L && lv_obj_get_y(c) == 0)
                 rail = c;
         }
-        lv_obj_t *cible = nullptr;
-        int cy = 0;
-        for (int y : {240, 225, 255}) // au besoin, un cran au-dessus/en dessous si le doigt tombait dans un jour de 4 px
-        {
-            for (uint32_t i = 0; rail && i < lv_obj_get_child_cnt(rail); i++)
-            {
-                lv_obj_t *b = lv_obj_get_child(rail, i);
-                lv_area_t a;
-                lv_obj_get_coords(b, &a); // coordonnées ÉCRAN : le scroll_y des enfants ne bouge pas, pas leurs coords
-                if (a.x1 <= 442 && a.x2 >= 442 && a.y1 <= y && a.y2 >= y)
-                {
-                    cible = b;
-                    cy = y;
-                    break;
-                }
-            }
-            if (cible)
-                break;
-        }
+        lv_obj_t *cible = rail ? lv_obj_get_child(rail, 12) : nullptr;
+        lv_area_t ac;
+        if (cible)
+            lv_obj_get_coords(cible, &ac);
         const int page_avant = ui_shell_page();
         if (cible)
         {
-            toucher(442, cy);
+            printf("[anim-rail] icône Imprimante : x %d..%d y %d..%d\n", ac.x1, ac.x2, ac.y1, ac.y2);
+            toucher((ac.x1 + ac.x2) / 2, (ac.y1 + ac.y2) / 2);
             lacher();
             t += 180;
             snprintf(nom, sizeof nom, "anim_rail_%03d", t);
@@ -2878,7 +2942,29 @@ int main()
             t += 200;
             snprintf(nom, sizeof nom, "anim_rail_%03d", t);
             capture(nom);
-            printf("[anim-rail] clic au centre du rail : « %s » -> « %s »\n", ui_shell_nom(page_avant), ui_shell_nom(ui_shell_page()));
+            printf("[anim-rail] clic icône : « %s » -> « %s »\n", ui_shell_nom(page_avant), ui_shell_nom(ui_shell_page()));
+        }
+        // 13/11 : petite animation caméra en bout de course : bouton « Caméra » de la page Imprimante
+        // (vue caisson, la caméra au-dessus de l'imprimante), puis une frame de la séquence libre de droit
+        // par capture — le flux simulé sert l'image suivante dès que la précédente est posée
+        // (CAM_PERIODE_MS = 0, src/ui_lvgl/ui_camera.cpp:20), comme le vrai flux MJPEG de go2rtc.
+        if (cible && ui_shell_nom(ui_shell_page()) && !strcmp(ui_shell_nom(ui_shell_page()), "Imprimante 3D"))
+        {
+            toucher(359, 71); // bouton « Caméra »
+            lacher();
+            avancer(300);
+            t += 300;
+            snprintf(nom, sizeof nom, "anim_rail_%03d", t);
+            capture(nom);
+            snprintf(g_seq_cam, sizeof g_seq_cam, "imprimante_seq"); // donnees/cameras/imprimante_seq/NNN.jpg (CC0, voir CREDITS)
+            for (int i = 0; i < 12; i++)
+            {
+                avancer(10);
+                t += 10;
+                snprintf(nom, sizeof nom, "anim_rail_%03d", t);
+                capture(nom);
+            }
+            g_seq_cam[0] = 0;
         }
         // état reconstitué : rail en haut (geste inverse, sans élastique il cale exactement en haut),
         // page Informations comme avant ce bloc

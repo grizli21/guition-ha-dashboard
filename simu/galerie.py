@@ -65,9 +65,10 @@ SECTIONS = [
         ("34_lumieres_couleur", "Couleur choisie au disque", "Un toucher sur le disque : les 3 lampadaires passent en couleur ; luminosité glissée à 72 %."),
         ("35_lumieres_appui_long", "Appui long", "La lampe fenêtre est ajoutée à la sélection (coche et cadre ambre)."),
         ("36_lumieres_atelier", "Filtre par pièce", "Onglet Séjour : seules les lampes du séjour restent."),
+        ("208_lumieres_galerie", "Galerie du README", "Une lampe sélectionnée, la pipette posée sur une couleur du disque, luminosité à 72 %."),
     ]),
     ("Musique", [
-        ("37_musique", "Lecture", "Pochette ronde (dessinée en attendant les vraies), arc de volume, liseré de progression, temps dans l’ouverture."),
+        ("37_musique", "Lecture", "Pochette ronde — ici une pochette libre de droit (CommoNasm, CC0, voir docs/CREDITS.md) servie comme par Music Assistant ; arc de volume, liseré de progression, temps dans l’ouverture."),
         ("38_musique_volume", "Volume au doigt", "L’arc passe en ambre vif pendant le glissé, le volume en haut à gauche aussi."),
         ("39_musique_suivant", "Glissé sur la pochette", "Morceau suivant, avec le fondu de la pochette (40 % → 100 %)."),
         ("40_musique_playlist", "Playlist", "Aléatoire et Répéter en haut, morceau en cours en ambre, Vider avec confirmation."),
