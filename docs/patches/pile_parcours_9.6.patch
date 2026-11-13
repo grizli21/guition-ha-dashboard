@@ -5,7 +5,7 @@
  #include "lv_obj_style_internal.h"
  
 +#if defined(ARDUINO)
-+/* Mesure 06/11 — profondeur de dessin et marge de pile, page par page (OPTI_JOURNAL 06/11).
++/* Mesure 06/11 — profondeur de dessin et marge de pile, page par page (mesure du 06/11).
 + * Compteur de profondeur pose sur lv_obj_refr : en 9.6 c'est LA recursion du parcours d'objets
 + * (lv_obj_refr <-> lv_obj_redraw : lv_refr.c:182/211/232/254 -> 536 ; refr_obj_and_children,
 + * lv_refr.c:1119, n'est PAS recursive — appelee une fois par ecran/couche depuis refr_area).

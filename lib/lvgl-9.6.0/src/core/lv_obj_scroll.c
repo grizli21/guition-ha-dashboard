@@ -474,7 +474,7 @@ void lv_obj_scroll_to_view_recursive(lv_obj_t * obj, lv_anim_enable_t anim_en)
  * que deux bandes (entrée + sortie).
  *
  * Quatre règles, les mêmes qu'en 8.4 (chacune justifiée par une divergence mesurée au
- * prototype de l'époque, journal OPTI_JOURNAL.md) :
+ * prototype de l'époque) :
  *  1. décaler sur le déplacement RÉELLEMENT appliqué aux enfants (lv_obj_move_children_by est
  *     le seul point où le départ est certain ; jamais la demande), cumul entre deux bascules
  *     de tampon (plusieurs pas de doigt peuvent tomber entre deux images) ;

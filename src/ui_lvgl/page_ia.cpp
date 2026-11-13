@@ -116,8 +116,8 @@ static void milliers(char *b, size_t n, uint32_t v)
 
 // =====================================================================  CONSTRUCTION
 // =====================================================================  CIEL ANIMÉ (12/11, maison/ciel)
-// HA publie les PROCHAINS aube / lever / coucher / crépuscule (capteurs Sun), la lune de sensor.ephemerides (âge,
-// % éclairé) et la météo OpenWeatherMap. L'écran en déduit la phase et place lui-même soleil et lune sur leur arc.
+// HA publie les PROCHAINS aube / lever / coucher / crépuscule (soleil), la lune (âge en jours, % éclairé)
+// — voir ha_propositions/ciel_dashboard_guition.yaml — et la météo OpenWeatherMap. L'écran en déduit la phase et place lui-même soleil et lune sur leur arc.
 // Sans ce sujet (ou périmé), la page garde l'ancien ciel jour/nuit de maison/etat.
 //
 // COÛT (12/11 au soir, après une 1re version qui redessinait tout l'écran à chaque image : 28 gouttes animées une à
@@ -201,8 +201,8 @@ static void arc(float t, int zenith, int &cx, int &cy)
     cy = ARC_HORIZON - (int)lroundf((ARC_HORIZON - zenith) * sinf(3.14159265f * t));
 }
 
-// lune en cases 4 x 4, formule de la page Astro du reTerminal (esphome/reterminal-lvgl.yaml) : partie éclairée à
-// droite quand elle croît (hémisphère nord), le reste à peine visible (lumière cendrée). Redessinée au changement seul.
+// lune en cases 4 x 4 : partie éclairée à droite quand elle croît (hémisphère nord), le reste à peine
+// visible (lumière cendrée). Redessinée au changement seul.
 static lv_draw_buf_t *g_lune_buf;
 static void lune_dessiner(int pct, bool croissante)
 {
