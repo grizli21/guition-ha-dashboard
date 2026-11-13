@@ -1,0 +1,94 @@
+diff --git a/lib/lvgl-9.6.0/include/lvgl/core/lv_refr.h b/lib/lvgl-9.6.0/include/lvgl/core/lv_refr.h
+index aa8eaefa..95350708 100644
+--- a/lib/lvgl-9.6.0/include/lvgl/core/lv_refr.h
++++ b/lib/lvgl-9.6.0/include/lvgl/core/lv_refr.h
+@@ -63,6 +63,15 @@ void lv_obj_redraw(lv_layer_t * layer, lv_obj_t * obj);
+  */
+ void lv_display_refr_timer(lv_timer_t * timer);
+ 
++/* Patch guition (13/11/2026) : élagage du parcours de l'arbre, pour le rendu des petits
++ * couloirs de pluie de la page IA (coût fixe par zone mesuré : parcours de ~100 objets,
++ * ~2,7 kcycles/visite). Activé par défaut. lv_obj_refr() teste les coordonnées (+ ext_draw_size)
++ * de l'objet contre l'aire de clip de la zone AVANT toute recherche de style, et sort tout de
++ * suite si l'objet ne peut rien peindre dans la zone ; lv_draw_border() saute la tâche quand la
++ * zone ne touche que l'intérieur de l'objet (la bordure est un anneau le long du bord). */
++void lv_refr_set_elagage(bool on);
++bool lv_refr_get_elagage(void);
++
+ /**********************
+  *   STATIC FUNCTIONS
+  **********************/
+diff --git a/lib/lvgl-9.6.0/src/core/lv_refr.c b/lib/lvgl-9.6.0/src/core/lv_refr.c
+index c718a7bb..3eb4ad97 100644
+--- a/lib/lvgl-9.6.0/src/core/lv_refr.c
++++ b/lib/lvgl-9.6.0/src/core/lv_refr.c
+@@ -30,6 +30,12 @@
+ /*Display being refreshed*/
+ #define disp_refr LV_GLOBAL_DEFAULT()->disp_refresh
+ 
++/* Patch guition 13/11/2026 : élagage du parcours (voir lv_refr.h). Activé par défaut ;
++ * la bascule runtime sert aux mesures A-B-A, pas au fonctionnement. */
++bool g_lv_refr_elagage = true;
++void lv_refr_set_elagage(bool on) { g_lv_refr_elagage = on; }
++bool lv_refr_get_elagage(void) { return g_lv_refr_elagage; }
++
+ /**********************
+  *      TYPEDEFS
+  **********************/
+@@ -521,6 +527,22 @@ void lv_obj_refr(lv_layer_t * layer, lv_obj_t * obj)
+     if(lv_obj_get_style_transform_scale_x(obj, LV_PART_MAIN) <= 0) return;
+     if(lv_obj_get_style_transform_scale_y(obj, LV_PART_MAIN) <= 0) return;
+ 
++    /* Patch guition 13/11/2026 (élagage) : le test coordonnées+ext_draw_size contre le clip de la
++     * zone, déjà fait plus bas dans lv_obj_redraw(), est remonté ICI, avant les recherches de style
++     * restantes (opa, recolor, layer_type) et l'appel à lv_obj_redraw — ~1,5 kcycle économisé par
++     * objet hors zone. Placé APRÈS les contrôles opa/scale pour que le drapeau obj->rendered soit posé
++     * exactement dans les mêmes cas qu'aujourd'hui (les étoiles scintillantes s'en servent). */
++    if(g_lv_refr_elagage) {
++        lv_area_t coords_ext;
++        lv_obj_get_coords(obj, &coords_ext);
++        const int32_t ext_draw = lv_obj_get_ext_draw_size(obj);
++        if(ext_draw != 0) lv_area_increase(&coords_ext, ext_draw, ext_draw);
++        if(!lv_area_intersect(&coords_ext, &coords_ext, &layer->_clip_area)) {
++            obj->rendered = 1; /* posé par lv_obj_redraw() avant son propre test : même cas ici */
++            return;
++        }
++    }
++
+     const lv_opa_t layer_opa_ori = layer->opa;
+     const lv_color32_t layer_recolor = layer->recolor;
+ 
+diff --git a/lib/lvgl-9.6.0/src/draw/lv_draw_rect.c b/lib/lvgl-9.6.0/src/draw/lv_draw_rect.c
+index 661aa3cc..b0dee750 100644
+--- a/lib/lvgl-9.6.0/src/draw/lv_draw_rect.c
++++ b/lib/lvgl-9.6.0/src/draw/lv_draw_rect.c
+@@ -9,6 +9,10 @@
+ 
+ #include "lv_draw_private.h"
+ #include "../misc/lv_text_private.h"
++#include "../misc/lv_area_private.h" // patch guition 13/11 : lv_area_intersect pour l'élagage de bordure
++
++/* Patch guition 13/11/2026 : bascule runtime de l'élagage (définie dans core/lv_refr.c) */
++extern bool g_lv_refr_elagage;
+ 
+ /*********************
+  *      DEFINES
+@@ -124,6 +128,18 @@ void lv_draw_border(lv_layer_t * layer, const lv_draw_border_dsc_t * dsc, const
+ 
+     if(dsc->opa <= LV_OPA_MIN) return;
+ 
++    /* Patch guition 13/11/2026 (élagage) : pas de tâche de bordure si l'intersection
++     * coords x clip ne touche pas la bande de bordure (dessinée sur border_width de large
++     * le long du bord, rayon compris — l'anneau reste dans la bande). Évite le coût fixe
++     * de tâche (~9 kcycles mesurés) quand la zone ne touche que l'intérieur de l'objet. */
++    if(g_lv_refr_elagage) {
++        lv_area_t inter;
++        if(!lv_area_intersect(&inter, coords, &layer->_clip_area)) return;
++        const int32_t w = dsc->width;
++        if(inter.x1 > coords->x1 + w && inter.x2 < coords->x2 - w &&
++           inter.y1 > coords->y1 + w && inter.y2 < coords->y2 - w) return;
++    }
++
+     LV_PROFILER_DRAW_BEGIN;
+ 
+     if(dsc->base.drop_shadow_opa) {

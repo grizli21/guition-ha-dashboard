@@ -9,6 +9,10 @@
 
 #include "lv_draw_private.h"
 #include "../misc/lv_text_private.h"
+#include "../misc/lv_area_private.h" // patch guition 13/11 : lv_area_intersect pour l'élagage de bordure
+
+/* Patch guition 13/11/2026 : bascule runtime de l'élagage (définie dans core/lv_refr.c) */
+extern bool g_lv_refr_elagage;
 
 /*********************
  *      DEFINES
@@ -123,6 +127,18 @@ void lv_draw_border(lv_layer_t * layer, const lv_draw_border_dsc_t * dsc, const 
     LV_CHECK_ARG(coords != NULL, return);
 
     if(dsc->opa <= LV_OPA_MIN) return;
+
+    /* Patch guition 13/11/2026 (élagage) : pas de tâche de bordure si l'intersection
+     * coords x clip ne touche pas la bande de bordure (dessinée sur border_width de large
+     * le long du bord, rayon compris — l'anneau reste dans la bande). Évite le coût fixe
+     * de tâche (~9 kcycles mesurés) quand la zone ne touche que l'intérieur de l'objet. */
+    if(g_lv_refr_elagage) {
+        lv_area_t inter;
+        if(!lv_area_intersect(&inter, coords, &layer->_clip_area)) return;
+        const int32_t w = dsc->width;
+        if(inter.x1 > coords->x1 + w && inter.x2 < coords->x2 - w &&
+           inter.y1 > coords->y1 + w && inter.y2 < coords->y2 - w) return;
+    }
 
     LV_PROFILER_DRAW_BEGIN;
 

@@ -30,6 +30,12 @@
 /*Display being refreshed*/
 #define disp_refr LV_GLOBAL_DEFAULT()->disp_refresh
 
+/* Patch guition 13/11/2026 : élagage du parcours (voir lv_refr.h). Activé par défaut ;
+ * la bascule runtime sert aux mesures A-B-A, pas au fonctionnement. */
+bool g_lv_refr_elagage = true;
+void lv_refr_set_elagage(bool on) { g_lv_refr_elagage = on; }
+bool lv_refr_get_elagage(void) { return g_lv_refr_elagage; }
+
 /**********************
  *      TYPEDEFS
  **********************/
@@ -520,6 +526,22 @@ void lv_obj_refr(lv_layer_t * layer, lv_obj_t * obj)
 
     if(lv_obj_get_style_transform_scale_x(obj, LV_PART_MAIN) <= 0) return;
     if(lv_obj_get_style_transform_scale_y(obj, LV_PART_MAIN) <= 0) return;
+
+    /* Patch guition 13/11/2026 (élagage) : le test coordonnées+ext_draw_size contre le clip de la
+     * zone, déjà fait plus bas dans lv_obj_redraw(), est remonté ICI, avant les recherches de style
+     * restantes (opa, recolor, layer_type) et l'appel à lv_obj_redraw — ~1,5 kcycle économisé par
+     * objet hors zone. Placé APRÈS les contrôles opa/scale pour que le drapeau obj->rendered soit posé
+     * exactement dans les mêmes cas qu'aujourd'hui (les étoiles scintillantes s'en servent). */
+    if(g_lv_refr_elagage) {
+        lv_area_t coords_ext;
+        lv_obj_get_coords(obj, &coords_ext);
+        const int32_t ext_draw = lv_obj_get_ext_draw_size(obj);
+        if(ext_draw != 0) lv_area_increase(&coords_ext, ext_draw, ext_draw);
+        if(!lv_area_intersect(&coords_ext, &coords_ext, &layer->_clip_area)) {
+            obj->rendered = 1; /* posé par lv_obj_redraw() avant son propre test : même cas ici */
+            return;
+        }
+    }
 
     const lv_opa_t layer_opa_ori = layer->opa;
     const lv_color32_t layer_recolor = layer->recolor;
