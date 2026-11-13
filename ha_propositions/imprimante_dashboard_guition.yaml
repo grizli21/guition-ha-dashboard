@@ -1,9 +1,9 @@
-# 23/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour l'imprimante 3D (1er temps :
-# état + commandes ; la liste des fichiers et les vignettes viendront ensuite).
+# 23/10/2026 : PROPOSITION (à intégrer chez vous) — automatisations du contrat dashboard_guition pour l'imprimante 3D
+# (état + commandes). La liste des fichiers est dans imprimante_fichiers.yaml ; mode d'emploi complet : docs/IMPRIMANTE.md.
 # PRÉALABLE : le capteur de imprimante_configuration.yaml (configuration.yaml).
 # À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
 # puis automation.reload ; vérifier le message retenu en lecture seule). Aucune commande de test sur …/set.
-# L'ancienne 1791000000189 (dashboard/imprimante/…) reste en place pour l'ancien firmware.
+# (CR10SPRO = le nom d'instance Moonraker de l'auteur : remplacez-le partout par le vôtre, cf. docs/IMPRIMANTE.md.)
 # Klipper est commandé par l'API MQTT de Moonraker (CR10SPRO/moonraker/api/request, JSON-RPC), comme le faisait l'ancien
 # firmware ; la prise et la carte mère par HA (script.allumer_imprimante / script.eteindre_imprimante, prise IKEA).
 

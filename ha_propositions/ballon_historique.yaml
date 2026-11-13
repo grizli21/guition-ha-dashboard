@@ -1,4 +1,4 @@
-# 25/10/2026 : PROPOSITION (pas encore dans HA) — page Eau chaude à 3 onglets (maquettes validées le 25/10,
+# 25/10/2026 : PROPOSITION (à intégrer chez vous) — page Eau chaude à 3 onglets (maquettes validées le 25/10,
 # simu/maquettes_eau.cpp). Quatre morceaux, à poser APRÈS accord (sauvegarde avant, id libres vérifiés, grep des clés) :
 #   A. configuration.yaml, bloc `template:` (à la suite de « Ecran historique exterieur ») : le capteur d'historique 24 h
 #   B. configuration.yaml, `recorder: exclude: entities:` : + sensor.ecran_historique_ballon (effet au prochain

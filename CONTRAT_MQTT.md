@@ -210,14 +210,14 @@ pas encore (il afficherait « Arrêt »).
 
 ### Imprimante 3D — `dashboard_guition/imprimante/etat` et `dashboard_guition/imprimante/fichiers`
 **E** `{"etat":"eteinte|prete|impression|pause", "progression":62, "couche":84, "couches":136, "reste_min":62, "fin":1360, "fichier":"support_camera_v3", "buse":234, "buse_c":235, "plateau":70, "plateau_c":70, "caisson":27, "caisson_c":30, "lumiere":1, "filtration":0, "chauffage":1, "carte_mere":1, "puissance":212, "pm1":0.6, "vignette":"http://…"}`
-puissance = W de la prise de l'imprimante (`sensor.0x00158d0003933633_power`), pm1 = µg/m³ de l'AQM (`sensor.aqm_pm1`) ; -1 = inconnu.
+puissance = W de la prise de l'imprimante (`sensor.prise_imprimante_puissance`), pm1 = µg/m³ de l'AQM (`sensor.aqm_pm1`) ; -1 = inconnu.
 **E** `dashboard_guition/imprimante/fichiers` `{"nb":12, "base":"http://<ip imprimante>/server/files/gcodes/.thumbs/"}` +
 `dashboard_guition/imprimante/fichiers/<0-11>` `{"nom":"piege souris", "fichier":"piege souris_0.2mm_PLA_Generic Klipper Printer_2h2m.gcode", "matiere":"PLA · 38 g", "date":"13/09", "minutes":122}`
 (un sous-sujet par fichier, rang 0 = le plus récent ; ~160 o chacun). L'écran fabrique l'adresse des miniatures :
 `<base><fichier sans .gcode, encodé>-48x48.png` (liste) / `-300x300.png` (anneau, réduite à 160 px au téléchargement).
 **S** `{"action":"allumer|eteindre|pause_reprise|arreter|origine"}`, `{"action":"lancer", "fichier":"…"}`, `{"action":"consignes", "buse":235, "plateau":70, "caisson":30}`, `{"action":"inter", "nom":"lumiere", "on":1}`
 (HA relaie Klipper : `sensor.ecran_etat_klipper` écoute `CR10SPRO/klipper/state/#` + `CR10SPRO/moonraker/status` publiés par
-Moonraker ; éteinte = prise coupée ou Moonraker offline. Commandes vers Klipper par l'API MQTT de Moonraker
+Moonraker (`CR10SPRO` = son `instance_name`, exemple de l'auteur — adapter) ; éteinte = prise coupée ou Moonraker offline. Commandes vers Klipper par l'API MQTT de Moonraker
 (`CR10SPRO/moonraker/api/request`, JSON-RPC : printer.print.pause/resume/cancel/start, printer.gcode.script M104/M140/M141,
 SET_PIN, SET_FAN_SPEED, G28) ; prise et arrêt propre par `script.allumer_imprimante` / `script.eteindre_imprimante` ;
 carte mère = prise IKEA `switch.prise_zigbee_1`.)

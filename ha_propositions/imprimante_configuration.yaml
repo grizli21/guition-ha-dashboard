@@ -1,4 +1,4 @@
-# 23/10/2026 : PROPOSITION (pas encore dans HA) — état de Klipper pour la page Imprimante des écrans (contrat dashboard_guition).
+# 23/10/2026 : PROPOSITION (à intégrer chez vous) — état de Klipper pour la page Imprimante des écrans (contrat dashboard_guition).
 # Moonraker publie déjà tout l'état de Klipper sur le broker (CR10SPRO/klipper/state/<objet>/<attribut>, retenus, une valeur
 # par sujet, {"eventtime":…, "value":…}) et son statut (CR10SPRO/moonraker/status {"server":"online|offline"}).
 # Un SEUL capteur modèle les écoute et garde les valeurs utiles dans un attribut (les températures changent chaque

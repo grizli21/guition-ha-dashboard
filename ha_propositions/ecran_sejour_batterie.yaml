@@ -1,4 +1,4 @@
-# 26/10/2026 : PROPOSITION (pas encore dans HA) — l'écran du séjour sur batterie, surveillé comme les autres appareils sur
+# 26/10/2026 : PROPOSITION (à intégrer chez vous) — l'écran du séjour sur batterie, surveillé comme les autres appareils sur
 # batterie (modèle : la station météo e-paper, capteurs MQTT rattachés à un appareil). Source : la santé de l'écran,
 # retenue, dashboard_guition/appareil/sejour/infos (publiée au réveil puis toutes les 60 s ; l'écran dort entre deux) :
 #   {…, "batterie": 78, "tension": 3.92, "en_charge": 0, "debranche": 1792900000}

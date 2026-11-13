@@ -1,4 +1,4 @@
-# 23/10/2026 : PROPOSITION (pas encore dans HA) — aides HA pour la page Café des écrans (contrat dashboard_guition).
+# 23/10/2026 : PROPOSITION (à intégrer chez vous) — aides HA pour la page Café des écrans (contrat dashboard_guition).
 # À insérer dans votre configuration.yaml, dans les blocs EXISTANTS
 # (input_boolean:, input_datetime:, input_number:, input_text: ; pas de 2e clé du même nom). Puis rechargement de ces 4
 # domaines (pas de redémarrage). Le café programmé existe déjà (cafe_programme / cafe_programme_actif, auto 1791000000186).

@@ -1,4 +1,4 @@
-# 22/10/2026 : PROPOSITION (pas encore dans HA) — historique 24 h des PM2,5 tenu par HA pour les écrans
+# 22/10/2026 : PROPOSITION (à intégrer chez vous) — historique 24 h des PM2,5 tenu par HA pour les écrans
 # (décision du 22/10 : HA tient les courbes, l'écran les affiche ; voir CONTRAT_MQTT.md).
 # À insérer dans votre configuration.yaml, dans les blocs EXISTANTS
 # (pas de 2e clé « sensor: » ni « template: », elle écraserait la première). Puis rechargement :

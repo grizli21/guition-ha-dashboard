@@ -1,4 +1,4 @@
-# 22/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour la qualité de l'air.
+# 22/10/2026 : PROPOSITION (à intégrer chez vous) — automatisations du contrat dashboard_guition pour la qualité de l'air.
 # À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
 # puis automation.reload ; vérifier les messages retenus en lecture seule). Aucune commande de test sur …/set.
 # Les anciennes 1791000000187 / 183 (dashboard/espurifier, dashboard/purificateur) restent en place pour l'ancien firmware.

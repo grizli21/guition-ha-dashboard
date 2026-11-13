@@ -1,4 +1,4 @@
-# 23/10/2026 : PROPOSITION (pas encore dans HA) — liste des fichiers de l'imprimante pour les écrans (2e temps).
+# 23/10/2026 : PROPOSITION (à intégrer chez vous) — liste des fichiers de l'imprimante pour les écrans (2e temps).
 # À insérer après relecture : 1) dans votre configuration.yaml, bloc rest_command: EXISTANT (à côté de imprimante_etat) ;
 # 2) l'automatisation à la fin de automations.yaml. Rechargement : rest_command + automation (pas de redémarrage).
 # Contrat : un sous-sujet par fichier (règle des listes), + un résumé. L'écran fabrique l'adresse des miniatures :

@@ -210,14 +210,14 @@ use it yet (it would show « Arrêt »).
 
 ### 3D Printer — `dashboard_guition/imprimante/etat` and `dashboard_guition/imprimante/fichiers`
 **E** `{"etat":"eteinte|prete|impression|pause", "progression":62, "couche":84, "couches":136, "reste_min":62, "fin":1360, "fichier":"support_camera_v3", "buse":234, "buse_c":235, "plateau":70, "plateau_c":70, "caisson":27, "caisson_c":30, "lumiere":1, "filtration":0, "chauffage":1, "carte_mere":1, "puissance":212, "pm1":0.6, "vignette":"http://…"}`
-puissance = W at the printer's smart plug (`sensor.0x00158d0003933633_power`), pm1 = the AQM's µg/m³ (`sensor.aqm_pm1`); -1 = unknown.
+puissance = W at the printer's smart plug (`sensor.prise_imprimante_puissance`), pm1 = the AQM's µg/m³ (`sensor.aqm_pm1`); -1 = unknown.
 **E** `dashboard_guition/imprimante/fichiers` `{"nb":12, "base":"http://<ip imprimante>/server/files/gcodes/.thumbs/"}` +
 `dashboard_guition/imprimante/fichiers/<0-11>` `{"nom":"piege souris", "fichier":"piege souris_0.2mm_PLA_Generic Klipper Printer_2h2m.gcode", "matiere":"PLA · 38 g", "date":"13/09", "minutes":122}`
 (one subtopic per file, index 0 = the most recent; ~160 bytes each). The screen builds the thumbnail URL:
 `<base><fichier sans .gcode, encodé>-48x48.png` (list) / `-300x300.png` (ring, downscaled to 160 px when downloading).
 **S** `{"action":"allumer|eteindre|pause_reprise|arreter|origine"}`, `{"action":"lancer", "fichier":"…"}`, `{"action":"consignes", "buse":235, "plateau":70, "caisson":30}`, `{"action":"inter", "nom":"lumiere", "on":1}`
 (HA relays Klipper: `sensor.ecran_etat_klipper` listens to `CR10SPRO/klipper/state/#` + `CR10SPRO/moonraker/status` published by
-Moonraker; eteinte = outlet cut or Moonraker offline. Commands to Klipper via Moonraker's MQTT API
+Moonraker (`CR10SPRO` = its `instance_name`, the author's example — adapt); eteinte = outlet cut or Moonraker offline. Commands to Klipper via Moonraker's MQTT API
 (`CR10SPRO/moonraker/api/request`, JSON-RPC: printer.print.pause/resume/cancel/start, printer.gcode.script M104/M140/M141,
 SET_PIN, SET_FAN_SPEED, G28); outlet and clean shutdown via `script.allumer_imprimante` / `script.eteindre_imprimante`;
 mainboard = IKEA smart plug `switch.prise_zigbee_1`.)

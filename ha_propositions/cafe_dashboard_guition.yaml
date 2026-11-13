@@ -1,4 +1,4 @@
-# 23/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour la page Café.
+# 23/10/2026 : PROPOSITION (à intégrer chez vous) — automatisations du contrat dashboard_guition pour la page Café.
 # PRÉALABLE : les aides de cafe_configuration.yaml (configuration.yaml).
 # À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
 # puis automation.reload ; vérifier le message retenu en lecture seule). Aucune commande de test sur …/set.

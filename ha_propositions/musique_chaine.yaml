@@ -1,4 +1,4 @@
-# 24/10/2026 : PROPOSITION (pas encore dans HA) — chaîne moOde et ampli pour la page Musique (contrat dashboard_guition).
+# 24/10/2026 : PROPOSITION (à intégrer chez vous) — chaîne moOde et ampli pour la page Musique (contrat dashboard_guition).
 # À ajouter à la fin de votre automations.yaml (sauvegardez avant, rechargez les automatisations ;
 # vérifier le message retenu en lecture seule). La musique elle-même passe directement par l'API de Music Assistant.
 # Les automatisations 1791000000185 / 190 (dashboard/moode, dashboard/ampli) restent pour les écrans de production.
