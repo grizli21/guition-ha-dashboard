@@ -15,7 +15,6 @@ static uint32_t g_retour_accueil_ms = 60000;
 // 06/11 diagnostic page Réglages (9.6) : le plantage tombe pendant la PREMIÈRE image dessinée après une
 // navigation, jamais pendant la construction. Ce compte à rebours arme les sondes de tas posées sur le
 // chemin de rendu (src/ecran/ecran.cpp) pendant les trois images qui suivent.
-static int g_sonder_images = 0;
 
 static lv_obj_t *g_rail;
 static lv_obj_t *g_zone;
@@ -56,13 +55,6 @@ const char *ui_shell_nom(int index) { return (index >= 0 && index < g_nb) ? g_pa
 // aucune incidence sur le rendu (une trace et quatre repères par navigation).
 #include <Arduino.h> // millis()
 #include <esp_heap_caps.h>
-static uint32_t zone_objets(lv_obj_t *o)
-{
-    uint32_t n = 1;
-    for (uint32_t i = 0; i < lv_obj_get_child_cnt(o); i++)
-        n += zone_objets(lv_obj_get_child(o, i));
-    return n;
-}
 #endif
 
 void ui_shell_aller(int index)
@@ -70,10 +62,6 @@ void ui_shell_aller(int index)
     if (index < 0 || index >= g_nb || index == g_actif)
         return;
 #ifdef ARDUINO
-    const uint32_t t0 = millis();
-    const uint32_t lib0 = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-    const uint32_t bloc0 = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
-    const int integ0 = heap_caps_check_integrity_all(MALLOC_CAP_INTERNAL) ? 1 : 0;
     ui_diag_point("quitter");
 #endif
     if (g_actif >= 0 && g_pages[g_actif].quitter)
@@ -84,10 +72,6 @@ void ui_shell_aller(int index)
     marquer(g_actif, false);
     lv_obj_clean(g_zone);
 #ifdef ARDUINO
-    // 06/11 v5 : l'arbre de l'ancienne page vient d'être détruit — le tas est-il encore intègre ?
-    ui_trace("[page-diag] %d : integrite apres clean %d\n", index, heap_caps_check_integrity_all(MALLOC_CAP_INTERNAL) ? 1 : 0);
-#endif
-#ifdef ARDUINO
     ui_diag_point("creer");
 #endif
     g_actif = index;
@@ -95,25 +79,11 @@ void ui_shell_aller(int index)
     g_pages[g_actif].creer(g_zone);
 #ifdef ARDUINO
     ui_diag_point("fin");
-    // 06/11 v4 : en v3, AUCUNE trace n'est passée (r5) — le crash est dans le premier getter évalué
-    // (GCC évalue les arguments de droite à gauche). Chaque mesure a sa trace : la dernière ligne
-    // émise dit précisément quel appel du tas a tué la boucle.
-    ui_trace("[page-diag] %d : %u ms ; interne avant %u o ; plus gros avant %u o ; integrite avant %d\n",
-             index, (unsigned)(millis() - t0), (unsigned)lib0, (unsigned)bloc0, integ0);
-    ui_trace("[page-diag] %d : interne apres %u o\n", index, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-    ui_trace("[page-diag] %d : plus gros apres %u o\n", index, (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
-    ui_trace("[page-diag] %d : integrite apres %d\n", index, heap_caps_check_integrity_all(MALLOC_CAP_INTERNAL) ? 1 : 0);
-    ui_trace("[page-diag] %d : integrite PSRAM apres %d ; pile %u mots\n", index,
-             heap_caps_check_integrity_all(MALLOC_CAP_SPIRAM) ? 1 : 0, (unsigned)uxTaskGetStackHighWaterMark(NULL));
-    ui_trace("[page-diag] %d : objets %u\n", index, (unsigned)zone_objets(g_zone));
 #endif
-    g_sonder_images = 3; // 06/11 diagnostic : les trois prochaines images dessinées sont sondées
 }
 
 int ui_shell_page() { return g_actif; }
 
-bool ui_shell_sonder_dessin() { return g_sonder_images > 0; }
-void ui_shell_image_sondee() { if (g_sonder_images > 0) g_sonder_images--; }
 
 void ui_shell_retour_accueil(uint32_t ms) { g_retour_accueil_ms = ms; }
 

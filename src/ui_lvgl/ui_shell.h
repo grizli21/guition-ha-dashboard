@@ -18,10 +18,6 @@ int ui_shell_page();                      // page affichée
 int ui_shell_nb();                          // nombre de pages (banc de mesure)
 const char *ui_shell_nom(int index);        // nom de la page (banc de mesure, NULL hors plage)
 void ui_shell_tache();                    // à appeler dans loop() : retours automatiques après inactivité
-// 06/11 diagnostic page Réglages : arme les sondes de tas du rendu pendant les 3 images qui suivent une
-// navigation (« sonder » = vrai tant qu'une image doit être sondée ; « image_sondee » en décrémente une).
-bool ui_shell_sonder_dessin();
-void ui_shell_image_sondee();
 void ui_shell_retour_accueil(uint32_t ms); // délai de retour à la page d'accueil (0 = jamais)
 // 26/10 : change l'icône d'une page (pile vivante) ; couleur au repos (0 = celle des autres icônes ; page affichée : accent)
 void ui_shell_icone(int index, const lv_img_dsc_t *icone, uint32_t couleur);

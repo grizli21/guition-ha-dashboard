@@ -13,14 +13,7 @@
 #include <esp_heap_caps.h>
 static void lum_diag(const char *etape)
 {
-    ui_diag_point(etape);
-    ui_trace("[lum-diag] apres %s : integrite interne %d\n", etape,
-             heap_caps_check_integrity_all(MALLOC_CAP_INTERNAL) ? 1 : 0);
-    ui_trace("[lum-diag] apres %s : integrite PSRAM %d ; libre interne %u o ; libre PSRAM %u o ; pile %u mots\n",
-             etape, heap_caps_check_integrity_all(MALLOC_CAP_SPIRAM) ? 1 : 0,
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
-             (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    ui_diag_point(etape); // 13/11 : repère seul (traces et vérifications du tas du 06/11 retirées)
 }
 #else
 static void lum_diag(const char *) {}
@@ -126,14 +119,6 @@ static void calculer_disque()
     if (g_disque_buf)
         return;
     g_disque_buf = (uint8_t *)lv_malloc(DISQUE * DISQUE * 3);
-#ifdef ARDUINO
-    // 06/11 diagnostic : la valeur du pointeur dit si le tampon est en PSRAM (0x3C…) ou en interne (0x3F…)
-    ui_trace("[lum-diag] tampon %p ; libre total %u o ; PSRAM %u o\n", (const void *)g_disque_buf,
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_DEFAULT),
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
-    // v6 : le tas PSRAM est-il encore intègre APRÈS ce malloc de 145 200 o, AVANT qu'on le remplisse ?
-    ui_trace("[lum-diag] apres malloc : integrite PSRAM %d\n", heap_caps_check_integrity_all(MALLOC_CAP_SPIRAM) ? 1 : 0);
-#endif
     if (!g_disque_buf)
     {
         if (!g_disque_echec_signale)
@@ -161,9 +146,6 @@ static void calculer_disque()
             g_disque_buf[2 * DISQUE * DISQUE + y * DISQUE + x] = alpha;
         }
 #ifdef ARDUINO
-    // v6 : le remplissage (145 200 o en PSRAM) vient d'écrire — les deux tas sont-ils intègres ?
-    ui_trace("[lum-diag] disque rempli : integrite interne %d\n", heap_caps_check_integrity_all(MALLOC_CAP_INTERNAL) ? 1 : 0);
-    ui_trace("[lum-diag] disque rempli : integrite PSRAM %d\n", heap_caps_check_integrity_all(MALLOC_CAP_SPIRAM) ? 1 : 0);
 #endif
 }
 

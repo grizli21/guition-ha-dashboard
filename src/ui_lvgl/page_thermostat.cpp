@@ -3,9 +3,6 @@
 #include "ui_courbe.h" // 05/11/2026 portage 9.6 : uc_cible_t, uc_carre, uc_arc, uc_sur, uc_clip, uc_rejoindre
 #include "icones_28.h"
 #include "icones_67.h"
-#ifdef ARDUINO
-#include <esp_heap_caps.h> // 07/11 (ESSAI lueur) : lecture de la PSRAM libre pour [lueur-diag]
-#endif
 #include "ui_diag.h" // 07/11 (ESSAI lueur) : ui_trace, pour dire une seule fois si l'allocation de la lueur échoue
 #include <math.h>
 #include <stdio.h>
@@ -119,18 +116,7 @@ static const void *lueur_image()
     if (pret)
         return &img;
     const int total = LUEUR_D * LUEUR_D;
-#ifdef ARDUINO
-    // 07/11 (ESSAI lueur) : une fois par démarrage, la PSRAM libre AVANT et APRÈS l'allocation du tableau — même
-    // idiomatique que [lum-diag] (page_lumieres.cpp:129). Le pointeur dit si le tampon est tombé en PSRAM (0x3C…)
-    // ou en RAM interne (0x3F…).
-    ui_trace("[lueur-diag] avant : PSRAM %u o ; interne %u o\n", (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-#endif
     g_lueur_px = (uint8_t *)lv_malloc(total * 3);
-#ifdef ARDUINO
-    ui_trace("[lueur-diag] %d o demandés : tampon %p ; PSRAM %u o ; interne %u o\n", total * 3, (void *)g_lueur_px,
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM), (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-#endif
     if (!g_lueur_px)
     {
         if (!g_lueur_echec_signale)
