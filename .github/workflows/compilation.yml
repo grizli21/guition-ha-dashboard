@@ -18,7 +18,9 @@ jobs:
   firmware:
     name: firmware (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    # 13/11 (3e run) : sous Windows, la 1re compilation (bibliothèques ESP-IDF recompilées, sans cache) a pris 42 min
+    # et la tâche a été coupée à 45 pendant l'enregistrement du cache ; Linux : 25 min. Les suivantes repartent du cache.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
