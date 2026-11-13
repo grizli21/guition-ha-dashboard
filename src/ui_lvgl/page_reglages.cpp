@@ -252,10 +252,10 @@ void page_reglages_creer(lv_obj_t *zone)
     lv_obj_t *c = carte(o_page, 12);
     ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, TXT("LE JOUR", "DAY"));
     o_lum_s[0] = curseur(c, TXT("En service", "Active"), &rg_reglages.lum_jour, 5, &o_lum_jour_v);
-    o_lum_s[1] = curseur(c, TXT("Au repos, après la veille", "Idle, after sleep"), &rg_reglages.lum_jour_repos, 0, &o_lum_jour_r_v);
+    o_lum_s[1] = curseur(c, TXT("Au repos, après la veille", "Idle, after sleep"), &rg_reglages.lum_jour_repos, 5, &o_lum_jour_r_v);
     ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, TXT("LA NUIT", "NIGHT"));
     o_lum_s[2] = curseur(c, TXT("En service", "Active"), &rg_reglages.lum_nuit, 5, &o_lum_nuit_v);
-    o_lum_s[3] = curseur(c, TXT("Au repos, après la veille", "Idle, after sleep"), &rg_reglages.lum_nuit_repos, 0, &o_lum_nuit_r_v);
+    o_lum_s[3] = curseur(c, TXT("Au repos, après la veille", "Idle, after sleep"), &rg_reglages.lum_nuit_repos, 5, &o_lum_nuit_r_v);
     lv_obj_t *r = rangee(c, 40);
     ui_label(r, UI_POLICE_TEXTE, UI_TEXTE, TXT("Veille après", "Sleep after"));
     lv_obj_t *puces = ui_conteneur(r);

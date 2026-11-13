@@ -101,9 +101,9 @@ void ui_appareil_reglages_set(JsonDocument &j)
     if (j["lum_nuit"].is<int>())
         r.lum_nuit = LV_CLAMP(5, j["lum_nuit"].as<int>(), 100);
     if (j["lum_jour_repos"].is<int>())
-        r.lum_jour_repos = LV_CLAMP(0, j["lum_jour_repos"].as<int>(), r.lum_jour);
+        r.lum_jour_repos = LV_CLAMP(5, j["lum_jour_repos"].as<int>(), r.lum_jour);
     if (j["lum_nuit_repos"].is<int>())
-        r.lum_nuit_repos = LV_CLAMP(0, j["lum_nuit_repos"].as<int>(), r.lum_nuit);
+        r.lum_nuit_repos = LV_CLAMP(5, j["lum_nuit_repos"].as<int>(), r.lum_nuit);
     int k;
     if (j["veille_s"].is<int>() && (k = index_de(VEILLES_S, 4, j["veille_s"].as<int>())) >= 0)
         r.veille = k;
@@ -618,8 +618,8 @@ void ui_appareil_demarrer(const char *nom)
         r.piece = LV_CLAMP(0, m.piece, TH_NB_PIECES - 1);
         r.retour = LV_CLAMP(0, m.retour, 3);
         r.camera = m.camera;
-        r.lum_jour_repos = LV_CLAMP(0, m.lum_jour_repos, r.lum_jour);
-        r.lum_nuit_repos = LV_CLAMP(0, m.lum_nuit_repos, r.lum_nuit);
+        r.lum_jour_repos = LV_CLAMP(5, m.lum_jour_repos, r.lum_jour);
+        r.lum_nuit_repos = LV_CLAMP(5, m.lum_nuit_repos, r.lum_nuit);
     }
     else // jamais réglé : la pièce de l'écran d'après son nom (« cuisine », « chambre2 »…)
         for (int i = 0; i < TH_NB_PIECES; i++)
