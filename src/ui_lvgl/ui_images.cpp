@@ -262,9 +262,12 @@ static px565_t *decoder_jpeg(const uint8_t *jpg, size_t n, int cote, int &w, int
 
 static uint8_t *convertir_jpeg(const uint8_t *jpg, size_t n, int cote, lv_img_dsc_t &dsc)
 {
-    // NOTE 9.6 : les décodeurs (esp_new_jpeg comme JPEGDEC) sortent du RGB565 BIG ENDIAN ; on permute les octets
-    // pour écrire du RGB565 natif, conforme à LV_COLOR_FORMAT_RGB565 (l'écran 9.6, glue vague A). En 8.4
-    // (LV_COLOR_16_SWAP = 1) l'écran était en octets inversés : le code d'avant, inchangé dans #else.
+    // NOTE 9.6 : esp_new_jpeg (écran) sort du RGB565 BIG ENDIAN ; on permute les octets pour écrire du
+    // RGB565 natif, conforme à LV_COLOR_FORMAT_RGB565 (l'écran 9.6, glue vague A). Le JPEGDEC du
+    // simulateur est réglé sur RGB565_LITTLE_ENDIAN (comme la caméra, ui_camera.cpp:410) : il sort déjà
+    // natif — 13/11 : ce bswap inconditionnel brassait les couleurs des pochettes au simulateur (le
+    // chemin JPEG n'y avait jamais été rendu, les vignettes étant des PNG). En 8.4 (LV_COLOR_16_SWAP = 1)
+    // l'écran était en octets inversés : le code d'avant, inchangé dans #else.
     // vrai début du JPEG (production : parfois quelques octets avant le marqueur FF D8)
     size_t debut = 0;
     while (debut + 1 < n && debut < 64 && !(jpg[debut] == 0xFF && jpg[debut + 1] == 0xD8))
@@ -284,7 +287,11 @@ static uint8_t *convertir_jpeg(const uint8_t *jpg, size_t n, int cote, lv_img_ds
             for (int sy = y0; sy < y1; sy++)
                 for (int sx = x0; sx < x1; sx++)
                 {
-                    uint16_t v = __builtin_bswap16(src[sy * w + sx]); // big endian -> valeur RGB565 réelle
+#ifdef ARDUINO
+                    uint16_t v = __builtin_bswap16(src[sy * w + sx]); // esp_new_jpeg : big endian -> valeur RGB565 réelle
+#else
+                    uint16_t v = src[sy * w + sx]; // simulateur : JPEGDEC déjà en RGB565 natif petit boutiste (13/11)
+#endif
                     r += (v >> 11) & 0x1F;
                     g += (v >> 5) & 0x3F;
                     b += v & 0x1F;
