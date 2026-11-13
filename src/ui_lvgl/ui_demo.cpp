@@ -14,6 +14,7 @@
 #include "ui_demo.h"
 #include "ui_mqtt.h"
 #include "ui_diag.h"
+#include "ui_langue.h" // 13/11 : TXT() dans les valeurs affichées des messages rejoués (pièces, filtres, modes…)
 #include "ui_musique.h"
 #include "page_thermostat.h"
 #include "page_ballon.h"
@@ -214,13 +215,13 @@ static const message_demo_t MESSAGES[] = {
     {UI_MQTT_PREFIXE "ballon/historique", HIST_BALLON},
     // VMC : maison en petite vitesse (automatisme humidité), sous-sol arrêté
     {UI_MQTT_PREFIXE "vmc/maison/etat",
-     "{\"auto\":1,\"hum\":54,\"hum_lieu\":\"salle de bain\",\"seuil\":65,\"vitesse\":1}"},
-    {UI_MQTT_PREFIXE "vmc/sous_sol/etat", "{\"auto\":0,\"hum\":58,\"hum_lieu\":\"sous-sol\",\"seuil\":0,\"vitesse\":0}"},
+     "{\"auto\":1,\"hum\":54,\"hum_lieu\":\"" TXT("salle de bain", "bathroom") "\",\"seuil\":65,\"vitesse\":1}"},
+    {UI_MQTT_PREFIXE "vmc/sous_sol/etat", "{\"auto\":0,\"hum\":58,\"hum_lieu\":\"" TXT("sous-sol", "basement") "\",\"seuil\":0,\"vitesse\":0}"},
     // Air : deux purificateurs ; pic de poussière à l'atelier en fin d'après-midi (impression 3D)
     {UI_MQTT_PREFIXE "air/atelier/etat",
-     "{\"en_ligne\":1,\"info\":\"Filtre 72 %\",\"mode\":0,\"modes\":[\"Arrêt\",\"Fan\",\"1\",\"2\",\"3\"],\"pm25\":12}"},
+     "{\"en_ligne\":1,\"info\":\"" TXT("Filtre 72 %", "Filter 72 %") "\",\"mode\":0,\"modes\":[\"Arrêt\"" TXT("Arrêt", "Off") "\",\"Fan\",\"1\",\"2\",\"3\"],\"pm25\":12}"},
     {UI_MQTT_PREFIXE "air/sejour/etat",
-     "{\"en_ligne\":1,\"info\":\"Filtre 58 %\",\"mode\":1,\"modes\":[\"Arrêt\",\"Auto\",\"Silence\",\"Fan\"],\"pm25\":6}"},
+     "{\"en_ligne\":1,\"info\":\"" TXT("Filtre 58 %", "Filter 58 %") "\",\"mode\":1,\"modes\":[\"Arrêt\"" TXT("Arrêt", "Off") "\",\"Auto\",\"Silence\",\"Fan\"],\"pm25\":6}"},
     {UI_MQTT_PREFIXE "air/atelier/historique", HIST_AIR0},
     {UI_MQTT_PREFIXE "air/sejour/historique", HIST_AIR1},
     // Ouvrants : store banne rentré, volet à mi-hauteur, toile de vidéoprojecteur remontée
@@ -300,7 +301,7 @@ static const message_demo_t MESSAGES[] = {
      "\"cache\":18.2,\"ram_total\":32.0,\"swap\":0,\"gpus\":[{\"nom\":\"3060\",\"charge\":38,\"temp\":57,\"w\":110,\"vram\":8.2,"
      "\"vram_total\":12.0,\"ps\":\"P0\",\"f\":1800,\"fm\":1900,\"blocs\":[{\"n\":\"llama-3.1-8B-Q4_K_M\",\"mo\":5100,"
      "\"c\":\"22d3ee\"},{\"n\":\"whisper-large-v3\",\"mo\":3100,\"c\":\"35c46a\"}]}],\"net_bas\":1.2,\"net_haut\":0.4,"
-     "\"disque_l\":2.0,\"disque_e\":0.0,\"depuis\":\"1 j 04 h\",\"heure\":\"15:30\"}"},
+     "\"disque_l\":2.0,\"disque_e\":0.0,\"depuis\":\"" TXT("1 j 04 h", "1 d 04 h") "\",\"heure\":\"15:30\"}"},
     {UI_MQTT_PREFIXE "pc/processus",
      "[{\"nom\":\"firefox\",\"role\":\"\",\"cpu\":8.4,\"mem\":1.6,\"vram\":0.0},{\"nom\":\"code\",\"role\":\"\",\"cpu\":4.1,"
      "\"mem\":0.9,\"vram\":0.0},{\"nom\":\"llama-server\",\"role\":\"llama-local\",\"cpu\":0.0,\"mem\":1.8,\"vram\":8.0},"

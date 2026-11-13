@@ -1137,7 +1137,7 @@ int main()
             p.hist[i] = (uint8_t)LV_MAX(0, base + 6 * sinf(i / 7.0f + k) + (k == 0 && i > 34 && i < 40 ? 14 : 0) + sinf(i * 1.7f) * 1.5f);
         p.pm25 = p.hist[AQ_HIST - 1];
     }
-    snprintf(aq_purificateurs[0].info, 32, "COV 112 · 24 h");
+    snprintf(aq_purificateurs[0].info, 32, TXT("COV 112 · 24 h", "VOC 112 · 24 h"));
     snprintf(aq_purificateurs[1].info, 32, TXT("Filtre 63 %% · 24 h", "Filter 63 %% · 24 h"));
     aq_purificateurs[0].mode = 2;
     aq_purificateurs[1].mode = 1;
@@ -1439,7 +1439,7 @@ int main()
         memcpy(p.gpus[2].blocs, b2, sizeof b2); p.gpus[2].nb_blocs = 6;
         for (int i = 0; i < PC_HIST_CPU; i++)
             p.h_cpu[i] = (uint8_t)(i >= 40 && i < 52 ? 55 + (i * 13) % 30 : i >= 95 && i < 100 ? 70 + (i * 11) % 25 : 8 + (i * 7) % 9);
-        snprintf(p.allume_depuis, 16, "2 j 04 h");
+        snprintf(p.allume_depuis, 16, TXT("2 j 04 h", "2 d 04 h"));
         snprintf(p.derniere_nouvelle, 8, "21:47");
         const char *pr[][2] = {{"llama-server", "Assistant · LLM 31B"}, {"python3 ollama-capture.py", "proxy assistant"}, {"trtllm-serve", "reconnaissance vocale"},
                                {"zonos", "synthèse vocale"}, {"firefox", "navigateur"}, {"postgres", "base de l'assistant"}, {"code", "VS Code"},
@@ -1624,10 +1624,10 @@ int main()
     toucher(330, 414); // sous-sol : Grande
     lacher();
     // écho pendant la garde (le ventilateur est encore annoncé à l'arrêt) : l'écran reste sur Grande
-    recevoir("dashboard_guition/vmc/sous_sol/etat", "{\"auto\": 0, \"hum\": 83, \"hum_lieu\": \"sous-sol\", \"seuil\": 0, \"vitesse\": 0}");
+    recevoir("dashboard_guition/vmc/sous_sol/etat", "{\"auto\": 0, \"hum\": 83, \"hum_lieu\": \"" TXT("sous-sol", "basement") "\", \"seuil\": 0, \"vitesse\": 0}");
     avancer(300);
     capture("61_mqtt_vmc_garde");
-    recevoir("dashboard_guition/vmc/sous_sol/etat", "{\"auto\": 0, \"hum\": 83, \"hum_lieu\": \"sous-sol\", \"seuil\": 0, \"vitesse\": 2}");
+    recevoir("dashboard_guition/vmc/sous_sol/etat", "{\"auto\": 0, \"hum\": 83, \"hum_lieu\": \"" TXT("sous-sol", "basement") "\", \"seuil\": 0, \"vitesse\": 2}");
     // maison : la pièce la plus humide devient le séjour (accent échappé é, comme peut l'envoyer tojson), boost en cours
     recevoir("dashboard_guition/vmc/maison/etat",
              "{\"auto\": 1, \"hum\": 84, \"hum_lieu\": \"s\\u00e9jour\", \"seuil\": 80, \"vitesse\": 2}");
@@ -1652,7 +1652,7 @@ int main()
         }
         recevoir("dashboard_guition/air/atelier/historique", at.c_str());
         recevoir("dashboard_guition/air/sejour/historique", se.c_str());
-        recevoir("dashboard_guition/air/sejour/etat", "{\"en_ligne\": 1, \"info\": \"Filtre 59 %\", \"mode\": 1, \"pm25\": 12}");
+        recevoir("dashboard_guition/air/sejour/etat", "{\"en_ligne\": 1, \"info\": \"" TXT("Filtre 59 %", "Filter 59 %") "\", \"mode\": 1, \"pm25\": 12}");
     }
     avancer(300);
     capture("64_mqtt_air_historique");
@@ -1661,7 +1661,7 @@ int main()
     toucher(247, 428); // séjour : Silence (index 2)
     lacher();
     // le Xiaomi passe d'abord par son ancien préréglage (Auto) : gardé de côté, l'écran reste sur Silence
-    recevoir("dashboard_guition/air/sejour/etat", "{\"en_ligne\": 1, \"info\": \"Filtre 59 %\", \"mode\": 1, \"pm25\": 15}");
+    recevoir("dashboard_guition/air/sejour/etat", "{\"en_ligne\": 1, \"info\": \"" TXT("Filtre 59 %", "Filter 59 %") "\", \"mode\": 1, \"pm25\": 15}");
     avancer(300);
     capture("65_mqtt_air_commandes");
     // état réel déjà reçu avec le relevé du broker
