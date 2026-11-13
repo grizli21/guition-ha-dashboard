@@ -53,7 +53,7 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
   </tr>
   <tr>
     <td><img src="docs/images/ia-orage-anime.gif" width="234" alt="Page IA sous l'orage : pluie et éclair animés"><br><b>IA</b> — Clawd et l'activité de l'agent Claude du PC : état, jetons, sessions, histogramme. Le ciel suit la météo de Home Assistant — GIF : averse et éclair, animation du simulateur</td>
-    <td><img src="docs/images/page-batterie.png" width="234" alt="Page Batterie, détail du dernier réveil en millisecondes"><br><b>Batterie</b> — le dernier réveil (radar) décomposé en millisecondes : Wi-Fi à 412 ms, MQTT à 574 ms, synchro à 1 386 ms, Wi-Fi coupé à 1 452 ms (valeurs du simulateur). Tout le réveil tient dans 1,5 s — c'est ce qui rend l'écran sans fil utilisable ; mesuré sur l'écran réel, affichage prêt en 0,7 s</td>
+    <td><img src="docs/images/page-batterie.png" width="234" alt="Page Batterie, détail du dernier réveil en millisecondes"><br><b>Batterie</b> — le dernier réveil (radar) décomposé en millisecondes, capture du simulateur. C'est la vitesse de ce réveil qui rend l'écran sans fil utilisable : mesuré sur l'écran réel, affichage prêt en 0,7 s</td>
   </tr>
 </table>
 
@@ -127,7 +127,8 @@ Câblage, modifications de la carte, mesures et boîtier : [materiel/ecran-batte
 Le rail de droite est un **carrousel d'icônes** défilable au doigt : 17 icônes de 64 px dans une
 colonne de 76 px, sans aimantation ni élastique — il s'arrête pile sur la première et la dernière.
 Ce GIF, fabriqué par le simulateur aux instants réels du geste (30 ms par pas du glissé, puis 50 ms
-pendant l'élan), montre le glissé, l'élan qui s'éteint, l'appui sur l'icône Imprimante 3D — la page
+pendant l'élan ; quelques images intermédiaires de l'élan ont été retirées pour tenir le poids du
+GIF), montre le glissé, l'élan qui s'éteint, l'appui sur l'icône Imprimante 3D — la page
 change d'un coup, le rail ne bouge pas — puis une courte animation du direct de la caméra du caisson, jusqu'à ~18 images/s mesurées sur un écran.
 La page épinglée (ici la batterie, à 12 %) reste fixe en bas, sous le carrousel.
 
@@ -243,8 +244,9 @@ broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](
   tuiles limitées à la zone utile, élagage du parcours).
 - Flash verrouillée en DIO par eFuse sur ces modules N16R8V (voir platformio.ini).
 - Les captures du simulateur utilisent des images de démonstration : mires synthétiques (caméras,
-  pochettes de test, logos) plus deux médias libres de droit sous licence CC0 — pochette « CommoNasm »
-  et séquence d'impression 3D (sources dans [docs/CREDITS.md](docs/CREDITS.md)) : remplacez
+  pochettes de test, logos), une pochette libre de droit sous licence CC0 (« CommoNasm ») et de vraies
+  images de la caméra du caisson de l'auteur, publiées avec son accord
+  (détails dans [docs/CREDITS.md](docs/CREDITS.md)) : remplacez
   `simu/donnees/cameras|pochettes|logos` par vos propres images pour vos essais.
 - L'automatisation « PC » suppose un petit agent publiant `dashboard_guition/pc/*` (contract
   documenté, agent non fourni).

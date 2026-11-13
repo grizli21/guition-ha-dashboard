@@ -50,7 +50,7 @@ Montserrat Bold — see [tools/fonts/README.en.md](tools/fonts/README.en.md#opti
   </tr>
   <tr>
     <td><img src="docs/images/ia-orage-anime.gif" width="234" alt="AI page in a storm: animated rain and lightning"><br><b>AI</b> — Clawd and the Claude agent on your PC: state, tokens, sessions, histogram. The sky follows the Home Assistant weather — GIF: downpour and lightning, simulator animation</td>
-    <td><img src="docs/images/page-batterie.png" width="234" alt="Battery page, last wake-up broken down in milliseconds"><br><b>Battery</b> — the last wake-up (radar) broken down in milliseconds: Wi-Fi at 412 ms, MQTT at 574 ms, sync at 1,386 ms, Wi-Fi cut at 1,452 ms (simulator values). The whole wake-up fits in 1.5 s — that is what makes the wireless display practical; measured on the real screen, display ready in 0.7 s</td>
+    <td><img src="docs/images/page-batterie.png" width="234" alt="Battery page, last wake-up broken down in milliseconds"><br><b>Battery</b> — the last wake-up (radar) broken down in milliseconds, simulator capture. That wake-up speed is what makes the wireless display practical: measured on the real screen, display ready in 0.7 s</td>
   </tr>
 </table>
 
@@ -124,7 +124,7 @@ Wiring, board modifications, measurements and case: [materiel/ecran-batterie/REA
 The right-hand rail is a swipeable **carousel of icons**: 17 icons of 64 px in a 76 px column,
 with no snapping and no rubber-banding — it stops exactly on the first and the last icon.
 This GIF, produced by the simulator at the real timings of the gesture (30 ms per drag step, then
-50 ms during the fling), shows the drag, the fling dying out, the tap on the 3D Printer icon — the
+50 ms during the fling — some intermediate fling frames were dropped to keep the GIF light), shows the drag, the fling dying out, the tap on the 3D Printer icon — the
 page changes instantly, the rail does not move — then a short animation live from the enclosure
 camera — up to ~18 frames/s measured on a screen. The pinned page (here the battery, at 12 %) stays fixed at the bottom, below the carousel.
 
@@ -240,9 +240,10 @@ MQTT broker and without Wi-Fi, and the main buttons respond ([see how](docs/en/I
   three applied patches in `docs/patches/` (banded scrolling — what makes scrolling smooth —,
   tiles limited to the useful area, traversal pruning).
 - Flash locked to DIO by eFuse on these N16R8V modules (see platformio.ini).
-- The simulator captures use demo images: synthetic test patterns (cameras, test album art, logos)
-  plus two free-license CC0 media — the “CommoNasm” album cover and a 3D-printing sequence
-  (sources in [docs/en/CREDITS.md](docs/en/CREDITS.md)): replace
+- The simulator captures use demo images: synthetic test patterns (cameras, test album art, logos),
+  one free-license CC0 album cover (“CommoNasm”) and real images from the author's own enclosure
+  camera, published with his consent
+  (details in [docs/en/CREDITS.md](docs/en/CREDITS.md)): replace
   `simu/donnees/cameras|pochettes|logos` with your own images for your own tests.
 - The “PC” automation assumes a small agent publishing `dashboard_guition/pc/*` (documented
   contract, agent not provided).
