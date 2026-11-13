@@ -36,4 +36,12 @@ d'icônes [Material Design Icons](https://pictogrammers.com/library/mdi/) (Apach
 `tools/mdi/`. Les images de démonstration du simulateur (caméras, pochettes, logos) sont des mires
 générées, libres de droit.
 
+La page « IA » est inspirée de [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) : l'idée
+d'afficher à l'écran l'activité d'un agent Claude. **Aucune ligne de code ni aucun fichier de ce projet
+n'est copiée** dans ce dépôt (le projet amont n'a pas de licence — on ne s'appuie que sur l'idée).
+C'est un **projet de fan non officiel, non affilié à Anthropic** ; « Claude » et « Clawd » sont des
+marques d'Anthropic. Les dessins de Clawd (`lib/icones/clawd_ia*.c`, `icon_ia*.c`, `marque_ia_*.c`,
+`scintille_ia.c`) sont des dessins originaux, **exclus de la licence MIT** — voir
+[lib/icones/NOTICE_CLAWD.md](../lib/icones/NOTICE_CLAWD.md).
+
 Développé avec l'aide d'assistants IA : Claude (Anthropic) et Qwen (exécuté en local).

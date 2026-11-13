@@ -57,12 +57,12 @@ bit à bit celui de l'écran (mêmes sources, même `lv_conf.h`, couleurs 16 bit
 board/           json de carte (esp32-s3-devkitc-1-n16r8v)
 conf_v9/         lv_conf.h LVGL 9.6 (généré par tools/gen_conf_v9.py)
 docs/images/     galerie (captures du simulateur) · docs/patches/ patchs LVGL et LovyanGFX
-ha_propositions/ 23 automatisations Home Assistant (YAML)
+ha_propositions/ 24 automatisations Home Assistant (YAML)
 include/         wrapper LovyanGFX de la dalle, en-têtes communs
 lib/             ressources (polices/images), icones, lvgl-9.6.0 patchée, LovyanGFX modifiée + bibliothèques amont
 simu/            simulateur PC (Makefile, scénario, données MQTT relevées et anonymisées)
 src/ecran/       firmware : Wi-Fi, table ECRANS[], OTA, banc distant, diagnostics
-src/ui_lvgl/     les 18 pages LVGL + shell, graphes, MQTT, caméra, musique…
+src/ui_lvgl/     les 19 pages LVGL + shell, graphes, MQTT, caméra, musique…
 tools/           banc PC, convertisseurs d'icônes/polices, guetteur MQTT
 CONTRAT_MQTT.md  contrat MQTT complet (la référence)
 ```

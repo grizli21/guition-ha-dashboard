@@ -36,4 +36,12 @@ the `POLICE_3X5` option. Icon sources
 `tools/mdi/`. The simulator's demo images (cameras, album art, logos) are generated test
 patterns, free of rights.
 
+The "AI" page was inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter): the idea of
+showing a Claude agent's activity on a screen. **No line of code and no file from that project is
+copied** into this repository (the upstream project has no license — we only take the idea). This is an
+**unofficial fan project, not affiliated with Anthropic**; "Claude" and "Clawd" are trademarks of
+Anthropic. The Clawd drawings (`lib/icones/clawd_ia*.c`, `icon_ia*.c`, `marque_ia_*.c`, `scintille_ia.c`)
+are original artwork, **excluded from the MIT license** — see
+[lib/icones/NOTICE_CLAWD.md](../../lib/icones/NOTICE_CLAWD.md).
+
 Developed with the help of AI assistants: Claude (Anthropic) and Qwen (run locally).

@@ -4,9 +4,9 @@
 
 Tableau de bord mural pour écrans **Guition ESP32-S3-4848S040** : firmware LVGL 9.6, piloté par
 **Home Assistant via MQTT**, avec un **simulateur PC** qui compile le vrai code des pages et sort des
-captures 480 × 480. Dix-huit pages tactiles pensées pour la maison : chauffage, graphes 24 h,
+captures 480 × 480. Dix-neuf pages tactiles pensées pour la maison : chauffage, graphes 24 h,
 qualité de l'air, ouvrants, croquettes, café, eau chaude, VMC, poêle à bois, musique, lumières,
-panneau LED, imprimante 3D, PC, réglages, informations, batterie — plus la page radar des écrans
+panneau LED, imprimante 3D, PC, IA, réglages, informations, batterie — plus la page radar des écrans
 sur batterie.
 
 Il existe aussi en **version sans fil** : batterie, radar de présence, veille profonde à 2 mA, réveil
@@ -51,6 +51,10 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
     <td><img src="docs/images/page-imprimante.png" width="234" alt="Page Imprimante 3D"><br><b>Imprimante 3D</b> — fichiers STL et vignettes d'impression, suivi de la couche en cours</td>
     <td><img src="docs/images/page-pc.png" width="234" alt="Page PC"><br><b>PC</b> — système, GPU, processus, IA locale, mise en veille</td>
   </tr>
+  <tr>
+    <td><img src="docs/images/page-ia-jour.png" width="234" alt="Page IA, scène de jour"><br><b>IA</b> — Clawd et l'activité de l'agent Claude du PC : état, jetons, sessions, histogramme 30 × 10 min</td>
+    <td><img src="docs/images/page-ia-nuit.png" width="234" alt="Page IA, scène de nuit"><br><b>Le même ciel que dehors</b> — soleil et lune sur leur arc, phase de lune, aube, crépuscule, nuages, pluie, neige, brouillard, d'après Home Assistant</td>
+  </tr>
 </table>
 
 <details>
@@ -76,6 +80,24 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
 
 </details>
 
+## Page « IA »
+
+Juste après PC dans le rail, une page montre l'agent Claude qui tourne sur le PC : état (réfléchit,
+en attente, au repos), jetons produits, outils, prompts, sessions, et un histogramme 5 h par
+tranches de 10 min. Les données arrivent par deux sujets MQTT retenus (`pc/ia`, `pc/ia_activite` —
+[détail du contrat](CONTRAT_MQTT.md)).
+
+La scène a un **ciel animé** : soleil et lune parcourent leur arc d'après les heures réelles publiées
+par Home Assistant (`maison/ciel`, automatisation fournie dans [ha_propositions/](ha_propositions/)),
+la lune porte sa vraie phase, l'aube et le crépuscule teintent le ciel, les nuages dérivent, la pluie
+tombe, la neige blanchit le sol et le brouillard estompe le buisson. Toutes les images sont des
+dessins pixel régénérés par [tools/gen_scene_ia.py](tools/gen_scene_ia.py).
+
+> Cette page est un **projet de fan non officiel, non affilié à Anthropic**. « Claude » et « Clawd »
+> sont des marques d'Anthropic. Les dessins de Clawd sont des dessins originaux, **exclus de la
+> licence MIT** ([lib/icones/NOTICE_CLAWD.md](lib/icones/NOTICE_CLAWD.md)). La page est inspirée de
+> [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) — rien de ce projet n'y est copié.
+
 ## Écran sur batterie
 
 <img src="docs/images/ecran-batterie-pivot.jpg" width="640" alt="L'écran sur batterie sur son pivot, à côté d'un écran sur son support de bureau">
@@ -99,7 +121,7 @@ Câblage, modifications de la carte, mesures et boîtier : [materiel/ecran-batte
 
 ## Navigation
 
-Le rail de droite est un **carrousel d'icônes** défilable au doigt : 16 icônes de 64 px dans une
+Le rail de droite est un **carrousel d'icônes** défilable au doigt : 17 icônes de 64 px dans une
 colonne de 76 px, sans aimantation ni élastique — il s'arrête pile sur la première et la dernière.
 Ce GIF, fabriqué par le simulateur aux instants réels du geste (30 ms par pas du glissé, puis 50 ms
 pendant l'élan), montre le glissé, l'élan qui s'éteint, puis l'appui sur l'icône Imprimante 3D :
@@ -149,9 +171,10 @@ flowchart LR
   (nom de la pièce, IP statique, rotation, batterie). Les écrans prennent une IP statique
   (`RESEAU_OCTET_*` + dernier octet) pour qu'OTA et banc fonctionnent toujours.
 - **LVGL 9.6.0 est vendorisée** dans [lib/lvgl-9.6.0](lib/lvgl-9.6.0), allégée (sans docs ni exemples)
-  et **patchée à la main** : le correctif de défilement `scroll_bande_9.6.patch` est appliqué
-  (marqueur `.bande-applique`) ; les deux autres patchs de `docs/patches/` sont protégés par des
-  drapeaux de compilation et non appliqués.
+  et **patchée à la main** : trois correctifs sont appliqués — défilement `scroll_bande_9.6.patch`
+  (marqueur `.bande-applique`), tuiles limitées à la zone utile `lvgl_9.6.0_tuiles_zone_utile.patch`
+  et élagage du parcours `lvgl_9.6.0_elagage_parcours.patch` ; les deux autres patchs LVGL de
+  `docs/patches/` sont protégés par des drapeaux de compilation et non appliqués.
 - **Build hybride pioarduino** : plateforme figée `55.03.312-1` (Arduino 3.3.12 / ESP-IDF 5.5.5).
 - **Wi-Fi recompilé pour la caméra** (`custom_sdkconfig`) : la version précompilée bridait le flux vidéo.
   Avec une fenêtre TCP plus grande et quelques réglages du flux, la caméra passe de 11-12 à 15-16 images/s.
@@ -186,7 +209,7 @@ make -C simu                                                # simulateur PC : ca
 ```
 
 Il faut ensuite déclarer ses écrans par leur adresse MAC (table `ECRANS[]`) et brancher Home Assistant
-(23 automatisations prêtes dans [ha_propositions/](ha_propositions/)). L'interface existe aussi en
+(24 automatisations prêtes dans [ha_propositions/](ha_propositions/)). L'interface existe aussi en
 **anglais** (`-D UI_LANG_EN`). Pas à pas complet : **[docs/INSTALLATION.md](docs/INSTALLATION.md)**.
 
 **Juste pour voir ?** Le **mode démo** (`-D MODE_DEMO`) remplit toutes les pages sans Home Assistant, sans
@@ -195,7 +218,7 @@ broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](
 ## Aller plus loin
 
 - [docs/INSTALLATION.md](docs/INSTALLATION.md) — installation pas à pas : secrets, écrans par MAC, flash USB puis OTA, Home Assistant, langue, simulateur.
-- [docs/SOUS_LE_CAPOT.md](docs/SOUS_LE_CAPOT.md) — les neuf points techniques complets, avec leurs mesures.
+- [docs/SOUS_LE_CAPOT.md](docs/SOUS_LE_CAPOT.md) — tous les points techniques, avec leurs mesures.
 - [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md) — outillage, ajouter une page, diagnostics, simulateur en détail, arborescence.
 - [docs/CREDITS.md](docs/CREDITS.md) — licence, bibliothèques, polices et icônes, avec leurs licences.
 - [materiel/ecran-batterie/](materiel/ecran-batterie/) — l'écran sur batterie : radar, consommation mesurée, économies du firmware, boîtier 3D (licence CC BY-NC 4.0).
@@ -206,8 +229,9 @@ broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](
 
 - **Pensé pour un réseau local de confiance** : MQTT en 1883 sans TLS, OTA sans mot de passe,
   caméra en MJPEG HTTP. À ne pas exposer sur Internet.
-- LVGL 9.6 vendorisée et patchée : ne pas la remplacer par la version du registre sans rejouer
-  `docs/patches/scroll_bande_9.6.patch` (le défilement par bande est ce qui fait la fluidité).
+- LVGL 9.6 vendorisée et patchée : ne pas la remplacer par la version du registre sans rejouer les
+  trois patchs appliqués de `docs/patches/` (défilement par bande — ce qui fait la fluidité —,
+  tuiles limitées à la zone utile, élagage du parcours).
 - Flash verrouillée en DIO par eFuse sur ces modules N16R8V (voir platformio.ini).
 - Les captures du simulateur utilisent des images de démonstration synthétiques (caméras, pochettes,
   logos) : remplacez `simu/donnees/cameras|pochettes|logos` par vos propres images pour vos essais.
@@ -216,8 +240,10 @@ broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](
 
 ## Licence et crédits
 
-Code de ce dépôt : **MIT** ([LICENSE](LICENSE)). Les fichiers 3D de `materiel/` ont leur propre licence,
-indiquée dans leur dossier. Bibliothèques, polices et icônes utilisées, avec leurs licences :
-**[docs/CREDITS.md](docs/CREDITS.md)**.
+Code de ce dépôt : **MIT** ([LICENSE](LICENSE)). Exceptions : les fichiers 3D de `materiel/` ont leur
+propre licence, indiquée dans leur dossier ; les **dessins de Clawd** (`lib/icones/*_ia*`, mascotte de
+Claude Code) sont des dessins originaux exclus de la licence MIT
+([lib/icones/NOTICE_CLAWD.md](lib/icones/NOTICE_CLAWD.md)). Bibliothèques, polices et icônes utilisées,
+avec leurs licences : **[docs/CREDITS.md](docs/CREDITS.md)**.
 
 Développé avec l'aide d'assistants IA : Claude (Anthropic) et Qwen (exécuté en local).
