@@ -110,7 +110,10 @@ fonctionne.
 ## 4. Caméras (facultatif)
 
 Les deux vues (caisson, plateau) sont des **flux MJPEG** — chez l'auteur, go2rtc sur le NAS
-(recadrage et sous-flux préparés sur place, ~384×304 ; la cadence dépend de chaque installation).
+(recadrage et sous-flux préparés sur place, ~384×304). Mesuré sur un écran (13/11) : caisson
+≈ 18,7 images/s (558 et 561 images en 30 s, images de 30 Ko, décodage 52 ms — la source est réglée
+à 20/s et l'écran la suit) ; plateau ≈ 14,4 images/s (433 images en 30 s, images de 14 Ko, décodage
+39 ms — source autour de 14-15/s). La cadence dépend de chaque installation, mesure-la.
 Les adresses sont dans
 [src/ui_lvgl/ui_camera.h](../src/ui_lvgl/ui_camera.h) (`UI_CAM_IMPRIMANTE`, `UI_CAM_PLATEAU`,
 remplaçables en `-D` à la compilation) : adaptez l'hôte, le port et le `src=`, puis recompilez.

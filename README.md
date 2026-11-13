@@ -45,7 +45,7 @@ Montserrat Bold — see [tools/fonts/README.en.md](tools/fonts/README.en.md#opti
   <tr>
     <td><img src="docs/images/page-musique.png" width="234" alt="Music page"><br><b>Music</b> — Music Assistant: playback (free-license album cover, see <a href="docs/en/CREDITS.md">docs/CREDITS.md</a>), library, albums, radios, output</td>
     <td><img src="docs/images/page-lumieres.png" width="234" alt="Lights page, cursor set on a color of the wheel"><br><b>Lights</b> — one lamp selected, cursor set on a color of the chromatic wheel, brightness by finger</td>
-    <td><img src="docs/images/page-imprimante.png" width="234" alt="3D Printer page"><br><b>3D Printer</b> — STL files and print thumbnails, tracking of the current layer, and live from the enclosure camera, frame after frame<br><small>Setting up a Klipper/Moonraker printer: <a href="docs/en/IMPRIMANTE.md">docs/en/IMPRIMANTE.md</a></small></td>
+    <td><img src="docs/images/page-imprimante.png" width="234" alt="3D Printer page"><br><b>3D Printer</b> — STL files and print thumbnails, tracking of the current layer, and live from the enclosure camera, frame after frame (≈ 18.7 frames/s measured on a screen)<br><small>Setting up a Klipper/Moonraker printer: <a href="docs/en/IMPRIMANTE.md">docs/en/IMPRIMANTE.md</a></small></td>
     <td><img src="docs/images/page-pc.png" width="234" alt="PC page"><br><b>PC</b> — system, GPU, processes, local AI, sleep</td>
   </tr>
   <tr>
@@ -126,7 +126,7 @@ with no snapping and no rubber-banding — it stops exactly on the first and the
 This GIF, produced by the simulator at the real timings of the gesture (30 ms per drag step, then
 50 ms during the fling), shows the drag, the fling dying out, the tap on the 3D Printer icon — the
 page changes instantly, the rail does not move — then a short animation live from the enclosure
-camera. The pinned page (here the battery, at 12 %) stays fixed at the bottom, below the carousel.
+camera — up to ~18 frames/s measured on a screen. The pinned page (here the battery, at 12 %) stays fixed at the bottom, below the carousel.
 
 <img src="docs/images/rail-anime.gif" width="360" alt="The icon rail: drag, fling, page change">
 
@@ -177,7 +177,9 @@ flowchart LR
   `docs/patches/` are guarded by compile flags and not applied.
 - **Hybrid pioarduino build**: pinned platform `55.03.312-1` (Arduino 3.3.12 / ESP-IDF 5.5.5).
 - **Recompiled Wi-Fi for the camera** (`custom_sdkconfig`): the precompiled version throttled the video stream.
-  With a larger TCP window and a few stream tweaks, the camera throughput increases noticeably (before/after, measured on the screen).
+  With a larger TCP window and a few stream tweaks, the camera throughput increases noticeably: measured on
+  a screen (13/11), ≈ 18.7 frames/s from the printer enclosure camera (MJPEG stream via go2rtc, 30 KB frames,
+  52 ms decode; the source is set to 20/s and the screen keeps up).
   In exchange, Wi-Fi takes up more internal RAM.
 - **Program in PSRAM (XIP)**: without it, the 17 MHz screen jumps as soon as the flash is busy (Wi-Fi,
   settings). It costs 2.55 MB of PSRAM ([details](docs/en/SOUS_LE_CAPOT.md)).
