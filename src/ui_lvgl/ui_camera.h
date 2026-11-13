@@ -7,12 +7,14 @@
 #ifndef UI_CAM_IMPRIMANTE // 27/10 : remplaçable à la compilation (banc : source fixe rejouée depuis le PC, mesures A/B)
 // Caméra au-dessus de l'imprimante (sous-flux recadré par go2rtc), en FLUX MJPEG : 384 x 304 aux bonnes proportions pour la
 // zone 375 x 300 de la page Imprimante, ~30 Ko par image, préchargé ; ≈ 18,7 images/s mesurées sur un écran
-// (13/11, 558 et 561 images en 30 s, décodage 52 ms — la source est réglée à 20/s et l'écran la suit). ADAPTER : hôte et port de ton go2rtc.
+// (13/11, 558 et 561 images en 30 s, décodage 52 ms). L'écran affiche ce que la source envoie, il n'est pas la
+// limite : cette caméra (IP, sous thingino) est réglée à 20/s sur son sous-flux 640 x 360. ADAPTER : hôte et port de ton go2rtc.
 #define UI_CAM_IMPRIMANTE "http://192.168.1.12:1984/api/stream.mjpeg?src=imprimante_ecran"
 #endif
 // 08/11/2026 (retour d'usage) : la seconde caméra de l'imprimante, la face du PLATEAU (caméra USB « bed » de Klipper, recadrée
 // au centre par go2rtc sur le NAS). 384 x 304, 14 à 29 Ko par image selon la scène et l'éclairage,
-// ≈ 14,4 images/s mesurées sur un écran (13/11, 430 et 433 images en 30 s, décodage 39 ms, source autour de 14-15/s) : même taille et même format que
+// ≈ 14,4 images/s mesurées sur un écran (13/11, 430 et 433 images en 30 s, décodage 39 ms) — c'est le réglage
+// de crowsnest (15/s, max_fps), pas la capacité de l'écran, qui affiche ce que la source envoie : même taille et même format que
 // imprimante_ecran, préchargée. Mêmes remarques que ci-dessus : le recadrage de la page (375 x 300) prend 4 px de chaque
 // côté et 2 px en haut et en bas, sans mise à l'échelle (ui_camera.cpp:434).
 #ifndef UI_CAM_PLATEAU // remplaçable à la compilation, comme la caméra du caisson (banc : source fixe rejouée)

@@ -106,10 +106,17 @@ Without thumbnails at those sizes, the list and the ring show “no thumbnail”
 ## 4. Cameras (optional)
 
 The two views (enclosure, bed) are **MJPEG streams** — at the author’s, go2rtc on the NAS (cropping
-and sub-streams prepared there, ~384×304). Measured on a screen (13/11): enclosure ≈ 18.7 frames/s
-(558 and 561 frames in 30 s, 30 KB frames, 52 ms decode — the source is set to 20/s and the screen
-keeps up); bed ≈ 14.4 frames/s (430 and 433 frames in 30 s, 14 to 29 KB per frame depending on the
-scene and lighting, 39 ms decode — source around 14-15/s). The rate depends on each setup — measure yours. The URLs live in
+and sub-streams prepared there, ~384×304). The screen shows what the source sends: it is not the
+limit. Measurements from 13/11, screen side and source side:
+- enclosure: ≈ 18.7 frames/s measured on a screen (558 and 561 frames in 30 s, 30 KB frames,
+  52 ms decode), for an IP camera (under thingino) set to 20/s on its 640×360 sub-stream ;
+- bed: ≈ 14.4 frames/s measured on a screen (430 and 433 frames in 30 s, 14 to 29 KB per frame
+  depending on scene and lighting, 39 ms decode), for the Klipper USB webcam served by
+  crowsnest/ustreamer at 1600×1200, cropped and downscaled by go2rtc, set to 15/s — that figure
+  says crowsnest’s setting, not the screen’s capacity.
+
+The rate therefore depends on the camera and its setting (for the Klipper webcam: crowsnest’s
+`max_fps`); measure yours. The URLs live in
 [src/ui_lvgl/ui_camera.h](../../src/ui_lvgl/ui_camera.h) (`UI_CAM_IMPRIMANTE`, `UI_CAM_PLATEAU`,
 overridable with `-D` at compile time): adapt host, port and `src=`, then rebuild. With no camera (or
 a wrong URL), the corner button still cycles STL → enclosure → bed views; the zone simply stays empty

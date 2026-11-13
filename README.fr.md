@@ -48,7 +48,7 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
   <tr>
     <td><img src="docs/images/page-musique.png" width="234" alt="Page Musique"><br><b>Musique</b> — Music Assistant : lecture (pochette d'album libre de droit, voir <a href="docs/CREDITS.md">docs/CREDITS.md</a>), bibliothèque, albums, radios, sortie</td>
     <td><img src="docs/images/page-lumieres.png" width="234" alt="Page Lumières, curseur posé sur une couleur du disque"><br><b>Lumières</b> — une lampe sélectionnée, le curseur posé sur une couleur du disque chromatique, luminance au doigt</td>
-    <td><img src="docs/images/page-imprimante.png" width="234" alt="Page Imprimante 3D"><br><b>Imprimante 3D</b> — fichiers STL et vignettes d'impression, suivi de la couche en cours et direct de la caméra du caisson, image après image (≈ 18,7 images/s mesurées sur un écran)<br><small>Configurer une imprimante Klipper/Moonraker : <a href="docs/IMPRIMANTE.md">docs/IMPRIMANTE.md</a></small></td>
+    <td><img src="docs/images/page-imprimante.png" width="234" alt="Page Imprimante 3D"><br><b>Imprimante 3D</b> — fichiers STL et vignettes d'impression, suivi de la couche en cours et direct de la caméra du caisson, image après image (≈ 18,7 images/s mesurées sur un écran, pour une source réglée à 20/s)<br><small>Configurer une imprimante Klipper/Moonraker : <a href="docs/IMPRIMANTE.md">docs/IMPRIMANTE.md</a></small></td>
     <td><img src="docs/images/page-pc.png" width="234" alt="Page PC"><br><b>PC</b> — système, GPU, processus, IA locale, mise en veille</td>
   </tr>
   <tr>
@@ -129,7 +129,7 @@ colonne de 76 px, sans aimantation ni élastique — il s'arrête pile sur la pr
 Ce GIF, fabriqué par le simulateur aux instants réels du geste (30 ms par pas du glissé, puis 50 ms
 pendant l'élan ; quelques images intermédiaires de l'élan ont été retirées pour tenir le poids du
 GIF), montre le glissé, l'élan qui s'éteint, l'appui sur l'icône Imprimante 3D — la page
-change d'un coup, le rail ne bouge pas — puis une courte animation du direct de la caméra du caisson, jusqu'à ~18 images/s mesurées sur un écran.
+change d'un coup, le rail ne bouge pas — puis une courte animation du direct de la caméra du caisson, jusqu'à ~18 images/s mesurées sur un écran — la caméra du caisson en envoie 20/s : l'écran affiche ce que la source envoie, ce n'est pas lui la limite.
 La page épinglée (ici la batterie, à 12 %) reste fixe en bas, sous le carrousel.
 
 <img src="docs/images/rail-anime.gif" width="360" alt="Le rail d'icônes : glissé, élan, changement de page">
@@ -183,7 +183,8 @@ flowchart LR
 - **Wi-Fi recompilé pour la caméra** (`custom_sdkconfig`) : la version précompilée bridait le flux vidéo.
   Avec une fenêtre TCP plus grande et quelques réglages du flux, le débit de la caméra augmente nettement :
   mesuré sur un écran (13/11), ≈ 18,7 images/s pour la caméra du caisson de l'imprimante (flux MJPEG via
-  go2rtc, images de 30 Ko, décodage 52 ms ; la source est réglée à 20/s et l'écran la suit). En échange,
+  go2rtc, images de 30 Ko, décodage 52 ms). L'écran affiche ce que la source envoie, il n'est pas la
+  limite : cette caméra (IP, sous thingino, sous-flux 640×360) est réglée à 20/s. En échange,
   le Wi-Fi occupe plus de RAM interne.
 - **Programme en PSRAM (XIP)** : sans lui, l'écran à 17 MHz saute dès que la flash travaille (Wi-Fi,
   réglages). Il coûte 2,55 Mo de PSRAM ([détails](docs/SOUS_LE_CAPOT.md)).

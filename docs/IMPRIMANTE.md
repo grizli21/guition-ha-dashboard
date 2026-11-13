@@ -110,10 +110,17 @@ fonctionne.
 ## 4. Caméras (facultatif)
 
 Les deux vues (caisson, plateau) sont des **flux MJPEG** — chez l'auteur, go2rtc sur le NAS
-(recadrage et sous-flux préparés sur place, ~384×304). Mesuré sur un écran (13/11) : caisson
-≈ 18,7 images/s (558 et 561 images en 30 s, images de 30 Ko, décodage 52 ms — la source est réglée
-à 20/s et l'écran la suit) ; plateau ≈ 14,4 images/s (430 et 433 images en 30 s, 14 à 29 Ko par image selon la
-scène et l'éclairage, décodage 39 ms — source autour de 14-15/s). La cadence dépend de chaque installation, mesure-la.
+(recadrage et sous-flux préparés sur place, ~384×304). L'écran affiche ce que la source envoie :
+il n'est pas la limite. Mesures du 13/11, côté écran et côté source :
+- caisson : ≈ 18,7 images/s mesurées sur un écran (558 et 561 images en 30 s, images de 30 Ko,
+  décodage 52 ms), pour une caméra IP (sous thingino) réglée à 20/s sur son sous-flux 640×360 ;
+- plateau : ≈ 14,4 images/s mesurées sur un écran (430 et 433 images en 30 s, 14 à 29 Ko par image
+  selon la scène et l'éclairage, décodage 39 ms), pour la webcam USB de Klipper servie par
+  crowsnest/ustreamer en 1600×1200, recadrée et réduite par go2rtc, réglée à 15/s — ce chiffre-là
+  dit le réglage de crowsnest, pas la capacité de l'écran.
+
+La cadence dépend donc de la caméra et de son réglage (pour la webcam Klipper : le `max_fps` de
+crowsnest) ; mesure la tienne.
 Les adresses sont dans
 [src/ui_lvgl/ui_camera.h](../src/ui_lvgl/ui_camera.h) (`UI_CAM_IMPRIMANTE`, `UI_CAM_PLATEAU`,
 remplaçables en `-D` à la compilation) : adaptez l'hôte, le port et le `src=`, puis recompilez.
