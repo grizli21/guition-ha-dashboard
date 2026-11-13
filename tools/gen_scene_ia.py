@@ -359,13 +359,19 @@ def bytes_a8(mat):
     return bytes(v for ligne in mat for v in ligne)
 
 
+# 12/11 : colonne de COL_L px de large (et non plus 1). LVGL dessine chaque tuile séparément ; avec 1 px, une bande
+# de 4 px redessinée (un couloir de pluie) coûtait 4 tuiles x 412 lignes d'un pixel — et une image pleine page, 380
+# tuiles. Mesuré sur l'écran : ~26 ms par image sous la pluie.
+COL_L = 16
+
+
 def bytes_colonne(cols):
-    """colonne 1 x 412 : une couleur par ligne de grille, répétée P fois en hauteur seulement."""
+    """colonne COL_L x 412 : une couleur par ligne de grille, répétée P fois en hauteur et COL_L fois en largeur."""
     out = bytearray()
     for c in cols:
         v = rvb565(c)
         for _ in range(P):
-            out += bytes([v & 0xFF, v >> 8])
+            out += bytes([v & 0xFF, v >> 8]) * COL_L
     return bytes(out)
 
 
@@ -387,7 +393,7 @@ def main():
             for (x, y), c in calq[nom].items():
                 comp[y][x] = c
         assert comp == g, "colonne + morceaux ne reproduisent PAS la scène de référence (%s)" % sfx
-        ecrire_c("colonne_ia_" + sfx, bytes_colonne(cols), 1, GH * P, "LV_COLOR_FORMAT_RGB565", 2)
+        ecrire_c("colonne_ia_" + sfx, bytes_colonne(cols), COL_L, GH * P, "LV_COLOR_FORMAT_RGB565", 2 * COL_L)
         for nom in ORDRE:
             if not calq[nom]:
                 continue
@@ -441,5 +447,98 @@ def main():
         ecrire_c(nom, smooth(im, 0.5).getchannel("A").tobytes(), 64, 64, "LV_COLOR_FORMAT_A8", 64)
 
 
+# ---------------------------------------------------------------- 12/11 : ciel animé (maison/ciel)
+# Ajouts SANS toucher aux images existantes (la vérification au pixel de main() reste valable) :
+# deux ciels de plus (aube, crépuscule : 3 teintes, mêmes bandes de 4 cases que les autres), une
+# étoile « qui scintille » posée par-dessus les trois croix du calque d'étoiles, un 3e nuage plus
+# large pour les ciels couverts. Le soleil, la lune et les nuages sont DÉPLACÉS par page_ia.cpp.
+CIELS = {  # haut, milieu, horizon
+    "aube": ("#1E2A55", "#7A5C8C", "#F2B27A"),
+    "crepuscule": ("#1F1A40", "#8A3F66", "#F0844A"),
+}
+
+
+def colonne_ciel(nom):
+    haut, milieu, horizon = (hexa(c) for c in CIELS[nom])
+    herbe, herbe2, terre, terre2 = hexa("#3E6B2F"), hexa("#2F5424"), hexa("#2A2320"), hexa("#231D1B")  # herbe de nuit
+    hors = []
+    for y in range(GH):
+        if y < 46:
+            hors.append(melange(CARTE, haut, (y // 4) * 4 / 46))
+        elif y < SOL:
+            t = ((y - 46) // 4) * 4 / (SOL - 46)
+            hors.append(melange(haut, milieu, t / 0.5) if t < 0.5 else melange(milieu, horizon, (t - 0.5) / 0.5))
+        else:
+            hors.append(herbe if y == SOL else herbe2 if y == SOL + 1 else (terre if (y // 3) % 2 else terre2))
+    return hors
+
+
+def nuage(l):
+    """même dessin que les nuages de scene() (3 rangs blancs + 1 rang d'ombre), largeur l cases"""
+    blanc, ombre = hexa("#F4F7FA"), hexa("#C9D8E6")
+    cal = {}
+    for x in range(l):
+        cal[(x, 2)] = blanc
+        cal[(x, 3)] = ombre
+    for x in range(2, l - 3):
+        cal[(x, 1)] = blanc
+    for x in range(4, l - 6):
+        cal[(x, 0)] = blanc
+    return cal
+
+
+def main_ciel():
+    for nom in CIELS:
+        ecrire_c("colonne_ia_" + nom, bytes_colonne(colonne_ciel(nom)), COL_L, GH * P, "LV_COLOR_FORMAT_RGB565", 2 * COL_L)
+    # étoile qui scintille : la croix du calque (centre E8E4D0, bras 807C90) en plus vive ; page_ia.cpp fait
+    # varier son opacité (0 = la croix d'origine dessous, 255 = éclat)
+    croix = {(1, 1): (0xFF, 0xFF, 0xF4)}
+    for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+        croix[(1 + dx, 1 + dy)] = (0xC8, 0xC4, 0xDC)
+    img, _, _ = morceau(croix)
+    ecrire_c("scintille_ia", bytes_rvb565a8(img), len(img[0]) * P, len(img) * P, "LV_COLOR_FORMAT_RGB565A8", len(img[0]) * P * 2)
+    img, _, _ = morceau(nuage(16))
+    ecrire_c("nuage3_ia", bytes_rvb565a8(img), len(img[0]) * P, len(img) * P, "LV_COLOR_FORMAT_RGB565A8", len(img[0]) * P * 2)
+    print("   ciel : colonne_ia_aube, colonne_ia_crepuscule, scintille_ia (3 x 3 cases), nuage3_ia (16 x 4 cases)")
+    # étoiles du HAUT du ciel (cases 35..46, juste sous la jauge du bas) : le calque d'origine (cases 47..66) laissait le haut
+    # vide la nuit. Un peu moins denses que le bas (~1,5 par rang), mêmes luminosités, jamais dans la zone des marques
+    # de Clawd ; suite figée par sa graine. A8 (opacité seule) : page_ia.cpp la teinte en blanc.
+    rnd = random.Random(12)
+    haut = {}
+    while len(haut) < 24:  # 12/11 (retour d'usage) : le ciel « vivant » commence sous la jauge du bas (case 35)
+        x, y = rnd.randrange(GW), rnd.randrange(35, 47)
+        if 34 <= x <= 49 and y >= 45:
+            continue
+        haut[(x, y)] = rnd.choice([0x55, 0x70, 0x90, 0xC0])
+    ecrire_a8_cases("etoiles_haut_ia", haut)
+    # pluie et neige : un MOTIF de 1 x 24 cases (4 x 96 px) avec deux gouttes (1 x 2 cases) ou deux flocons (1 case),
+    # répété dans un couloir vertical que page_ia.cpp fait glisser (une seule zone redessinée par couloir)
+    # 12/11 (retour d'usage : « les couloirs sont fixes ») : UNE goutte (ou un flocon) par motif. Le motif est deux fois plus
+    # haut que le couloir (+ 6 cases), la goutte au milieu : en glissant, il couvre toujours tout le couloir (une seule
+    # zone à redessiner) ; quand la goutte est sortie par le bas, page_ia.cpp change le couloir de colonne au hasard.
+    hc = 73 - 35                      # hauteur du couloir en cases (de la case 35 à l'herbe)
+    hm, d = 2 * hc + 6, hc + 2        # hauteur du motif, case de la goutte
+    for k, (l, al) in enumerate([(2, 190), (3, 230), (2, 150)]):
+        ecrire_a8_cases("goutte_ia_%d" % k, {(0, d + y): al for y in range(l)}, w=1, h=hm)
+    for k, al in enumerate([255, 200]):
+        ecrire_a8_cases("flocon_ia_%d" % k, {(0, d): al}, w=1, h=hm)
+
+def ecrire_a8_cases(nom, cases, w=None, h=None):
+    """cases {(x, y): opacité} -> image A8, cases de 4 px ; boîte englobante, ou w x h cases depuis (0, 0)"""
+    if w is None:
+        x0, y0 = min(p[0] for p in cases), min(p[1] for p in cases)
+        w, h = max(p[0] for p in cases) - x0 + 1, max(p[1] for p in cases) - y0 + 1
+    else:
+        x0 = y0 = 0
+    W, H = w * P, h * P
+    a8 = bytearray(W * H)
+    for (x, y), al in cases.items():
+        for dy in range(P):
+            for dx in range(P):
+                a8[((y - y0) * P + dy) * W + (x - x0) * P + dx] = al
+    ecrire_c(nom, bytes(a8), W, H, "LV_COLOR_FORMAT_A8", W)
+    print("   %s : cases x %d..%d, y %d..%d (page_ia.cpp pose à x=%d, y=%d)" % (nom, x0, x0 + w - 1, y0, y0 + h - 1, x0 * P, y0 * P))
+
 if __name__ == "__main__":
     main()
+    main_ciel()

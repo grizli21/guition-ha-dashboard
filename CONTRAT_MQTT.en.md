@@ -59,6 +59,16 @@ Legend: **E** = `etat` (HA → screen, retained), **S** = `set` (screen → HA).
 (`sensor.openweathermap_temperature`, `sensor.openweathermap_humidite`, `person.exemple`, `sun.sun`). Used by the thermostat (outdoor),
 the chart and the settings (night). Without power consumption or water (energy banner removed): published only on real changes.
 
+### Sky (the AI page scene) — `dashboard_guition/maison/ciel` (12 Nov 2026, automation 1792200000037)
+**E** `{"aube":1794550018, "lever":1794552045, "coucher":1794586954, "crepuscule":1794588979, "lune_age":2.9, "lune_pct":9,
+"meteo":"pouring", "nuages":100, "pluie":4.2, "neige":0.0}`: `aube`/`lever`/`coucher`/`crepuscule` = Unix timestamps of the
+NEXT sun events (`sun.sun` attributes `next_dawn`/`next_rising`/`next_setting`/`next_dusk`; the screen derives today's
+events from them and places the sun itself); `lune_age` (days, 0 = new moon) and `lune_pct` (% lit) — the proposed
+`ha_propositions/ciel_dashboard_guition.yaml` computes them with an astronomical approximation (synodic month, accurate
+to ~1%); `meteo` = `sensor.openweathermap_condition` (sunny, clear-night, partlycloudy, cloudy, fog, rainy,
+pouring, snowy, snowy-rainy, lightning, lightning-rainy, hail, windy…); `nuages` in %; `pluie` / `neige` in mm/h.
+Published only on changes (retained).
+
 ### Heating — `dashboard_guition/thermostats/<piece>/etat` (`cuisine`, `sejour`, `chambre1`, `chambre2`, `sdb`)
 **E** `{"temp":14.5, "hum":69.5, "consigne":15.0, "mode":"arret|horsgel|eco|confort|manuel", "chauffe":0|1, "batterie":59, "signal":164}`
 (`climate.<piece>`: `preset_mode` away/eco/comfort/none → horsgel/eco/confort/manuel; `hvac_mode off` → arret; `hvac_action heating` → chauffe)
@@ -219,7 +229,7 @@ extracted by Moonraker into `.thumbs/<nom>-48x48.png` / `-300x300.png` (seen on 
 **Published by an agent on the PC** — a small script (Python with no external dependency is enough) that publishes these two topics
 once per second to the broker, with a dedicated MQTT user ("pc") — not by HA.
 **E** `pc/etat` (≈ 580 bytes, + 61 bytes per card since 08/11) `{"cpu":10, "freq":3524, "cpu_temp":56, "cpu_w":39, "coeurs":[…16], "ram":27.2, "cache":30.7, "ram_total":62.0, "swap":23,
-"gpus":[{"nom":"3090", "role":"llama-server-aurore", "charge":0, "temp":29, "w":7, "vram":23.3, "vram_total":24.0, "ps":"P2", "f":1500, "fm":9626, "f_max":2115, "fm_max":9876},…3], "net_bas":0.01, "net_haut":0.01,
+"gpus":[{"nom":"3090", "role":"llama-server-assistant", "charge":0, "temp":29, "w":7, "vram":23.3, "vram_total":24.0, "ps":"P2", "f":1500, "fm":9626, "f_max":2115, "fm_max":9876},…3], "net_bas":0.01, "net_haut":0.01,
 "disque_l":0.0, "disque_e":0.0, "claude_5h":68, "claude_semaine":45, "depuis":"1 j 15 h", "heure":"11:59"}` (MB/s, GB; a card's role = the systemd
 service of the process using the most VRAM on it; `heure` = the PC's clock, the screen has none).
 Since 08/11, each card carries five more fields, published by `telemetrie-pc` (`/config/telemetrie-pc/pc.py`): `ps` (string
@@ -228,10 +238,29 @@ unknown). Real reading from 08/11 around 19:00: 3090 P2 1500/9626 (max 2115/9876
 The screen shows `ps` next to the watts (« 53° · 99 W · P2 ») and the two current frequencies, each next to its icon (mockup approved on
 08/11, prod 8.4 `0c1a947`); **a missing field or `null` shows as "-"** — the screen resets its values to zero on every frame, it never
 shows a stale frequency. `f_max` and `fm_max` are received and kept, not displayed yet.
-**E** `pc/processus` (≈ 900 bytes) `[{"nom":"llama-server", "role":"llama-server-aurore", "cpu":0.0, "mem":1.9, "vram":28.4},…12]` (first 6 by CPU,
+**E** `pc/processus` (≈ 900 bytes) `[{"nom":"llama-server", "role":"llama-server-assistant", "cpu":0.0, "mem":1.9, "vram":28.4},…12]` (first 6 by CPU,
 3 by memory, 3 by VRAM; role = systemd service, empty for desktop applications).
 The screen switches to « PC en veille » when nothing has arrived for 10 s.
 **S** `dashboard_guition/pc/set` `{"action":"reveiller|veille"}` -> HA 1792200000028 (IN HA on 24/10): `switch.eveille_ordi_cachy` on (WoL) / off (usual sleep).
+
+### "AI" page — `dashboard_guition/pc/ia` and `dashboard_guition/pc/ia_activite` (retained; PC agent, rail page written on 11 Nov 2026)
+Published by the PC agent (the Claude agent on the PC), not by HA. Both are **retained** (the screen waits for them to
+declare itself complete, like `pc/ia` since 31 Oct 2026) and displayed by the "AI" page in the rail, placed right after
+PC (mockup approved on 10 Nov 2026). The "AI" tab of the PC page (31 Oct 2026) is removed.
+**E** `pc/ia` (≈ 150 bytes) — format UNCHANGED since 31 Oct 2026, but with **ONE account**, the one in use; the screen
+reads the first element of the array and ignores the others:
+`{"comptes":[{"nom":"compte-un@exemple.invalid", "h5":92, "h5_reset":1792710000, "semaine":13, "semaine_reset":1793228400, "maj":1792703000}]}`
+(`h5`/`semaine`: % used; `h5_reset`/`semaine_reset`: Unix time of the reset, 0 if no current window; `maj`: Unix time of
+the agent's reading — if older than 10 min the screen writes "read … ago").
+The `claude_5h`/`claude_semaine` fields of `pc/etat` (24 Oct 2026) are read by nothing: Claude usage lives in `pc/ia`.
+**E** `pc/ia_activite` (≈ 400 bytes, NEW 11 Nov 2026) — what the Claude agent is doing and what it produced:
+`{"etat":"reflechit|attente|repos", "alerte":"autorisation|question|", "tokens":612345, "outils":411, "prompts":14, "sessions":2, "histo":[30 integers], "maj":1792703000}`
+(`tokens`: total tokens produced; `outils`: tool calls; `prompts`: prompts handled; `sessions`: open sessions; `histo`:
+tokens produced per 10-min slice over 5 h, **oldest first**, the last one = the current slice; `maj`: Unix time of the
+message — 0 or missing = the screen stamps it on receipt).
+Display: "thinking…" orange / "authorization requested" or "question for you" red (the alert comes before the state) /
+"idle" grey. **No message, or older than 2 min: "idle"**, Clawd closes its eyes, and the last received numbers stay on
+screen. The screen publishes nothing on these two topics.
 
 ### Doorbell — `dashboard_guition/sonnette/etat`
 **E** `{"sonne":1, "depuis":1792694300}` (drops back to 0 when the door opens) → the screen shows the camera if the setting is active.

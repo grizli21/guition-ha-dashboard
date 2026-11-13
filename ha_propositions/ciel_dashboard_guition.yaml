@@ -1,0 +1,44 @@
+# 12/11/2026 : PROPOSITION — automatisation du contrat dashboard_guition qui publie le ciel de la page IA.
+# A ajouter a la fin de votre automations.yaml (sauvegardez avant, verifiez que l'id est libre,
+# puis automation.reload). Verifiez ensuite le message retenu en lecture seule.
+# PREALABLES : l'integration « Sun » (entite sun.sun) et OpenWeatherMap (sensor.openweathermap_condition,
+# sensor.openweathermap_cloud_coverage, sensor.openweathermap_precipitation, sensor.openweathermap_snow ;
+# chez l'utilisateur : « OWM One Call » ou « OWM Weather ») — adapter les noms si les votres different.
+
+- id: '1792200000037'
+  alias: Ecran · ciel · etat (page IA)
+  description: >-
+    Contrat dashboard_guition (CONTRAT_MQTT.md) : dashboard_guition/maison/ciel, retenu, publie aux seuls
+    changements. aube/lever/coucher/crepuscule = horodatages Unix des PROCHAINS événements du soleil
+    (attributs next_dawn / next_rising / next_setting / next_dusk de sun.sun ; l'ecran en deduit ceux du
+    jour et place le soleil lui-meme) ; lune_age (jours depuis la nouvelle lune) et lune_pct (% eclairé) =
+    approximation astronomique (mois synodique de 29,5306 j depuis la nouvelle lune du 06/01/2000 18:14 UTC,
+    exacte a environ 1 %) ; meteo = condition OpenWeatherMap ; nuages en % ; pluie et neige en mm/h.
+    Declencheur « template » : la publication n'a lieu que quand le message change (le soleil bouge
+    toutes les 2 s sans que ces valeurs changent).
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  variables:
+    ciel: >-
+      {% set syn = 2551442.8 %}
+      {% set age = ((as_timestamp(now()) - 947182440) % syn) / 86400 %}
+      {{ {'aube': as_timestamp(state_attr('sun.sun', 'next_dawn')) | int(0),
+          'lever': as_timestamp(state_attr('sun.sun', 'next_rising')) | int(0),
+          'coucher': as_timestamp(state_attr('sun.sun', 'next_setting')) | int(0),
+          'crepuscule': as_timestamp(state_attr('sun.sun', 'next_dusk')) | int(0),
+          'lune_age': age | round(1),
+          'lune_pct': ((1 - ((2 * 3.14159265 * age / 29.5306) | cos)) / 2 * 100) | round(0) | int,
+          'meteo': states('sensor.openweathermap_condition'),
+          'nuages': states('sensor.openweathermap_cloud_coverage') | int(0),
+          'pluie': states('sensor.openweathermap_precipitation') | float(0),
+          'neige': states('sensor.openweathermap_snow') | float(0)} | tojson }}
+  triggers:
+    - trigger: template
+      value_template: "{{ ciel }}"
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: dashboard_guition/maison/ciel
+        retain: true
+        payload: "{{ ciel }}"

@@ -600,8 +600,37 @@ static void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *col
 
 // Corps du monitor_cb 8.4 : ms = durée de l'image, px = pixels peints. Branché en 8.4 sur
 // disp_drv.monitor_cb, en 9.6 sur surveille_rendu (événements LV_EVENT_REFR_START / REFR_READY).
+// 12/11 : compteurs de la commande telnet « rendu » (ui_diag.h) : toutes les images, sans seuil
+static uint32_t g_rd_n, g_rd_ms, g_rd_max, g_rd_debut, g_rd_bascule_us, g_rd_copie_us;
+static uint64_t g_rd_px;
+static void rendu_bilan(char *b, unsigned n)
+{
+    const uint32_t s = millis() - g_rd_debut;
+    // la durée d'une image compte aussi la copie vers l'autre mémoire et l'attente de la bascule (VSYNC) : séparées ici
+    const float n_ = g_rd_n ? (float)g_rd_n : 1.0f;
+    snprintf(b, n, "rendu : %lu images en %lu ms (%.1f/s), %.1f ms par image dont copie %.1f et bascule %.1f, max %lu ms, %lu px par image, %.0f %% du temps (hors bascule %.0f %%)\n",
+             (unsigned long)g_rd_n, (unsigned long)s, s ? g_rd_n * 1000.0f / s : 0.0f, g_rd_ms / n_, g_rd_copie_us / 1000.0f / n_,
+             g_rd_bascule_us / 1000.0f / n_, (unsigned long)g_rd_max, (unsigned long)(g_rd_n ? g_rd_px / g_rd_n : 0),
+             s ? g_rd_ms * 100.0f / s : 0.0f, s ? (g_rd_ms - g_rd_bascule_us / 1000.0f) * 100.0f / s : 0.0f);
+    g_rd_n = g_rd_ms = g_rd_max = g_rd_bascule_us = g_rd_copie_us = 0;
+    g_rd_px = 0;
+    g_rd_debut = millis();
+}
+
 static void bilan_rendu(uint32_t ms, uint32_t px)
 {
+    if (!ui_diag_rendu)
+    {
+        ui_diag_rendu = rendu_bilan;
+        g_rd_debut = millis();
+    }
+    g_rd_n++;
+    g_rd_ms += ms;
+    g_rd_bascule_us += g_bascule_us;
+    g_rd_copie_us += g_copie_us;
+    g_rd_px += px;
+    if (ms > g_rd_max)
+        g_rd_max = ms;
 #ifdef BILAN_RENDU_S
     // 04/11 : banc de mesure — TOUTES les images comptées sur l'écran (pas de seuil : un seuil fait disparaître du
     // journal les images que le correctif accélère), classées par lignes touchées, bilan toutes les BILAN_RENDU_S s.

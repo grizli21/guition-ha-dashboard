@@ -282,8 +282,16 @@ void ui_diag_tache()
         }
         else if (!strcmp(cmd, "ram"))
             ram_afficher();
+        else if (!strcmp(cmd, "rendu") && ui_diag_rendu) // 12/11 : coût du rendu depuis la dernière demande
+        {
+            char b[200];
+            ui_diag_rendu(b, sizeof b);
+            g_client.print(b);
+        }
     }
 }
+
+void (*ui_diag_rendu)(char *b, unsigned n) = nullptr;
 
 // 28/10 : AUDIT RAM (ui_diag.h). Les textes sont en PSRAM : l'instrument ne prend pas de RAM interne.
 static char *g_ram_etapes = nullptr;

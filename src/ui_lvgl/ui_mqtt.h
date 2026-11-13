@@ -19,6 +19,20 @@ struct ui_maison_t
 };
 extern ui_maison_t ui_maison;
 
+// 12/11/2026 : le ciel de la page IA (dashboard_guition/maison/ciel, retenu, CONTRAT_MQTT.md) : horodatages Unix des
+// PROCHAINS aube / lever / coucher / crépuscule, lune (âge en jours, % éclairé) et météo OpenWeatherMap
+struct ui_ciel_t
+{
+    uint32_t aube, lever, coucher, crepuscule;
+    float lune_age;
+    int lune_pct;
+    char meteo[20]; // condition HA : sunny, clear-night, partlycloudy, cloudy, fog, rainy, pouring, snowy, lightning…
+    int nuages;     // %
+    float pluie, neige; // mm/h
+    bool recu;
+};
+extern ui_ciel_t ui_ciel;
+
 // Instant (lv_tick) du dernier message reçu de HA (0 = jamais) : liaison « Home Assistant » de la page Infos
 extern uint32_t ui_mqtt_dernier_ha;
 

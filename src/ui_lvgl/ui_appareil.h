@@ -36,6 +36,7 @@ extern uint32_t ui_appareil_repos_ms;
 // 26/10 : si non nul, rétroéclairage ÉTEINT (pas seulement au repos) après ce temps sans toucher, même avec quelqu'un à la
 // maison : le diag radar d'un écran sur batterie, qui ne dort plus (comme sa veille profonde, l'écran noir)
 extern uint32_t ui_appareil_extinction_ms;
+bool ui_appareil_eteint(); // 12/11 : écran éteint (absent, rétroéclairage à 0) : les animations peuvent s'arrêter
 // 27/10 : détail du coucher précédent (broche du radar, durée de la veille), ajouté à la ligne « Réveil »
 extern char ui_appareil_reveil_info[192];
 int ui_appareil_veille_s(); // délai de veille réglé (s) ; 0 = jamais

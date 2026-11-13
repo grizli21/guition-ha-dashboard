@@ -22,6 +22,8 @@ void ui_diag_demarrer();
 void ui_diag_tache();
 // Après la connexion MQTT : publie le dump du plantage précédent (s'il y en a un), une fois
 void ui_diag_publier(bool (*publier)(const char *sujet, const char *message, bool retenu), const char *nom);
+// 12/11 : commande telnet « rendu » : images rendues depuis la dernière demande (nombre, ms moyen et max, pixels)
+extern void (*ui_diag_rendu)(char *b, unsigned n);
 uint32_t ui_diag_boucle_max();          // 25/10 : la boucle la plus lente depuis le démarrage (ms)
 const char *ui_diag_cause();             // raison du dernier redémarrage, en clair (« chien de garde des tâches »…)
 const char *ui_diag_etape_precedente(); // étape en cours au moment du plantage précédent ("" : pas de plantage)

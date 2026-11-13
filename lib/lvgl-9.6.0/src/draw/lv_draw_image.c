@@ -315,7 +315,12 @@ void lv_draw_image_tiled_helper(lv_draw_task_t * t, const lv_draw_image_dsc_t * 
         while(tile_area.x1 <= coords->x2) {
 
             lv_area_t clipped_img_area;
-            if(lv_area_intersect(&clipped_img_area, &tile_area, coords)) {
+            /* PATCH dashboard-guition 12/11/2026 : on ne dessine que les tuiles qui touchent la zone à redessiner
+             * (t->clip_area). D'origine, TOUTES les tuiles de l'objet passaient par img_decode_and_draw : pour un
+             * ciel de 380 tuiles de 1 px, redessiner une bande de 4 px coûtait 380 appels (mesuré sur l'écran :
+             * 60 ms par image pour 11 700 px). */
+            if(lv_area_intersect(&clipped_img_area, &tile_area, coords) &&
+               lv_area_intersect(&clipped_img_area, &clipped_img_area, &t->clip_area)) {
                 img_decode_and_draw(t, draw_dsc, &decoder_dsc, &relative_decoded_area, &tile_area, &clipped_img_area,
                                     draw_core_cb);
             }

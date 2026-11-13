@@ -32,6 +32,7 @@
 
 const char *const ui_mqtt_abonnements[] = {
     UI_MQTT_PREFIXE "maison/etat",
+    UI_MQTT_PREFIXE "maison/ciel", // 12/11/2026 : scène de la page IA (soleil, lune, météo)
     UI_MQTT_PREFIXE "thermostats/+/etat",
     UI_MQTT_PREFIXE "thermostats/+/historique",
     UI_MQTT_PREFIXE "maison/historique",
@@ -578,6 +579,25 @@ static void lire_arrondi(JsonVariantConst v, int &dst)
 {
     if (v.is<float>())
         dst = (int)lroundf(v.as<float>());
+}
+
+ui_ciel_t ui_ciel = {};
+
+static void recevoir_ciel(JsonDocument &j)
+{
+    lire(j["aube"], ui_ciel.aube);
+    lire(j["lever"], ui_ciel.lever);
+    lire(j["coucher"], ui_ciel.coucher);
+    lire(j["crepuscule"], ui_ciel.crepuscule);
+    lire(j["lune_age"], ui_ciel.lune_age);
+    lire(j["lune_pct"], ui_ciel.lune_pct);
+    if (j["meteo"].is<const char *>())
+        snprintf(ui_ciel.meteo, sizeof ui_ciel.meteo, "%s", j["meteo"].as<const char *>());
+    lire(j["nuages"], ui_ciel.nuages);
+    lire(j["pluie"], ui_ciel.pluie);
+    lire(j["neige"], ui_ciel.neige);
+    ui_ciel.recu = ui_ciel.lever && ui_ciel.coucher;
+    page_ia_maj();
 }
 
 static void recevoir_maison(JsonDocument &j)
@@ -1491,6 +1511,8 @@ void ui_mqtt_recevoir(const char *sujet, const uint8_t *message, unsigned longue
 
     if (strcmp(s, "maison/etat") == 0)
         recevoir_maison(j);
+    else if (strcmp(s, "maison/ciel") == 0)
+        recevoir_ciel(j);
     else if (strcmp(s, "ballon/etat") == 0)
         recevoir_ballon(j);
     else if (strcmp(s, "ballon/historique") == 0)

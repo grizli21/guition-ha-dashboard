@@ -59,6 +59,16 @@ Légende : **E** = `etat` (HA → écran, retenu), **S** = `set` (écran → HA)
 (`sensor.openweathermap_temperature`, `sensor.openweathermap_humidite`, `person.exemple`, `sun.sun`). Sert au thermostat (extérieur),
 au graphe, aux réglages (nuit). Sans la consommation ni l'eau (bandeau énergie supprimé) : publié aux seuls vrais changements.
 
+### Ciel (scène de la page IA) — `dashboard_guition/maison/ciel` (12/11, auto 1792200000037)
+**E** `{"aube":1794550018, "lever":1794552045, "coucher":1794586954, "crepuscule":1794588979, "lune_age":2.9, "lune_pct":9,
+"meteo":"pouring", "nuages":100, "pluie":4.2, "neige":0.0}` : `aube`/`lever`/`coucher`/`crepuscule` = horodatages Unix des
+PROCHAINS événements (attributs `next_dawn`/`next_rising`/`next_setting`/`next_dusk` de `sun.sun` ; l'écran en déduit
+ceux du jour et place le soleil lui-même) ; `lune_age` (jours, 0 = nouvelle lune) et `lune_pct` (% éclairé) — la
+proposition `ha_propositions/ciel_dashboard_guition.yaml` les calcule par approximation astronomique (mois synodique,
+exacte à ~1 %) ; `meteo` = `sensor.openweathermap_condition` (sunny, clear-night, partlycloudy, cloudy, fog, rainy,
+pouring, snowy, snowy-rainy, lightning, lightning-rainy, hail, windy…) ; `nuages` % ; `pluie` / `neige` en mm/h.
+Publié aux seuls changements (retenu).
+
 ### Chauffage — `dashboard_guition/thermostats/<piece>/etat` (`cuisine`, `sejour`, `chambre1`, `chambre2`, `sdb`)
 **E** `{"temp":14.5, "hum":69.5, "consigne":15.0, "mode":"arret|horsgel|eco|confort|manuel", "chauffe":0|1, "batterie":59, "signal":164}`
 (`climate.<piece>` : `preset_mode` away/eco/comfort/none → horsgel/eco/confort/manuel ; `hvac_mode off` → arret ; `hvac_action heating` → chauffe)
@@ -219,7 +229,7 @@ extraites par Moonraker dans `.thumbs/<nom>-48x48.png` / `-300x300.png` (vu le 2
 **Publié par un agent sur le PC** — un petit script (Python sans dépendance externe suffit) qui publie ces deux sujets
 une fois par seconde vers le broker, avec un compte MQTT dédié (« pc ») — pas par HA.
 **E** `pc/etat` (≈ 580 o, + 61 o par carte depuis le 08/11) `{"cpu":10, "freq":3524, "cpu_temp":56, "cpu_w":39, "coeurs":[…16], "ram":27.2, "cache":30.7, "ram_total":62.0, "swap":23,
-"gpus":[{"nom":"3090", "role":"llama-server-aurore", "charge":0, "temp":29, "w":7, "vram":23.3, "vram_total":24.0, "ps":"P2", "f":1500, "fm":9626, "f_max":2115, "fm_max":9876},…3], "net_bas":0.01, "net_haut":0.01,
+"gpus":[{"nom":"3090", "role":"llama-server-assistant", "charge":0, "temp":29, "w":7, "vram":23.3, "vram_total":24.0, "ps":"P2", "f":1500, "fm":9626, "f_max":2115, "fm_max":9876},…3], "net_bas":0.01, "net_haut":0.01,
 "disque_l":0.0, "disque_e":0.0, "claude_5h":68, "claude_semaine":45, "depuis":"1 j 15 h", "heure":"11:59"}` (Mo/s, Go ; rôle d'une carte = service
 systemd du processus qui y occupe le plus de VRAM ; `heure` = horloge du PC, l'écran n'en a pas).
 Depuis le 08/11, chaque carte porte cinq champs de plus, publiés par `telemetrie-pc` (`/config/telemetrie-pc/pc.py`) : `ps` (chaîne
@@ -228,7 +238,7 @@ inconnus). Relevé réel du 08/11 vers 19 h : 3090 P2 1500/9626 (max 2115/9876) 
 L'écran affiche `ps` à côté des watts (« 53° · 99 W · P2 ») et les deux fréquences actuelles, chacune devant son icône (maquette validée par
 08/11, prod 8.4 `0c1a947`) ; **un champ absent ou `null` s'affiche « - »** — l'écran remet ses valeurs à zéro à chaque trame, il n'affiche
 jamais une fréquence périmée. `f_max` et `fm_max` sont reçus et gardés, pas encore affichés.
-**E** `pc/processus` (≈ 900 o) `[{"nom":"llama-server", "role":"llama-server-aurore", "cpu":0.0, "mem":1.9, "vram":28.4},…12]` (6 premiers en CPU,
+**E** `pc/processus` (≈ 900 o) `[{"nom":"llama-server", "role":"llama-server-assistant", "cpu":0.0, "mem":1.9, "vram":28.4},…12]` (6 premiers en CPU,
 3 en mémoire, 3 en VRAM ; rôle = service systemd, vide pour les applications du bureau).
 L'écran passe en « PC en veille » quand plus rien n'arrive depuis 10 s.
 **S** `dashboard_guition/pc/set` `{"action":"reveiller|veille"}` -> HA 1792200000028 (DANS HA le 24/10) : `switch.eveille_ordi_cachy` on (WoL) / off (veille habituelle).

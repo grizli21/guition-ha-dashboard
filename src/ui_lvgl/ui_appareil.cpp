@@ -400,6 +400,7 @@ static void liaison_ha()
 #define ABSENCE_MS (5 * 60 * 1000)
 #define APERCU_MONTRE_MS 2000 // au relâcher d'un curseur : le vrai niveau montré 2 s
 static bool g_eteint = false;  // écran éteint (absent) : le toucher qui le rallume ne clique pas
+bool ui_appareil_eteint() { return g_eteint; }
 static int g_mli = 0, g_depart = 0, g_cible = -1; // 0..255
 static uint32_t g_debut_fondu = 0, g_absent_depuis = 0, g_apercu_fin = 0;
 static int g_apercu = -1; // % imposé par la page Réglages (-1 : aucun)

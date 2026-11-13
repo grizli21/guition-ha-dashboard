@@ -34,6 +34,7 @@ struct ia_activite_t
 // en PSRAM (ui_psram.h) : inscrits avant setup(), comme pc_etat
 extern ia_compte_t *ia_compte_p;
 extern ia_activite_t *ia_activite_p;
+extern uint32_t page_ia_heure_test; // 12/11/2026 : simulateur, heure imposée au ciel animé (0 = horloge)
 #define ia_compte (*ia_compte_p)
 #define ia_activite (*ia_activite_p)
 

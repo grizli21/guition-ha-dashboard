@@ -150,6 +150,7 @@ static void flush_cb(lv_disp_drv_t *disp, const lv_area_t *a, lv_color_t *px)
     lv_disp_flush_ready(disp);
 }
 #else
+static uint64_t g_flush_px; // 12/11 : pixels redessinés depuis la dernière remise à zéro
 static void flush_cb(lv_display_t *disp, const lv_area_t *a, uint8_t *px)
 {
     // 9.6 en mode PARTIEL (lu, core/lv_refr.c:1430 et get_max_row :1354-1364) : px_map = le DÉBUT du tampon,
@@ -157,6 +158,7 @@ static void flush_cb(lv_display_t *disp, const lv_area_t *a, uint8_t *px)
     // largeur de l'AIRe, pas de l'écran). Écrire comme en direct_mode (y*stride_écran + x1) déborde : premier
     // essai ici, plantage dans memcpy (gdb, 08/11 21 h 05).
     const int w = lv_area_get_width(a), h = lv_area_get_height(a);
+    g_flush_px += (uint64_t)w * h; // 12/11 : surface redessinée (mesure du coût du ciel animé)
     const size_t stride = lv_draw_buf_width_to_stride(w, lv_display_get_color_format(disp));
     for (int y = 0; y < h; y++)
         memcpy(&ecran[(size_t)(a->y1 + y) * L + a->x1], px + (size_t)y * stride, (size_t)w * 2);
@@ -2237,6 +2239,82 @@ int main()
         avancer(1200);
         capture("183_ia_hors_ligne");
         envoyer_activite("reflechit", "", 612345, 411, 14, 2, H); // on repart frais pour la suite du scénario
+        // 12/11/2026 : ciel animé (maison/ciel) — heures du 12/11 relevées dans HA (aube 07:12, lever 07:46,
+        // coucher 17:22, crépuscule 17:56 heure de Paris) ; l'heure de la scène est imposée (page_ia_heure_test)
+        {
+            const uint32_t A = 1794550018 - 86400, L = 1794552045 - 86400, C = 1794586954 - 86400, D = 1794588979 - 86400;
+            auto ciel = [&](uint32_t t, float age, int pct, const char *meteo, int nuages, float pluie)
+            {
+                page_ia_heure_test = t;
+                auto prochain = [&](uint32_t x) { return x > t ? x : x + 86400; };
+                char json[300];
+                snprintf(json, sizeof json,
+                         "{\"aube\":%u,\"lever\":%u,\"coucher\":%u,\"crepuscule\":%u,\"lune_age\":%.1f,\"lune_pct\":%d,"
+                         "\"meteo\":\"%s\",\"nuages\":%d,\"pluie\":%.1f,\"neige\":0.0}",
+                         prochain(A), prochain(L), prochain(C), prochain(D), age, pct, meteo, nuages, pluie);
+                recevoir("dashboard_guition/maison/ciel", json);
+                avancer(300);
+            };
+            ciel(A + 15 * 60, 2.9f, 9, "partlycloudy", 30, 0);
+            capture("190_ciel_aube");
+            ciel(L + 20 * 60, 2.9f, 9, "partlycloudy", 30, 0);
+            capture("191_ciel_lever");
+            ciel(L + 150 * 60, 2.9f, 9, "sunny", 5, 0);
+            capture("192_ciel_matin");
+            ciel((L + C) / 2, 2.9f, 9, "partlycloudy", 55, 0);
+            capture("193_ciel_midi_nuageux");
+            ciel(C - 15 * 60, 2.9f, 9, "sunny", 5, 0);
+            capture("194_ciel_soleil_couchant");
+            ciel(C + 15 * 60, 2.9f, 9, "partlycloudy", 30, 0);
+            capture("195_ciel_crepuscule");
+            ciel(C + 100 * 60, 2.9f, 9, "clear-night", 0, 0);
+            capture("196_ciel_nuit_croissant");
+            ciel(C + 330 * 60, 14.8f, 100, "clear-night", 20, 0);
+            capture("197_ciel_nuit_pleine_lune");
+            ciel(C + 330 * 60, 22.1f, 50, "clear-night", 0, 0);
+            ciel(L - 120 * 60 + 86400, 22.1f, 50, "clear-night", 0, 0);
+            capture("198_ciel_nuit_dernier_quartier");
+            ciel(C + 200 * 60, 2.9f, 9, "rainy", 95, 1.2f);
+            capture("199_ciel_nuit_couverte_pluie");
+            ciel(L + 300 * 60, 2.9f, 9, "pouring", 100, 4.2f);
+            capture("200_ciel_jour_averse");
+            for (int k = 0; k < 6; k++) // dérive : 24 s plus tard, les nuages ont avancé de 4 à 6 cases
+                avancer(4000);
+            capture("201_ciel_jour_averse_24s_plus_tard");
+            ciel(L + 200 * 60, 2.9f, 9, "rainy", 80, 0.6f);
+            capture("202_ciel_jour_pluie_faible");
+            ciel(L + 200 * 60, 2.9f, 9, "snowy", 90, 0);
+            avancer(2500);
+            capture("203_ciel_jour_neige");
+            ciel(C + 200 * 60, 2.9f, 9, "snowy", 70, 0);
+            avancer(2500);
+            capture("204_ciel_nuit_neige");
+            ciel(L + 240 * 60, 2.9f, 9, "fog", 60, 0);
+            capture("205_ciel_jour_brouillard");
+            ciel(L + 260 * 60, 2.9f, 9, "lightning-rainy", 100, 3.0f);
+            capture("206_ciel_orage");
+            avancer(9000 + 250 + 60 - 300); // l'éclair : 60 ms après le début du 2e flash
+            capture("207_ciel_orage_eclair");
+            // 12/11 : surface redessinée par seconde, 5 s par météo (le temps de dessin du PC ne dit rien de
+            // l'écran ; la surface, si : sur l'écran ~0,66 µs par pixel, mesuré le 12/11 : 230 400 px en 151 ms)
+            {
+                struct { const char *nom, *meteo; int nuages; float pluie; uint32_t t; } M[] = {
+                    {"nuit claire", "clear-night", 0, 0, C + 330 * 60}, {"jour nuageux", "partlycloudy", 70, 0, L + 200 * 60},
+                    {"pluie faible", "rainy", 80, 0.6f, L + 200 * 60}, {"pluie moyenne", "rainy", 90, 2.0f, L + 200 * 60},
+                    {"averse", "pouring", 100, 4.2f, L + 200 * 60}, {"orage", "lightning-rainy", 100, 3.0f, L + 200 * 60},
+                    {"neige", "snowy", 90, 0, L + 200 * 60}};
+                for (auto &m : M)
+                {
+                    ciel(m.t, 14.8f, 100, m.meteo, m.nuages, m.pluie);
+                    avancer(1000);
+                    g_flush_px = 0;
+                    avancer(5000);
+                    printf("[mesure ciel] %-14s : %7.0f px/s redessinés, soit ~%3.0f ms/s sur l'écran (%2.0f %% du temps)\n", m.nom,
+                           g_flush_px / 5.0, g_flush_px / 5.0 * 0.66e-3, g_flush_px / 5.0 * 0.66e-3 / 10);
+                }
+            }
+            page_ia_heure_test = 0;
+        }
         // planche de choix : les 3 icônes « IA » côte à côte dans le rail (variante 1 à sa place, les 2 et 3 posées
         // provisoirement sur PC et Imprimante 3D, numéros collés en bas de chaque pastille)
         int i_ia = -1, i_pc = -1, i_imp = -1;
