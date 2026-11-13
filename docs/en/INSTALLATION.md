@@ -156,6 +156,8 @@ two automations per page (« Écran · page · état », which publishes `etat` 
 page · commandes », which executes the `set`). [ha_propositions/](../../ha_propositions/) contains **24
 ready-to-use automations** for HA (mine, adapted: replace the example entities with your own). The Music
 page does not go through MQTT: the screen talks directly to **Music Assistant** (HTTP + token).
+The 3D Printer page additionally needs setup on the printer side (Klipper + Moonraker with MQTT, slicer
+thumbnails): see [IMPRIMANTE.md](IMPRIMANTE.md).
 
 ## 5. PC simulator
 

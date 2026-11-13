@@ -26,7 +26,7 @@ English version of this page: **[README.md](README.md)**.
 
 - [Galerie](#galerie) · [Écran sur batterie](#écran-sur-batterie) · [Navigation](#navigation) · [Matériel](#matériel) · [Architecture](#architecture) · [Sous le capot](#sous-le-capot)
 - [Démarrage rapide](#démarrage-rapide) · [Aller plus loin](#aller-plus-loin) · [Limites connues](#limites-connues) · [Licence et crédits](#licence-et-crédits)
-- Pages détaillées : [Installation](docs/INSTALLATION.md) · [Sous le capot](docs/SOUS_LE_CAPOT.md) · [Développement](docs/DEVELOPPEMENT.md) · [Crédits](docs/CREDITS.md) · [Écran sur batterie](materiel/ecran-batterie/) · [Support 3D](materiel/support-bureau/)
+- Pages détaillées : [Installation](docs/INSTALLATION.md) · [Sous le capot](docs/SOUS_LE_CAPOT.md) · [Imprimante 3D](docs/IMPRIMANTE.md) · [Développement](docs/DEVELOPPEMENT.md) · [Crédits](docs/CREDITS.md) · [Écran sur batterie](materiel/ecran-batterie/) · [Support 3D](materiel/support-bureau/)
 
 L'anneau du chauffage pendant la montée en température (9 images du simulateur, animées) :
 
@@ -48,7 +48,7 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
   <tr>
     <td><img src="docs/images/page-musique.png" width="234" alt="Page Musique"><br><b>Musique</b> — Music Assistant : lecture, bibliothèque, albums, radios, sortie</td>
     <td><img src="docs/images/page-lumieres.png" width="234" alt="Page Lumières"><br><b>Lumières</b> — disque chromatique, luminance, température de couleur</td>
-    <td><img src="docs/images/page-imprimante.png" width="234" alt="Page Imprimante 3D"><br><b>Imprimante 3D</b> — fichiers STL et vignettes d'impression, suivi de la couche en cours</td>
+    <td><img src="docs/images/page-imprimante.png" width="234" alt="Page Imprimante 3D"><br><b>Imprimante 3D</b> — fichiers STL et vignettes d'impression, suivi de la couche en cours<br><small>Configurer une imprimante Klipper/Moonraker : <a href="docs/IMPRIMANTE.md">docs/IMPRIMANTE.md</a></small></td>
     <td><img src="docs/images/page-pc.png" width="234" alt="Page PC"><br><b>PC</b> — système, GPU, processus, IA locale, mise en veille</td>
   </tr>
   <tr>
@@ -226,6 +226,7 @@ broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](
 - [docs/INSTALLATION.md](docs/INSTALLATION.md) — installation pas à pas : secrets, écrans par MAC, flash USB puis OTA, Home Assistant, langue, simulateur, **mode d'emploi Windows**.
 - [docs/SOUS_LE_CAPOT.md](docs/SOUS_LE_CAPOT.md) — tous les points techniques, avec leurs mesures.
 - [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md) — outillage, ajouter une page, diagnostics, simulateur en détail, arborescence.
+- [docs/IMPRIMANTE.md](docs/IMPRIMANTE.md) — page Imprimante 3D : ce qu'il faut (Klipper + Moonraker, miniatures du slicer, caméra), quoi activer, ce qui est propre à ta machine.
 - [docs/CREDITS.md](docs/CREDITS.md) — licence, bibliothèques, polices et icônes, avec leurs licences.
 - [materiel/ecran-batterie/](materiel/ecran-batterie/) — l'écran sur batterie : radar, consommation mesurée, économies du firmware, boîtier 3D (licence CC BY-NC 4.0).
 - [materiel/support-bureau/](materiel/support-bureau/) — support de bureau imprimable en 3D, adapté à la rotation 0 (licence CC BY-NC-SA 4.0).

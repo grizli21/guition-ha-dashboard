@@ -23,7 +23,7 @@ see [Battery-powered display](#battery-powered-display).
 
 - [Gallery](#gallery) · [Battery-powered display](#battery-powered-display) · [Navigation](#navigation) · [Hardware](#hardware) · [Architecture](#architecture) · [Under the hood](#under-the-hood)
 - [Quick start](#quick-start) · [Going further](#going-further) · [Known limitations](#known-limitations) · [License and credits](#license-and-credits)
-- Detailed pages: [Installation](docs/en/INSTALLATION.md) · [Under the hood](docs/en/SOUS_LE_CAPOT.md) · [Development](docs/en/DEVELOPPEMENT.md) · [Credits](docs/en/CREDITS.md) · [Battery-powered display](materiel/ecran-batterie/README.en.md) · [3D stand](materiel/support-bureau/README.en.md)
+- Detailed pages: [Installation](docs/en/INSTALLATION.md) · [Under the hood](docs/en/SOUS_LE_CAPOT.md) · [3D Printer](docs/en/IMPRIMANTE.md) · [Development](docs/en/DEVELOPPEMENT.md) · [Credits](docs/en/CREDITS.md) · [Battery-powered display](materiel/ecran-batterie/README.en.md) · [3D stand](materiel/support-bureau/README.en.md)
 
 The heating ring during the heat-up (9 simulator frames, animated):
 
@@ -45,7 +45,7 @@ Montserrat Bold — see [tools/fonts/README.en.md](tools/fonts/README.en.md#opti
   <tr>
     <td><img src="docs/images/page-musique.png" width="234" alt="Music page"><br><b>Music</b> — Music Assistant: playback, library, albums, radios, output</td>
     <td><img src="docs/images/page-lumieres.png" width="234" alt="Lights page"><br><b>Lights</b> — color wheel, brightness, color temperature</td>
-    <td><img src="docs/images/page-imprimante.png" width="234" alt="3D Printer page"><br><b>3D Printer</b> — STL files and print thumbnails, tracking of the current layer</td>
+    <td><img src="docs/images/page-imprimante.png" width="234" alt="3D Printer page"><br><b>3D Printer</b> — STL files and print thumbnails, tracking of the current layer<br><small>Setting up a Klipper/Moonraker printer: <a href="docs/en/IMPRIMANTE.md">docs/en/IMPRIMANTE.md</a></small><br><small>Setting up a Klipper/Moonraker printer: <a href="docs/IMPRIMANTE.md">docs/en/IMPRIMANTE.md</a></small></td>
     <td><img src="docs/images/page-pc.png" width="234" alt="PC page"><br><b>PC</b> — system, GPU, processes, local AI, sleep</td>
   </tr>
   <tr>
@@ -224,6 +224,7 @@ MQTT broker and without Wi-Fi, and the main buttons respond ([see how](docs/en/I
 - [docs/en/INSTALLATION.md](docs/en/INSTALLATION.md) — step-by-step installation: secrets, screens by MAC, USB then OTA flashing, Home Assistant, language, simulator, **Windows guide**.
 - [docs/en/SOUS_LE_CAPOT.md](docs/en/SOUS_LE_CAPOT.md) — all the technical points in full, with their measurements.
 - [docs/en/DEVELOPPEMENT.md](docs/en/DEVELOPPEMENT.md) — tooling, adding a page, diagnostics, the simulator in detail, file tree.
+- [docs/en/IMPRIMANTE.md](docs/en/IMPRIMANTE.md) — the 3D Printer page: what you need (Klipper + Moonraker, slicer thumbnails, camera), what to enable, what is specific to your machine.
 - [docs/en/CREDITS.md](docs/en/CREDITS.md) — license, libraries, fonts and icons, with their licenses.
 - [materiel/ecran-batterie/README.en.md](materiel/ecran-batterie/README.en.md) — the battery-powered display: radar, measured consumption, firmware savings, 3D case (CC BY-NC 4.0 license).
 - [materiel/support-bureau/README.en.md](materiel/support-bureau/README.en.md) — printable 3D desk stand, adapted to rotation 0 (CC BY-NC-SA 4.0 license).
