@@ -31,6 +31,13 @@
 #define UI_HUMIDITE 0xF2A0B4    // humidité (goutte du chauffage) : distincte du bleu de l'extérieur et du froid
 #define UI_ETEINT 0x3A424D      // 02/11 : éléments éteints ou inactifs (interrupteur coupé, points, barres), gris des dessins
 #define UI_POIGNEE 0xF4F5F6     // 02/11 : poignées des interrupteurs et curseurs, traits clairs
+// 11/11/2026 (page IA, maquette validée du 10/11) : couleurs posées sur la bande de terre de la scène pixel.
+// Ce ne sont pas celles du thème sombre (elles répondent aux terre/herbe du dessin), mais elles restent ici :
+// aucune couleur posée à la main dans les pages.
+#define UI_IA_ORANGE 0xE8885F   // état « réfléchit… », dernière barre de l'histogramme (la tranche en cours)
+#define UI_HISTO 0x7A6152       // barres d'historique (tokens par tranche) posées sur la terre
+#define UI_HISTO_LIGNE 0x4A3C34 // ligne de base de l'histogramme
+#define UI_IA_LEGENDE 0x6E737A  // légendes « −5 h » / « maintenant » sur la terre (plus discret que UI_TEXTE3)
 
 // --- Géométrie ---
 #define UI_ECRAN 480

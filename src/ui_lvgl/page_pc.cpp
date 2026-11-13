@@ -12,7 +12,7 @@ UI_PSRAM(pc_etat_t, pc_etat_p, 1, nullptr); // 29/10 : en PSRAM (ui_psram.h)
 void (*pc_commande)(pc_action_t a) = nullptr;
 
 static lv_obj_t *g_zone = nullptr;
-static int g_vue = 0; // 0 Système, 1 GPU, 2 Processus, 3 IA
+static int g_vue = 0; // 0 Système, 1 GPU, 2 Processus (11/11 : l'onglet IA est devenu la page séparée « IA »)
 static int g_tri = 0; // processus : 0 CPU, 1 mémoire, 2 VRAM
 
 static void construire();
@@ -525,101 +525,6 @@ static void maj_processus()
     }
 }
 
-// =====================================================================  SERVICES IA
-// 31/10 (retour d'usage) : les deux comptes Claude, comme l'écran btop : usage 5 h et semaine, avec l'heure de réinitialisation
-// et le temps qui reste ; valeurs retenues sur le broker : montrées aussi PC en veille, avec leur âge
-static struct
-{
-    lv_obj_t *nom, *maj, *barre[2], *val[2], *reset[2];
-} o_ia[PC_IA];
-
-static void construire_ia(lv_obj_t *z)
-{
-    static const char *const FENETRES[] = {TXT("5 heures", "5 hours"), TXT("Semaine", "Week")};
-    for (int i = 0; i < PC_IA; i++)
-    {
-        lv_obj_t *c = carte(z, 56 + i * 208, 196);
-        auto &o = o_ia[i];
-        o.nom = ui_label(c, UI_POLICE_TEXTE, UI_TEXTE, "");
-        lv_obj_set_pos(o.nom, 0, 14);
-        o.maj = ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE3, "");
-        lv_obj_align(o.maj, LV_ALIGN_TOP_RIGHT, 0, 17);
-        for (int k = 0; k < 2; k++)
-        {
-            const lv_coord_t y = 50 + k * 72;
-            lv_obj_set_pos(ui_label(c, UI_POLICE_PETITE, UI_TEXTE2, FENETRES[k]), 0, y);
-            o.val[k] = ui_label(c, UI_POLICE_3X5_P, UI_TEXTE, "");
-            lv_obj_align(o.val[k], LV_ALIGN_TOP_RIGHT, 0, y - 4);
-            o.barre[k] = barre(c, UI_ZONE_L - 2 * UI_MARGE - 24, 10);
-            lv_obj_set_pos(o.barre[k], 0, y + 24);
-            o.reset[k] = ui_label(c, UI_POLICE_LEGENDE, UI_TEXTE2, "");
-            lv_obj_set_pos(o.reset[k], 0, y + 42);
-        }
-    }
-}
-
-// « dans 2 h 13 », « dans 35 min », « dans 1 j 4 h »
-static void dans(char *b, size_t n, int32_t s)
-{
-    if (s <= 0)
-        snprintf(b, n, TXT("maintenant", "now"));
-    else if (s >= 86400)
-        snprintf(b, n, TXT("dans %d j %d h", "in %d d %d h"), (int)(s / 86400), (int)(s % 86400 / 3600));
-    else if (s >= 3600)
-        snprintf(b, n, TXT("dans %d h %02d", "in %d h %02d"), (int)(s / 3600), (int)(s % 3600 / 60));
-    else
-        snprintf(b, n, TXT("dans %d min", "in %d min"), (int)(s / 60 + 1));
-}
-
-static void maj_ia()
-{
-    static const char *const JOURS[] = {TXT("dim.", "Sun"), TXT("lun.", "Mon"), TXT("mar.", "Tue"), TXT("mer.", "Wed"), TXT("jeu.", "Thu"), TXT("ven.", "Fri"), TXT("sam.", "Sat")};
-    const uint32_t maintenant = (uint32_t)time(nullptr);
-    for (int i = 0; i < PC_IA; i++)
-    {
-        auto &o = o_ia[i];
-        if (i >= pc_etat.nb_ia)
-        {
-            ui_label_texte(o.nom, i ? "" : TXT("en attente de l'agent du PC", "waiting for the PC agent"));
-            continue;
-        }
-        const pc_ia_t &a = pc_etat.ia[i];
-        ui_label_texte(o.nom, a.nom);
-        const int32_t age = a.maj && maintenant > 1700000000u ? (int32_t)(maintenant - a.maj) : 0;
-        char t[48], d[24];
-        if (age < 600) // lu toutes les 5 min par l'agent
-            ui_label_texte(o.maj, "");
-        else
-        {
-            dans(d, sizeof d, age);
-            ui_label_texte_fmt(o.maj, TXT("lu il y a %s", "read %s ago"), d + 5); // « 3 h 05 » (sans « dans »)
-        }
-        const int pct[] = {a.h5, a.semaine};
-        const uint32_t reset[] = {a.h5_reset, a.semaine_reset};
-        for (int k = 0; k < 2; k++)
-        {
-            ui_label_texte_fmt(o.val[k], "%d%%", pct[k]);
-            ui_style_text_color(o.val[k], ui_c(pct[k] >= 90 ? UI_ROUGE : pct[k] >= 75 ? UI_ACCENT : UI_TEXTE), 0);
-            barre_maj(o.barre[k], pct[k], pct[k] >= 90 ? UI_ROUGE : k ? UI_FROID : UI_ACCENT);
-            if (!reset[k] || reset[k] <= maintenant)
-            {
-                ui_label_texte(o.reset[k], k ? TXT("réinitialisation inconnue", "unknown reset") : TXT("pas de fenêtre en cours", "no current session"));
-                continue;
-            }
-            struct tm lt;
-            const time_t tt = reset[k];
-            localtime_r(&tt, &lt);
-            if (k == 0 || reset[k] - maintenant < 86400)
-                snprintf(t, sizeof t, TXT("%02dh%02d", "%02d:%02d"), lt.tm_hour, lt.tm_min);
-            else
-                snprintf(t, sizeof t, TXT("%s %02d/%02d %02dh%02d", "%s %02d/%02d %02d:%02d"),
-                     JOURS[lt.tm_wday], lt.tm_mday, lt.tm_mon + 1, lt.tm_hour, lt.tm_min);
-            dans(d, sizeof d, (int32_t)(reset[k] - maintenant));
-            ui_label_texte_fmt(o.reset[k], TXT("réinitialisation %s · %s", "reset %s · %s"), t, d);
-        }
-    }
-}
-
 // =====================================================================  PAGE
 static void onglet_cb(lv_event_t *e)
 {
@@ -632,16 +537,14 @@ static char g_cle[48];
 static void cle_structure(char *b, size_t n)
 {
     const pc_gpu_t *g = pc_etat.gpus;
-    snprintf(b, n, "%d %d %d %d %d", pc_etat.en_veille && g_vue != 3, g_vue, g_tri,
+    snprintf(b, n, "%d %d %d %d", pc_etat.en_veille, g_vue, g_tri,
              g_vue == 2 ? LV_MIN(pc_etat.nb_procs, PC_PROCS) : 0,
              g_vue == 1 ? g[0].nb_blocs * 100 + g[1].nb_blocs * 10 + g[2].nb_blocs : 0); // GPU : un bloc de plus ou de moins
 }
 
 static void maj_valeurs()
 {
-    if (g_vue == 3) // retenu : aussi PC en veille
-        maj_ia();
-    else if (pc_etat.en_veille)
+    if (pc_etat.en_veille)
         ui_label_texte_fmt(o_veille_txt, TXT("plus de nouvelles depuis %s", "no news for %s"), pc_etat.derniere_nouvelle);
     else if (g_vue == 0)
         maj_systeme();
@@ -654,11 +557,10 @@ static void maj_valeurs()
 static void construire()
 {
     lv_obj_clean(g_zone);
-    static const char *const ONGLETS[] = {TXT("Système", "System"), "GPU", TXT("Processus", "Processes"), TXT("IA", "AI")};
-    ui_onglets(g_zone, ONGLETS, 4, g_vue, onglet_cb, nullptr, nullptr);
-    if (g_vue == 3)
-        construire_ia(g_zone);
-    else if (pc_etat.en_veille)
+    // 11/11 : l'onglet « IA » (31/10) est devenu la page séparée « IA » du rail (page_ia.cpp) : 3 onglets ici
+    static const char *const ONGLETS[] = {TXT("Système", "System"), "GPU", TXT("Processus", "Processes")};
+    ui_onglets(g_zone, ONGLETS, 3, g_vue, onglet_cb, nullptr, nullptr);
+    if (pc_etat.en_veille)
         construire_veille(g_zone);
     else if (g_vue == 0)
         construire_systeme(g_zone);

@@ -233,6 +233,25 @@ jamais une fréquence périmée. `f_max` et `fm_max` sont reçus et gardés, pas
 L'écran passe en « PC en veille » quand plus rien n'arrive depuis 10 s.
 **S** `dashboard_guition/pc/set` `{"action":"reveiller|veille"}` -> HA 1792200000028 (DANS HA le 24/10) : `switch.eveille_ordi_cachy` on (WoL) / off (veille habituelle).
 
+### Page « IA » — `dashboard_guition/pc/ia` et `dashboard_guition/pc/ia_activite` (RETENUS ; agent du PC, page du rail écrite le 11/11/2026)
+Publiés par l'agent du PC (Claude côté PC), pas par HA. Les deux sont **retenus** (l'écran les attend pour se
+déclarer complet, comme `pc/ia` depuis le 31/10) et affichés par la page « IA » du rail, placée juste après PC
+(maquette validée le 10/11). L'onglet « IA » de la page PC (31/10) est retiré.
+**E** `pc/ia` (≈ 150 o) — format INCHANGÉ du 31/10, mais avec **UN SEUL compte**, celui en cours ; l'écran lit le
+premier élément du tableau et ignore les autres :
+`{"comptes":[{"nom":"compte-un@exemple.invalid", "h5":92, "h5_reset":1792710000, "semaine":13, "semaine_reset":1793228400, "maj":1792703000}]}`
+(`h5`/`semaine` : % utilisés ; `h5_reset`/`semaine_reset` : heure Unix de la réinitialisation, 0 si pas de fenêtre ;
+`maj` : heure Unix de la lecture par l'agent — si elle a plus de 10 min, l'écran écrit « lu il y a … »).
+Les champs `claude_5h`/`claude_semaine` de `pc/etat` (24/10) ne sont lus par rien : l'usage Claude vit dans `pc/ia`.
+**E** `pc/ia_activite` (≈ 400 o, NOUVEAU 11/11) — ce que fait l'agent Claude et ce qu'il a produit :
+`{"etat":"reflechit|attente|repos", "alerte":"autorisation|question|", "tokens":612345, "outils":411, "prompts":14, "sessions":2, "histo":[30 entiers], "maj":1792703000}`
+(`tokens` : tokens produits au total ; `outils` : appels d'outils ; `prompts` : prompts traités ; `sessions` : sessions
+ouvertes ; `histo` : tokens produits par tranche de 10 min sur 5 h, **la plus ancienne d'abord**, la dernière = la
+tranche en cours ; `maj` : heure Unix du message — 0 ou absent = l'écran met l'heure de sa réception).
+Affichage : « réfléchit… » orange / « autorisation demandée » ou « question pour toi » rouges (l'alerte passe avant
+l'état) / « au repos » gris. **Message absent ou vieux de plus de 2 min : « au repos »**, Clawd ferme les yeux, et les
+derniers chiffres reçus restent affichés. L'écran ne publie rien sur ces deux sujets.
+
 ### Sonnette — `dashboard_guition/sonnette/etat`
 **E** `{"sonne":1, "depuis":1792694300}` (retombe à 0 à l'ouverture de la porte) → l'écran montre la caméra si le réglage est actif.
 DANS HA le 27/10 (1791000000040 : sonne 1 ; 041 : sonne 0), non retenu ; écran : `ui_sonnette` (plein écran, 60 s, toucher).

@@ -22,6 +22,7 @@
 #include "icones.h"
 #include "icones_ventilo.h"
 #include "icones_pc.h"
+#include "icones_ia.h" // 11/11/2026 : icône de la page « IA » dans le rail (variante 1 de la planche du 11/11)
 #include "../ui_lvgl/ui_theme.h"
 #include "../ui_lvgl/ui_anneau.h"
 #include "../ui_lvgl/ui_courbe.h" // 05/11 (vague D) : wrappers uc_* pour le banc de l'anneau sous 9.6
@@ -47,6 +48,7 @@
 #include "../ui_lvgl/page_panneau_led.h" // 02/11/2026 : panneau de luminothérapie de l'atelier
 #include "../ui_lvgl/page_imprimante.h"
 #include "../ui_lvgl/page_pc.h"
+#include "../ui_lvgl/page_ia.h" // 11/11/2026 : page « IA » séparée, après PC dans le rail
 #include "../ui_lvgl/page_reglages.h"
 #include "../ui_lvgl/page_infos.h"
 #include "../ui_lvgl/ui_mqtt.h"
@@ -858,7 +860,7 @@ static void touch_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
 }
 
 // 24/10 : les pages du carrousel, comme le simulateur (le banc teste tout : les données arrivent par MQTT) ;
-// 02/11/2026 : Panneau LED (17 pages)
+// 02/11/2026 : Panneau LED (17 pages) ; 11/11/2026 : page « IA » juste après PC (18 pages)
 static const ui_page_t pages[] = {
     {&icon_room, "Chauffage", page_thermostat_creer, page_thermostat_quitter},
     {&icon_graphic, "Graphes", page_graphe_creer, page_graphe_quitter},
@@ -874,6 +876,7 @@ static const ui_page_t pages[] = {
     {&icon_panneau_led, "Panneau LED", page_panneau_led_creer, page_panneau_led_quitter}, // 02/11/2026
     {&icon_imprimante, "Imprimante 3D", page_imprimante_creer, page_imprimante_quitter},
     {&icon_pc, "PC", page_pc_creer, page_pc_quitter},
+    {&icon_ia_etincelle, "IA", page_ia_creer, page_ia_quitter}, // 11/11/2026 : juste après PC ; icône 2 (Clawd + étincelle), la retenue
     {&icon_config, "Réglages", page_reglages_creer, page_reglages_quitter},
     {&icon_info, "Informations", page_infos_creer, page_infos_quitter},
     // 26/10 : écran sur batterie seulement (dernière, épinglée en bas du rail ; l'icône est la pile vivante)

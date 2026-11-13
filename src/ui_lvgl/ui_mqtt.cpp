@@ -15,6 +15,7 @@
 #include "ui_vignettes.h"
 #include "page_musique.h"
 #include "page_pc.h"
+#include "page_ia.h" // 11/11/2026 : page « IA » séparée (pc/ia, pc/ia_activite)
 #include "page_reglages.h"
 #include "page_infos.h"
 #include "ui_appareil.h"
@@ -27,6 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 const char *const ui_mqtt_abonnements[] = {
     UI_MQTT_PREFIXE "maison/etat",
@@ -51,7 +53,8 @@ const char *const ui_mqtt_abonnements[] = {
     UI_MQTT_PREFIXE "musique/etat",
     UI_MQTT_PREFIXE "pc/etat",
     UI_MQTT_PREFIXE "pc/processus",
-    UI_MQTT_PREFIXE "pc/ia", // 31/10 : comptes Claude (retenu)
+    UI_MQTT_PREFIXE "pc/ia", // 31/10 : comptes Claude (retenu) ; 11/11 : un seul compte, la page « IA » du rail
+    UI_MQTT_PREFIXE "pc/ia_activite", // 11/11 : activité de l'agent Claude (retenu) — CONTRAT_MQTT.md
     UI_MQTT_PREFIXE "maison/reglages",
     UI_MQTT_PREFIXE "sonnette/etat", // 27/10 : vue caméra de l'entrée (HA 1791000000040 / 041)
     UI_MQTT_PREFIXE "maison/appareils",
@@ -1216,24 +1219,50 @@ static void recevoir_processus(JsonDocument &j)
     pc_etat.nb_procs = n;
 }
 
-// 31/10 : usage des comptes Claude (agent du PC, retenu)
+// 31/10 : usage des comptes Claude (agent du PC, retenu). 11/11 : le format garde le tableau « comptes » mais
+// l'agent n'en publie qu'UN, le compte en cours ; l'écran lit le premier et l'affiche sur la page « IA » du rail.
 static void recevoir_ia(JsonDocument &j)
 {
-    int n = 0;
     for (JsonVariantConst v : j["comptes"].as<JsonArrayConst>())
     {
-        if (n >= PC_IA)
-            break;
-        pc_ia_t &x = pc_etat.ia[n++];
+        ia_compte_t &x = ia_compte;
         snprintf(x.nom, sizeof x.nom, "%s", v["nom"] | "");
         x.h5 = v["h5"] | 0;
         x.semaine = v["semaine"] | 0;
         x.h5_reset = v["h5_reset"] | 0u;
         x.semaine_reset = v["semaine_reset"] | 0u;
         x.maj = v["maj"] | 0u;
+        x.recu = true;
+        break; // un seul compte : le premier (CONTRAT_MQTT.md, 11/11)
     }
-    pc_etat.nb_ia = n;
-    page_pc_maj();
+    page_ia_maj();
+}
+
+// 11/11 : activité de l'agent Claude sur le PC (dashboard_guition/pc/ia_activite, retenu) : état, alerte,
+// production (tokens, outils, prompts, sessions) et histogramme 30 tranches de 10 min, la plus ancienne d'abord.
+static void recevoir_ia_activite(JsonDocument &j)
+{
+    ia_activite_t &a = ia_activite;
+    snprintf(a.etat, sizeof a.etat, "%s", j["etat"] | "");
+    snprintf(a.alerte, sizeof a.alerte, "%s", j["alerte"] | "");
+    a.tokens = j["tokens"] | 0u;
+    a.outils = j["outils"] | 0;
+    a.prompts = j["prompts"] | 0;
+    a.sessions = j["sessions"] | 0;
+    int n = 0;
+    for (JsonVariantConst v : j["histo"].as<JsonArrayConst>()) // s'il en manque, les plus anciennes restent à 0
+    {
+        if (n >= IA_HISTO)
+            break;
+        a.histo[n++] = v | 0u;
+    }
+    while (n < IA_HISTO)
+        a.histo[n++] = 0;
+    a.maj = j["maj"] | 0u;
+    if (!a.maj) // horloge du PC pas réglée : la date de l'écran fait foi pour la péremption (2 min)
+        a.maj = (uint32_t)time(nullptr);
+    a.recu = true;
+    page_ia_maj();
 }
 
 // Réglages de la maison (carillon, éclairage terrasse), les mêmes sur tous les écrans
@@ -1349,7 +1378,7 @@ static void attendus_construire()
     };
     for (const char *t : {"maison/etat", "maison/historique", "maison/reglages", "maison/appareils", "ballon/etat", "ballon/historique",
                           "croquettes/etat", "cafe/etat", "musique/etat", "poele/etat", "poele/historique", "panneau_led/etat",
-                          "imprimante/etat", "imprimante/fichiers", "pc/ia"})
+                          "imprimante/etat", "imprimante/fichiers", "pc/ia", "pc/ia_activite"}) // 11/11 : les deux sujets IA sont retenus
         ajouter(t, "", "");
     for (const char *p : PIECES)
     {
@@ -1493,6 +1522,8 @@ void ui_mqtt_recevoir(const char *sujet, const uint8_t *message, unsigned longue
         recevoir_processus(j);
     else if (strcmp(s, "pc/ia") == 0)
         recevoir_ia(j);
+    else if (strcmp(s, "pc/ia_activite") == 0)
+        recevoir_ia_activite(j);
     else if (strcmp(s, "imprimante/etat") == 0)
         recevoir_imprimante(j);
     else if (strcmp(s, "imprimante/fichiers") == 0)

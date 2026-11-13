@@ -35,6 +35,7 @@
 #include "../src/ui_lvgl/page_musique.h"
 #include "../src/ui_lvgl/page_imprimante.h"
 #include "../src/ui_lvgl/page_pc.h"
+#include "../src/ui_lvgl/page_ia.h" // 11/11/2026 : page « IA » séparée, après PC dans le rail
 #include "../src/ui_lvgl/ui_mqtt.h"
 #include "../src/ui_lvgl/ui_demo.h"
 #include "../src/ui_lvgl/ui_images.h"
@@ -110,6 +111,7 @@ static bool g_simu_picore = false; // piCore présent dans MA (scénario de la l
 #include "icones.h"
 #include "icones_ventilo.h"
 #include "icones_pc.h"
+#include "icones_ia.h" // 11/11/2026 : page « IA » (captures et planche des 3 icônes)
 
 static const int L = 480, H = 480;
 
@@ -291,6 +293,7 @@ static const ui_page_t pages[] = {
     {&icon_panneau_led, "Panneau LED", page_panneau_led_creer, page_panneau_led_quitter}, // 02/11/2026
     {&icon_imprimante, "Imprimante 3D", page_imprimante_creer, page_imprimante_quitter},
     {&icon_pc, "PC", page_pc_creer, page_pc_quitter},
+    {&icon_ia_etincelle, "IA", page_ia_creer, page_ia_quitter}, // 11/11/2026 : juste après PC ; icône 2 (Clawd + étincelle), la retenue
     {&icon_config, "Réglages", page_reglages_creer, page_reglages_quitter},
     {&icon_info, "Informations", page_infos_creer, page_infos_quitter},
     {&icon_bat3, "Batterie et capteur", page_batterie_creer, page_batterie_quitter, true}, // 26/10 : écran sur batterie, épinglée
@@ -1421,10 +1424,10 @@ int main()
     aller("PC");
     avancer(600);
     capture("49_pc");
-    toucher(157, 24); // GPU (31/10 : 4 onglets, centres 69 / 157 / 245 / 333)
+    toucher(200, 24); // GPU (11/11 : 3 onglets — l'IA est devenue page du rail — centres ~100 / 200 / 301)
     lacher();
     capture("49b_pc_gpu");
-    toucher(268, 24); // Processus
+    toucher(301, 24); // Processus
     lacher();
     capture("50_pc_processus");
     toucher(340, 70); // tri par VRAM
@@ -1446,14 +1449,14 @@ int main()
             pc_etat.gpus[i].nb_blocs = 4;
         }
     }
-    toucher(268, 24); // Processus
+    toucher(301, 24); // Processus (11/11 : 3 onglets)
     lacher();
     avancer(200);
-    toucher(157, 24); // GPU, avec les quatre lignes longues partout
+    toucher(200, 24); // GPU, avec les quatre lignes longues partout
     lacher();
     avancer(300);
     capture("51b_pc_gpu_pire_cas");
-    toucher(69, 24); // Système
+    toucher(100, 24); // Système
     lacher();
     toucher(330, 449); // Mettre en veille : 1er appui, confirmation
     lacher();
@@ -2120,36 +2123,207 @@ int main()
         }
         avancer(300);
         capture("107_mqtt_pc_systeme");
-        toucher(157, 24); // GPU
+        toucher(200, 24); // GPU
         lacher();
         avancer(300);
         capture("107b_mqtt_pc_gpu");
-        toucher(245, 24); // Processus
+        toucher(301, 24); // Processus
         lacher();
         avancer(300);
         capture("108_mqtt_pc_processus");
-        // 31/10 : Services IA : les deux comptes Claude (relevé réel du 31/10 vers 11h, heures recalées sur maintenant)
+        // 11/11 : plus d'onglet « IA » ici (page séparée du rail, scénario 170+). Le sujet pc/ia arrive toujours —
+        // avec UN SEUL compte désormais (CONTRAT du 11/11) — et nourrit la page IA. Capture : PC en veille, 3 onglets.
         {
             const uint32_t m = (uint32_t)time(nullptr);
-            char ia[480];
+            char ia[240];
             snprintf(ia, sizeof ia,
-                     "{\"comptes\":[{\"nom\":\"compte-un@exemple.invalid\",\"h5\":92,\"h5_reset\":%u,\"semaine\":13,\"semaine_reset\":%u,\"maj\":%u},"
-                     "{\"nom\":\"compte-deux@exemple.invalid\",\"h5\":0,\"h5_reset\":0,\"semaine\":86,\"semaine_reset\":%u,\"maj\":%u}]}",
-                     m + 2 * 3600 + 13 * 60, m + 6 * 86400 + 14 * 3600, m - 60, m + 34 * 3600 + 10 * 60, m - 60);
+                     "{\"comptes\":[{\"nom\":\"compte-un@exemple.invalid\",\"h5\":92,\"h5_reset\":%u,\"semaine\":13,\"semaine_reset\":%u,\"maj\":%u}]}",
+                     m + 2 * 3600 + 13 * 60, m + 6 * 86400 + 14 * 3600, m - 60);
             recevoir("dashboard_guition/pc/ia", ia);
         }
-        toucher(333, 24); // IA
-        lacher();
-        avancer(300);
-        capture("108b_mqtt_pc_ia");
-        toucher(69, 24); // Système
-        lacher();
         avancer(11000);
         capture("109_mqtt_pc_veille");
-        toucher(333, 24); // IA, PC en veille : les valeurs retenues, avec leur âge
-        lacher();
+    }
+    // --- 11/11/2026 : page « IA » (maquette validée du 10/11) : nuit et jour x les trois poses de Clawd, pires cas,
+    // puis la planche des trois icônes soumises au choix retenu ---
+    {
+        auto envoyer_activite = [&](const char *etat, const char *alerte, uint32_t tokens, int outils, int prompts,
+                                    int sessions, const uint32_t *histo)
+        {
+            char json[900];
+            int n = snprintf(json, sizeof json,
+                             "{\"etat\":\"%s\",\"alerte\":\"%s\",\"tokens\":%u,\"outils\":%d,\"prompts\":%d,\"sessions\":%d,\"histo\":[",
+                             etat, alerte, tokens, outils, prompts, sessions);
+            for (int i = 0; i < IA_HISTO; i++)
+                n += snprintf(json + n, sizeof json - n, "%u%s", histo[i], i == IA_HISTO - 1 ? "" : ",");
+            snprintf(json + n, sizeof json - n, "],\"maj\":%u}", (uint32_t)time(nullptr));
+            recevoir("dashboard_guition/pc/ia_activite", json);
+        };
+        // production d'une soirée sur le PC : tranches de 10 min en tokens (creux et pics, la dernière = en cours)
+        const uint32_t H[IA_HISTO] = {0, 0, 2500, 6200, 11000, 4800, 0, 0, 0, 3400, 7600, 12800, 18400, 14100, 10200,
+                                      6300, 8500, 15200, 22100, 26400, 19300, 11600, 5400, 9200, 16500, 24800, 30100,
+                                      21700, 13400, 17800};
+        const uint32_t H0[IA_HISTO] = {0};
+        auto envoyer_compte = [&](const char *nom, int h5, int semaine)
+        {
+            const uint32_t m = (uint32_t)time(nullptr);
+            char ia[240];
+            snprintf(ia, sizeof ia,
+                     "{\"comptes\":[{\"nom\":\"%s\",\"h5\":%d,\"h5_reset\":%u,\"semaine\":%d,\"semaine_reset\":%u,\"maj\":%u}]}",
+                     nom, h5, m + 2 * 3600 + 13 * 60, semaine, m + 6 * 86400 + 14 * 3600, m - 60);
+            recevoir("dashboard_guition/pc/ia", ia);
+        };
+        // « en attente de l'agent du PC » : on repart à zéro (le compte du scénario PC a été reçu avant)
+        memset(&ia_compte, 0, sizeof(ia_compte));
+        memset(&ia_activite, 0, sizeof(ia_activite));
+        recevoir("dashboard_guition/maison/etat", "{\"phase\":\"nuit\",\"presence\":1}"); // le ciel suit la phase HA
+        aller("IA");
         avancer(300);
-        capture("109b_mqtt_pc_ia_veille");
+        capture("170_ia_attente_donnees");
+        envoyer_compte("compte-un@exemple.invalid", 92, 13); // relevé du 31/10, heures recalées sur maintenant
+        envoyer_activite("reflechit", "", 612345, 411, 14, 2, H);
+        avancer(300);
+        capture("171_ia_nuit_reflechit");
+        envoyer_activite("attente", "", 612345, 411, 14, 2, H);
+        avancer(300);
+        capture("172_ia_nuit_attente");
+        envoyer_activite("repos", "", 612345, 411, 14, 2, H);
+        avancer(300);
+        capture("173_ia_nuit_repos");
+        recevoir("dashboard_guition/maison/etat", "{\"phase\":\"jour\",\"presence\":1}");
+        envoyer_activite("reflechit", "", 612345, 411, 14, 2, H);
+        avancer(300);
+        capture("174_ia_jour_reflechit");
+        envoyer_activite("attente", "", 612345, 411, 14, 2, H);
+        avancer(300);
+        capture("175_ia_jour_attente");
+        envoyer_activite("repos", "", 612345, 411, 14, 2, H);
+        avancer(300);
+        capture("176_ia_jour_repos");
+        // les deux alertes (l'état passe en rouge, Clawd prend le « ! » quelle que soit l'alerte)
+        envoyer_activite("reflechit", "autorisation", 612345, 411, 14, 2, H);
+        avancer(300);
+        capture("177_ia_alerte_autorisation");
+        envoyer_activite("reflechit", "question", 612345, 411, 14, 2, H);
+        avancer(300);
+        capture("178_ia_alerte_question");
+        envoyer_activite("reflechit", "", 612345, 411, 14, 2, H);
+        // pires cas demandés : jauge à 100 %, très grands nombres, histogramme vide, adresse de compte à rallonge
+        envoyer_compte("compte-un@exemple.invalid", 100, 100);
+        avancer(1200);
+        capture("179_ia_jauge_100");
+        envoyer_compte("compte-un@exemple.invalid", 92, 13);
+        envoyer_activite("reflechit", "", 12345000, 999, 987, 12, H);
+        avancer(1200);
+        capture("180_ia_grands_nombres");
+        envoyer_activite("reflechit", "", 0, 0, 0, 0, H0);
+        avancer(1200);
+        capture("181_ia_histo_vide");
+        envoyer_compte("prenom.nom-tres-long-avec-points@corp-international-exemple.fr", 7, 64);
+        avancer(1200);
+        capture("182_ia_adresse_longue");
+        envoyer_compte("compte-un@exemple.invalid", 92, 13);
+        envoyer_activite("reflechit", "", 612345, 411, 14, 2, H);
+        // péremption : dernier message vieux de 5 min (agent arrêté) -> « au repos », derniers chiffres gardés
+        {
+            char json[900];
+            int n = snprintf(json, sizeof json,
+                             "{\"etat\":\"reflechit\",\"alerte\":\"\",\"tokens\":612345,\"outils\":411,\"prompts\":14,\"sessions\":2,\"histo\":[");
+            for (int i = 0; i < IA_HISTO; i++)
+                n += snprintf(json + n, sizeof json - n, "%u%s", H[i], i == IA_HISTO - 1 ? "" : ",");
+            snprintf(json + n, sizeof json - n, "],\"maj\":%u}", (uint32_t)time(nullptr) - 300);
+            recevoir("dashboard_guition/pc/ia_activite", json);
+        }
+        avancer(1200);
+        capture("183_ia_hors_ligne");
+        envoyer_activite("reflechit", "", 612345, 411, 14, 2, H); // on repart frais pour la suite du scénario
+        // planche de choix : les 3 icônes « IA » côte à côte dans le rail (variante 1 à sa place, les 2 et 3 posées
+        // provisoirement sur PC et Imprimante 3D, numéros collés en bas de chaque pastille)
+        int i_ia = -1, i_pc = -1, i_imp = -1;
+        for (int i = 0; i < (int)(sizeof(pages) / sizeof(pages[0])); i++)
+        {
+            if (!strcmp(pages[i].nom, "IA"))
+                i_ia = i;
+            if (!strcmp(pages[i].nom, "PC"))
+                i_pc = i;
+            if (!strcmp(pages[i].nom, "Imprimante 3D"))
+                i_imp = i;
+        }
+        ui_shell_icone(i_pc, &icon_ia_etincelle, 0);
+        ui_shell_icone(i_imp, &icon_ia_bulle, 0);
+        // le rail ne défile pas tout seul (comportement actuel de ui_shell) : on l'amène sur les trois pastilles
+        lv_obj_t *rail = nullptr; // la planche 185/186 du soir s'en sert aussi
+        {
+            struct rail_t
+            {
+                static lv_obj_t *cherche(lv_obj_t *o)
+                {
+                    // le rail porte toutes les pages SAUF l'épinglée (Batterie, dans son conteneur à part)
+                    if (lv_obj_get_child_cnt(o) == (uint32_t)ui_shell_nb() - 1)
+                        return o;
+                    for (uint32_t i = 0; i < lv_obj_get_child_cnt(o); i++)
+                    {
+                        if (lv_obj_t *r = cherche(lv_obj_get_child(o, i)))
+                            return r;
+                    }
+                    return nullptr;
+                }
+            };
+            rail = rail_t::cherche(lv_scr_act());
+            if (rail)
+                lv_obj_scroll_to_y(rail, 6 + 12 * 68 - 10, LV_ANIM_OFF); // Imprimante (12), PC (13), IA (14) à l'écran (rail : pad 6, pas 68)
+        }
+        lv_obj_t *numeros[3] = {}; // numéros posés sur les pastilles de la planche 184, retirés juste après
+        int nnum = 0;
+        {
+            struct trouve_t
+            {
+                static lv_obj_t *bouton_de(lv_obj_t *o, const void *src)
+                {
+                    for (uint32_t i = 0; i < lv_obj_get_child_cnt(o); i++)
+                    {
+                        lv_obj_t *c = lv_obj_get_child(o, i);
+                        if (lv_obj_check_type(c, &UI_CLASSE_IMAGE) && lv_image_get_src(c) == src)
+                            return o; // le bouton est le PARENT de l'image trouvée
+                        if (lv_obj_t *r = bouton_de(c, src))
+                            return r;
+                    }
+                    return nullptr;
+                }
+            };
+            const struct
+            {
+                const void *src;
+                const char *num;
+            } pastilles[] = {{&icon_ia, "1"}, {&icon_ia_etincelle, "2"}, {&icon_ia_bulle, "3"}};
+            for (auto &p : pastilles)
+            {
+                lv_obj_t *b = trouve_t::bouton_de(lv_scr_act(), p.src);
+                if (!b)
+                    continue;
+                // blanc (pas orange) : la pastille active a un fond orange, le numéro doit rester lisible
+                lv_obj_t *l = ui_label(b, UI_POLICE_PETITE, UI_TEXTE, p.num);
+                lv_obj_align(l, LV_ALIGN_BOTTOM_MID, 0, -2);
+                numeros[nnum++] = l;
+            }
+        }
+        avancer(300);
+        capture("184_ia_choix_icone");
+        for (int i = 0; i < 3; i++)
+            if (numeros[i])
+                lv_obj_delete(numeros[i]); // les numéros sont pour la planche 184 seulement
+        ui_shell_icone(i_pc, &icon_pc, 0); // remise en place des vraies icônes (le scénario continue)
+        ui_shell_icone(i_imp, &icon_imprimante, 0);
+        // 11/11 soir : contrôle de l'icône adoucie (smooth() d'icon2lvgl.py, réglage retenu du rail).
+        // Zoom x2 plus proche voisin fait après coup par tools/zoom_png.py pour comparer les liserés.
+        if (rail)
+            lv_obj_scroll_to_y(rail, 99999, LV_ANIM_OFF); // en bas du rail (borné) : Imprimante, PC, IA entiers à l'écran
+        ui_shell_aller(i_ia); // IA active : pastille orange, icône blanche
+        avancer(300);
+        capture("185_ia_icone_active");
+        ui_shell_aller(i_pc); // IA inactive : icône grise sur fond carte
+        avancer(300);
+        capture("186_ia_icone_inactive");
     }
     // Maquette du 24/10 : Réglages (mélodies et éclairage terrasse de HA) et Infos (appareils de HA), sur les VRAIS
     // messages retenus (relevés le 24/10 dans donnees/)
