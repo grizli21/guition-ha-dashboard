@@ -2395,21 +2395,22 @@ int main()
             capture("205_ciel_jour_brouillard");
             ciel(L + 260 * 60, 2.9f, 9, "lightning-rainy", 100, 3.0f);
             capture("206_ciel_orage");
-            avancer(9000 + 250 + 60 - 300); // l'éclair : 60 ms après le début du 2e flash
-            capture("207_ciel_orage_eclair");
-            // 13/11 (galerie du README, GIF « orage ») : une capture par tic du minuteur pluie+éclair
-            // (66 ms, src/ui_lvgl/page_ia.cpp:329). Le cycle fait 136 tics (8 976 ms), l'éclair dure
-            // 2 tics (132 ms). 207 est prise 60 ms après le début de l'éclair : le prochain commence
-            // 8 916 ms plus tard ; on place 6 captures de pluie avant, l'éclair tombe dans les
-            // 3 suivantes (fenêtre de 132 ms > pas de 66 ms : impossible de le manquer), puis la
-            // pluie continue — 40 frames, 2,6 s d'animation.
+            avancer(9000 + 250 + 60 - 300);
+            // 13/11 (README, section « Page IA », GIF « orage ») : une capture par tic du minuteur pluie+éclair
+            // (66 ms, src/ui_lvgl/page_ia.cpp:331), l'éclair dure 2 tics. Le calcul précédent (prochain éclair
+            // déduit du cycle de 136 tics) le ratait : position RELEVÉE en capturant 160 tics d'affilée, l'éclair
+            // tombe aux tics 76 et 77 après ce point. On saute 40 tics : 91 images, l'éclair aux images 36-37,
+            // 6 s d'animation. 207 = l'image 36 (vérifiée : le ciel blanchit).
             {
                 char nom[48];
-                avancer(8916 - 6 * 66);
-                for (int i = 0; i < 40; i++)
+                for (int i = 0; i < 40; i++) // par pas de 66 ms : un seul grand saut fait tourner le minuteur moins de fois
+                    avancer(66);
+                for (int i = 0; i < 91; i++)
                 {
                     snprintf(nom, sizeof nom, "anim_orage_%03d", i);
                     capture(nom);
+                    if (i == 36)
+                        capture("207_ciel_orage_eclair");
                     avancer(66);
                 }
             }

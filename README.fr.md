@@ -52,7 +52,7 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
     <td><img src="docs/images/page-pc.png" width="234" alt="Page PC"><br><b>PC</b> — système, GPU, processus, IA locale, mise en veille</td>
   </tr>
   <tr>
-    <td><img src="docs/images/ia-orage-anime.gif" width="234" alt="Page IA sous l'orage : pluie et éclair animés"><br><b>IA</b> — Clawd et l'activité de l'agent Claude du PC : état, jetons, sessions, histogramme. Le ciel suit la météo de Home Assistant — GIF : averse et éclair, animation du simulateur</td>
+    <td><img src="docs/images/page-ia-jour.png" width="234" alt="Page IA, scène de jour"><br><b>IA</b> — Clawd et l'activité de l'agent Claude du PC : état, jetons, sessions, histogramme. Le ciel suit la météo de Home Assistant</td>
     <td><img src="docs/images/page-batterie.png" width="234" alt="Page Batterie, détail du dernier réveil en millisecondes"><br><b>Batterie</b> — le dernier réveil (radar) décomposé en millisecondes, capture du simulateur. C'est la vitesse de ce réveil qui rend l'écran sans fil utilisable : mesuré sur l'écran réel, écran allumé en 0,7 s, données à jour en 1,3 à 1,8 s</td>
   </tr>
 </table>
@@ -94,9 +94,9 @@ la lune porte sa vraie phase, l'aube et le crépuscule teintent le ciel, les nua
 tombe, la neige blanchit le sol et le brouillard estompe le buisson. Toutes les images sont des
 dessins pixel régénérés par [tools/gen_scene_ia.py](tools/gen_scene_ia.py).
 
-<img src="docs/images/page-ia-jour.png" width="234" alt="Page IA, scène de jour"> <img src="docs/images/page-ia-nuit.png" width="234" alt="Page IA, scène de nuit">
+<img src="docs/images/ia-orage-anime.gif" width="234" alt="Page IA sous l'orage : pluie et éclair animés">
 
-<img src="docs/images/page-ia-pluie.png" width="234" alt="Page IA sous l'averse"> <img src="docs/images/page-ia-neige.png" width="234" alt="Page IA sous la neige">
+*Orage : la pluie tombe et un éclair blanchit le ciel (animation du simulateur, environ 15 images par seconde).*
 
 > Cette page est un **projet de fan non officiel, non affilié à Anthropic**. « Claude » et « Clawd »
 > sont des marques d'Anthropic. Les dessins de Clawd sont des dessins originaux, **exclus de la
