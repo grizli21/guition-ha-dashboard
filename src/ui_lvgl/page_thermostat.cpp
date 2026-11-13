@@ -89,8 +89,9 @@ static void disque(uc_cible_t *ctx, lv_point_t c, lv_coord_t d, lv_color_t coul,
 #define E_BOUT_PIECE (E_FONDU + 20)
 #define E_BOUT_CONS (E_BOUT_PIECE + 1)
 #define E_POINT (E_BOUT_CONS + 1)
-#define E_LUEUR (E_POINT + 1) // 07/11 (ESSAI) : lueur rouge à l'intérieur de l'anneau pendant la chauffe
-#define NB_ELEM (E_LUEUR + 1)
+#define E_LUEUR (E_POINT + 1)  // 07/11 (essai) : lueur rouge à l'intérieur de l'anneau pendant la chauffe
+#define E_SOMBRE (E_LUEUR + 1) // 13/11 : anneau sombre précalculé et tramé, sous les segments (voir sombre_image)
+#define NB_ELEM (E_SOMBRE + 1)
 #define LUEUR_R (ANNEAU_D / 2 - ANNEAU_L + 2) // rayon : juste sous le bord intérieur de l'anneau
 #define LUEUR_D (2 * LUEUR_R)                 // 232 px de côté (ANNEAU_D 320, ANNEAU_L 46)
 #define LUEUR_CENTRE 0.60f                    // part du rouge au centre (vif au centre, éteint vers l'anneau)
@@ -165,13 +166,88 @@ static const void *lueur_image()
     pret = true;
     return &img;
 }
+// 13/11 (retour d'usage : « le problème c'est juste le manque de teintes de l'anneau sombre ») : à 19 % de la couleur (MIX_SOMBRE),
+// le RGB565 ne garde que quelques teintes : le dégradé avançait par paliers irréguliers. L'anneau sombre complet (270° de
+// dégradé ; le bas reste dessiné par ses segments) est précalculé UNE fois, dégradé continu TRAMÉ Bayer 4x4 comme la
+// lueur, bords lissés ; dessiné sous les segments, il remplace les segments sombres (non dessinés). 320 x 320 RGB565A8
+// planaire = 300 Ko de PSRAM. Échec d'allocation : les segments sombres sont dessinés comme avant.
+// 13/11 (retour d'usage : « l'anneau intermédiaire est aussi impacté ») : même chose pour le niveau ATTÉNUÉ (MIX_ATTENUE), en
+// texture des arcs atténués (lv_draw_arc img_src : l'image est centrée sur l'arc) : 2 x 300 Ko de PSRAM.
+// niveau 0 = sombre (sous les segments), 1 = atténué (texture des segments atténués)
+static const void *anneau_image(int niveau)
+{
+    static lv_image_dsc_t imgs[2];
+    static bool prets[2] = {false, false}, echecs[2] = {false, false};
+    lv_image_dsc_t &img = imgs[niveau];
+    if (prets[niveau])
+        return &img;
+    if (echecs[niveau])
+        return nullptr;
+    const int total = ANNEAU_D * ANNEAU_D;
+    uint8_t *g_sombre_px = (uint8_t *)lv_malloc(total * 3);
+    if (!g_sombre_px)
+    {
+        echecs[niveau] = true;
+        ui_trace("[thermostat] allocation anneau %s ÉCHOUÉE (%d o) : segments en couleur unie\n", niveau ? "atténué" : "sombre", total * 3);
+        return nullptr;
+    }
+    static const uint8_t bayer[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};
+    float fr, fg, fb, cr[3], cg[3], cb[3];
+    {
+        uint8_t r, g, b;
+        lueur_canaux(ui_c(UI_FOND), &r, &g, &b), fr = r, fg = g, fb = b;
+        const uint32_t cs[3] = {UI_FROID, UI_ACCENT, ROUGE_CHAUD};
+        for (int k = 0; k < 3; k++)
+            lueur_canaux(ui_c(cs[k]), &r, &g, &b), cr[k] = r, cg[k] = g, cb[k] = b;
+    }
+    const float RO = ANNEAU_D / 2.0f, RI = ANNEAU_D / 2.0f - ANNEAU_L, m = (niveau ? MIX_ATTENUE : MIX_SOMBRE) / 255.0f;
+    for (int y = 0; y < ANNEAU_D; y++)
+        for (int x = 0; x < ANNEAU_D; x++)
+        {
+            const int i = y * ANNEAU_D + x;
+            const float dx = x + 0.5f - RO, dy = y + 0.5f - RO, r = sqrtf(dx * dx + dy * dy);
+            float a = atan2f(dy, dx) * 180 / (float)M_PI; // 0° à droite, sens horaire (y vers le bas), comme les arcs
+            if (a < 0)
+                a += 360;
+            const float cov = LV_CLAMP(0.0f, RO - r + 0.5f, 1.0f) * LV_CLAMP(0.0f, r - RI + 0.5f, 1.0f); // bords lissés
+            if (cov <= 0 || (a > 45 && a < 135)) // hors de l'anneau, ou le bas (ses segments)
+            {
+                *(uint16_t *)(g_sombre_px + 2 * i) = 0;
+                g_sombre_px[2 * total + i] = LV_OPA_TRANSP;
+                continue;
+            }
+            const float t = fmodf(a - 135 + 360, 360) / 270; // 0 = bout froid (135°), 1 = bout chaud (45°)
+            const int k = t < 0.5f ? 0 : 1;                   // degrade() : froid -> accent -> chaud
+            const float u = t < 0.5f ? t * 2 : (t - 0.5f) * 2;
+            const float r0 = cr[k] + (cr[k + 1] - cr[k]) * u, g0 = cg[k] + (cg[k + 1] - cg[k]) * u, b0 = cb[k] + (cb[k + 1] - cb[k]) * u;
+            const float trame = (bayer[y & 3][x & 3] + 0.5f) / 16.0f;
+            auto canal = [&](float c, float f, int pas) { return (uint8_t)LV_MIN(255, (int)(c * m + f * (1 - m) + trame * pas)); };
+            const lv_color_t c = lv_color_make(canal(r0, fr, 8), canal(g0, fg, 4), canal(b0, fb, 8));
+            const uint16_t v = lv_color_to_u16(c);
+            memcpy(g_sombre_px + 2 * i, &v, sizeof v);
+            g_sombre_px[2 * total + i] = (uint8_t)lroundf(cov * 255);
+        }
+    memset(&img, 0, sizeof img);
+    img.header.magic = LV_IMAGE_HEADER_MAGIC;
+    img.header.cf = LV_COLOR_FORMAT_RGB565A8;
+    img.header.w = ANNEAU_D;
+    img.header.h = ANNEAU_D;
+    img.header.stride = ANNEAU_D * 2;
+    img.data_size = total * 3;
+    img.data = g_sombre_px;
+    prets[niveau] = true;
+    return &img;
+}
+static const void *sombre_image() { return anneau_image(0); }
+
 #define R_POINT (ANNEAU_D / 2 - ANNEAU_L / 2.0f) // rayon du milieu de l'épaisseur (bouts, point de la pièce)
 
 struct elem_t
 {
     lv_color_t c;
     bool vis;
-    float t; // disques : position sur l'anneau (0..1)
+    float t;          // disques : position sur l'anneau (0..1)
+    bool tex = false; // 13/11 : segment atténué peint avec l'image tramée (anneau_image(1)) au lieu de sa couleur
 };
 
 // angles (degrés, non ramenés à 0-360) de l'arc de l'élément i
@@ -213,8 +289,17 @@ static void decrire(const th_piece_t &p, elem_t *e)
             return lv_color_mix(degrade(t), ui_c(UI_FOND), MIX_SOMBRE);
         return couleur(t);
     };
+    // 13/11 : un segment sombre n'est pas dessiné quand l'anneau sombre précalculé existe (il est dessous) ; un segment
+    // atténué est peint avec l'image atténuée tramée (même découpage, même invalidation : la couleur sert de repère)
+    const bool sombre_img = sombre_image() != nullptr, attenue_img = anneau_image(1) != nullptr;
+    auto sombre = [&](float t) { return (balayage && t > g_front) || (!(ecart && t >= bas && t <= haut) && (arret || t > t_cons)); };
+    auto plein = [&](float t) { return ecart && t >= bas && t <= haut; };
     for (int k = 0; k < NB_SEG; k++)
-        e[k] = {couleur_f((k + 0.5f) / NB_SEG), true, 0};
+    {
+        const float t = (k + 0.5f) / NB_SEG;
+        const bool s = sombre(t);
+        e[k] = {couleur_f(t), !(sombre_img && s), 0, attenue_img && !s && !plein(t)};
+    }
     // L'ouverture du bas (45° -> 135°) est fermée par un segment uni : anneau complet sur 360°,
     // avec un dégradé de 10° à chaque jonction (rouge -> segment à 45°, segment -> bleu à 135°)
     e[E_BAS] = {ui_c(FIN_ANNEAU), true, 0};
@@ -240,7 +325,8 @@ static void decrire(const th_piece_t &p, elem_t *e)
     e[E_POINT] = {ui_c(UI_FOND), true, t_piece}; // 31/10 : 14 -> 22 px
     e[E_LUEUR] = {ui_c(ROUGE_CHAUD),
                   p.chauffe && !arret,
-                  0}; // 07/11 (ESSAI) : remplace le radiateur orange
+                  0}; // 07/11 (essai) : remplace le radiateur orange
+    e[E_SOMBRE] = {ui_c(UI_FOND), sombre_img, 0}; // 13/11 : fixe ; seuls les segments au-dessus changent
 }
 
 static float angle_rad(float t) { return (135 + 270 * t) * (float)M_PI / 180; }
@@ -248,6 +334,8 @@ static float angle_rad(float t) { return (135 + 270 * t) * (float)M_PI / 180; }
 // rectangle (relatif au centre) que l'élément peut toucher, avec 2 px de marge (lissage des bords)
 static lv_area_t zone_elem(int i, const elem_t &e)
 {
+    if (i == E_SOMBRE) // 13/11 : tout l'anneau
+        return {(lv_coord_t)(-ANNEAU_D / 2), (lv_coord_t)(-ANNEAU_D / 2), (lv_coord_t)(ANNEAU_D / 2 - 1), (lv_coord_t)(ANNEAU_D / 2 - 1)};
     if (i == E_LUEUR) // 07/11 (ESSAI) : le disque intérieur (la lueur longe le bord intérieur de l'anneau)
         return {(lv_coord_t)-LUEUR_R, (lv_coord_t)-LUEUR_R, (lv_coord_t)(LUEUR_R - 1), (lv_coord_t)(LUEUR_R - 1)};
     if (i >= E_BOUT_PIECE)
@@ -313,6 +401,13 @@ static void anneau_dessin_cb(lv_event_t *e)
         }
     }
 
+    if (a_dessiner(E_SOMBRE)) // 13/11 : après la lueur (qui déborde de 2 px sur l'anneau), sous les segments
+    {
+        const void *img = sombre_image();
+        const lv_area_t z = decaler(zone_elem(E_SOMBRE, el[E_SOMBRE]), centre);
+        uc_image(ctx, img, &z);
+    }
+
     lv_draw_arc_dsc_t dsc;
     lv_draw_arc_dsc_init(&dsc);
     dsc.width = ANNEAU_L;
@@ -323,6 +418,7 @@ static void anneau_dessin_cb(lv_event_t *e)
             int a0, a1;
             angles_elem(i, &a0, &a1);
             dsc.color = el[i].c;
+            dsc.img_src = el[i].tex ? anneau_image(1) : nullptr; // 13/11 : atténué tramé
             uc_arc(ctx, dsc, &centre, ANNEAU_D / 2, a0 % 360, a1 % 360);
         }
 
