@@ -85,7 +85,8 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
 Juste après PC dans le rail, une page montre l'agent Claude qui tourne sur le PC : état (réfléchit,
 en attente, au repos), jetons produits, outils, prompts, sessions, et un histogramme 5 h par
 tranches de 10 min. Les données arrivent par deux sujets MQTT retenus (`pc/ia`, `pc/ia_activite` —
-[détail du contrat](CONTRAT_MQTT.md)).
+[détail du contrat](CONTRAT_MQTT.md)). Pour les publier depuis votre PC : [tools/claude_ia/](tools/claude_ia/)
+(hook Claude Code + petit agent Python, installation pas à pas dans son README).
 
 La scène a un **ciel animé** : soleil et lune parcourent leur arc d'après les heures réelles publiées
 par Home Assistant (`maison/ciel`, automatisation fournie dans [ha_propositions/](ha_propositions/)),

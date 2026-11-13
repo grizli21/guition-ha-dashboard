@@ -1,0 +1,13 @@
+{
+  "_comment": "Copier ce fichier en config.json (même dossier) puis l'adapter. Le fichier contient le mot de passe MQTT : le garder lisible par vous seul (chmod 600).",
+  "mqtt": {
+    "hote": "192.168.1.10",
+    "port": 1883,
+    "utilisateur": "ecran",
+    "mot_de_passe": "REMPLACEZ"
+  },
+  "prefixe": "dashboard_guition",
+  "comptes": [
+    { "dossier": "~/.claude" }
+  ]
+}

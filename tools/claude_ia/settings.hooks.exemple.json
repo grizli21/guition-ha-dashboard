@@ -1,0 +1,21 @@
+{
+  "_comment": "À fusionner dans ~/.claude/settings.json sous la clé « hooks ». Remplacez le chemin par celui où vous avez posé claude-hook-activite, et rendez-le exécutable (chmod +x). Les cinq événements sont ceux qui alimentent la page « IA » : sans PreToolUse(AskUserQuestion), l'écran n'affiche jamais « question pour toi ».",
+  "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "/home/VOUS/outils/claude_ia/claude-hook-activite", "timeout": 5 } ] }
+    ],
+    "PostToolUse": [
+      { "hooks": [ { "type": "command", "command": "/home/VOUS/outils/claude_ia/claude-hook-activite", "timeout": 5 } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "/home/VOUS/outils/claude_ia/claude-hook-activite", "timeout": 5 } ] }
+    ],
+    "Notification": [
+      { "hooks": [ { "type": "command", "command": "/home/VOUS/outils/claude_ia/claude-hook-activite", "timeout": 5 } ] }
+    ],
+    "PreToolUse": [
+      { "matcher": "AskUserQuestion",
+        "hooks": [ { "type": "command", "command": "/home/VOUS/outils/claude_ia/claude-hook-activite", "timeout": 5 } ] }
+    ]
+  }
+}

@@ -262,6 +262,9 @@ Display: "thinking…" orange / "authorization requested" or "question for you" 
 "idle" grey. **No message, or older than 2 min: "idle"**, Clawd closes its eyes, and the last received numbers stay on
 screen. The screen publishes nothing on these two topics.
 
+Both topics are published by [tools/claude_ia/](tools/claude_ia/) (Claude Code hook + Python agent,
+step-by-step installation in its README).
+
 ### Doorbell — `dashboard_guition/sonnette/etat`
 **E** `{"sonne":1, "depuis":1792694300}` (drops back to 0 when the door opens) → the screen shows the camera if the setting is active.
 IN HA on 27/10 (1791000000040: sonne 1; 041: sonne 0), not retained; screen: `ui_sonnette` (full screen, 60 s, touch).

@@ -1,0 +1,16 @@
+# Service SYSTEMD UTILISATEUR : copier dans ~/.config/systemd/user/publier-ia.service,
+# adapter les deux chemins, puis :  systemctl --user daemon-reload
+#                                   systemctl --user enable --now publier-ia
+# (les logs : journalctl --user -u publier-ia)
+[Unit]
+Description=Publication de l'usage et de l'activite Claude vers les ecrans Guition
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/VOUS/outils/claude_ia/publier_ia.py --config /home/VOUS/outils/claude_ia/config.json
+Restart=always
+RestartSec=10
+Nice=10
+
+[Install]
+WantedBy=default.target

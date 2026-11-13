@@ -262,6 +262,9 @@ Affichage : « réfléchit… » orange / « autorisation demandée » ou « que
 l'état) / « au repos » gris. **Message absent ou vieux de plus de 2 min : « au repos »**, Clawd ferme les yeux, et les
 derniers chiffres reçus restent affichés. L'écran ne publie rien sur ces deux sujets.
 
+Ces deux sujets sont publiés par [tools/claude_ia/](tools/claude_ia/) (hook Claude Code + agent Python,
+installation pas à pas dans son README).
+
 ### Sonnette — `dashboard_guition/sonnette/etat`
 **E** `{"sonne":1, "depuis":1792694300}` (retombe à 0 à l'ouverture de la porte) → l'écran montre la caméra si le réglage est actif.
 DANS HA le 27/10 (1791000000040 : sonne 1 ; 041 : sonne 0), non retenu ; écran : `ui_sonnette` (plein écran, 60 s, toucher).

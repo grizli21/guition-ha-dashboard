@@ -10,6 +10,7 @@
 |---|---|
 | [tools/banc.py](../../tools/banc.py) | drive a real screen from the PC: PNG capture, simulated taps/drags, Telnet log, crash dump (HTTP :8080, restricted to the `RESEAU_PC` machine) |
 | [tools/guetter_dumps.py](../../tools/guetter_dumps.py) | spy on the broker's `dashboard_guition/` topics (paho-mqtt 1.x) |
+| [tools/claude_ia/](../../tools/claude_ia/) | publish `pc/ia` and `pc/ia_activite` from a PC running Claude Code (hook + Python agent, no dependency) |
 | [tools/gen_conf_v9.py](../../tools/gen_conf_v9.py) | regenerate `conf_v9/lv_conf.h` from the LVGL 9.6 template |
 | [tools/polices_ui.sh](../../tools/polices_ui.sh) | regenerate the Montserrat fonts (and, optionally, the K-Type 3x5) with `lv_font_conv` |
 | [tools/icon2lvgl.py](../../tools/icon2lvgl.py) · [tools/creer_ico_mdi.py](../../tools/creer_ico_mdi.py) | convert SVG/PNG icons into LVGL descriptors (the Material Design Icons sources are in `tools/mdi/`) |
@@ -63,6 +64,6 @@ lib/             resources (fonts/images), icons, patched lvgl-9.6.0, modified L
 simu/            PC simulator (Makefile, scenario, recorded and anonymized MQTT data)
 src/ecran/       firmware: Wi-Fi, ECRANS[] table, OTA, remote bench, diagnostics
 src/ui_lvgl/     the 19 LVGL pages + shell, charts, MQTT, camera, music…
-tools/           PC bench, icon/font converters, MQTT watcher
+tools/           PC bench, icon/font converters, MQTT watcher, AI tooling
 CONTRAT_MQTT.md  full MQTT contract (the reference)
 ```

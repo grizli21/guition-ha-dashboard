@@ -10,6 +10,7 @@
 |---|---|
 | [tools/banc.py](../tools/banc.py) | piloter un écran réel depuis le PC : capture PNG, appuis/glissés simulés, journal Telnet, dump de plantage (HTTP :8080, réservé au PC `RESEAU_PC`) |
 | [tools/guetter_dumps.py](../tools/guetter_dumps.py) | espionner les topics `dashboard_guition/` du broker (paho-mqtt 1.x) |
+| [tools/claude_ia/](../tools/claude_ia/) | publier `pc/ia` et `pc/ia_activite` depuis un PC qui fait tourner Claude Code (hook + agent Python, sans dépendance) |
 | [tools/gen_conf_v9.py](../tools/gen_conf_v9.py) | régénère `conf_v9/lv_conf.h` depuis le gabarit LVGL 9.6 |
 | [tools/polices_ui.sh](../tools/polices_ui.sh) | régénère les polices Montserrat (et, en option, la 3x5 de K-Type) avec `lv_font_conv` |
 | [tools/icon2lvgl.py](../tools/icon2lvgl.py) · [tools/creer_ico_mdi.py](../tools/creer_ico_mdi.py) | convertir des icônes SVG/PNG en descripteurs LVGL (les sources Material Design Icons sont dans `tools/mdi/`) |
@@ -63,6 +64,6 @@ lib/             ressources (polices/images), icones, lvgl-9.6.0 patchée, Lovya
 simu/            simulateur PC (Makefile, scénario, données MQTT relevées et anonymisées)
 src/ecran/       firmware : Wi-Fi, table ECRANS[], OTA, banc distant, diagnostics
 src/ui_lvgl/     les 19 pages LVGL + shell, graphes, MQTT, caméra, musique…
-tools/           banc PC, convertisseurs d'icônes/polices, guetteur MQTT
+tools/           banc PC, convertisseurs d'icônes/polices, guetteur MQTT, outillage IA
 CONTRAT_MQTT.md  contrat MQTT complet (la référence)
 ```

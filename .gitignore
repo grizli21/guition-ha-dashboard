@@ -31,3 +31,4 @@ lib/ressources/k3x5_*.c
 
 # Photos de travail (téléphone), non suivies
 photos/
+__pycache__/

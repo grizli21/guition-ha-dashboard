@@ -1,0 +1,6 @@
+#!/bin/sh
+# Hook Claude Code (11/11/2026) : une ligne JSON par événement pour la page « IA » des écrans Guition
+# (lue par claude_activite.py, dans ce dossier). N affiche RIEN (la sortie d'un hook peut revenir au
+# modèle) et sort toujours 0 : un échec ne doit jamais gêner Claude Code.
+jq -c "{t: (now|floor), e: .hook_event_name, s: .session_id, tp: .transcript_path, n: .notification_type, o: .tool_name}" >> "$HOME/.local/state/claude-activite/evenements.log" 2>/dev/null
+exit 0
