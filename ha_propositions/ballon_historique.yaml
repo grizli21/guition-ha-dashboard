@@ -3,7 +3,7 @@
 #   A. configuration.yaml, bloc `template:` (à la suite de « Ecran historique exterieur ») : le capteur d'historique 24 h
 #   B. configuration.yaml, `recorder: exclude: entities:` : + sensor.ecran_historique_ballon (effet au prochain
 #      redémarrage de HA ; d'ici là le recorder garde ses attributs, ~3 Ko toutes les 5 min, comme les autres à leur pose)
-#   C. automations.yaml : 1792200000004 « Écran · eau chaude · état » REMPLACÉE (6 champs en plus, déclencheurs en plus)
+#   C. automations.yaml : 1792200000004 « Écran · eau chaude · état » REMPLACÉE (6 champs en plus, déclencheurs en plus) — la version à jour est dans ballon_dashboard_guition.yaml
 #   D. automations.yaml : 1792200000033 « Écran · eau chaude · historique 24 h » NOUVELLE
 # Puis template.reload + automation.reload ; vérifier les deux messages retenus en lecture seule. Rien sur …/set.
 
@@ -44,55 +44,8 @@
 #      - sensor.ecran_historique_ballon
 
 # ---------------------------------------------------------------------------------------------------------------- C
-- id: '1792200000004'
-  alias: Écran · eau chaude · état
-  description: >-
-    Contrat dashboard_guition (CONTRAT_MQTT.md) : état retenu du chauffe-eau sur dashboard_guition/ballon/etat
-    {temp, consigne, mode arret|auto|force, eco 0|1, chauffe 0|1, chaude_jour L, froide_jour L, kwh_jour, debit L/min,
-    puissance W, combles °C}. chauffe = relais du tableau électrique (switch.tableau_electrique_chauffe_eau).
-    froide_jour = compteur d'ARRIVÉE de la maison (toute l'eau entrée, y compris celle qui remplit le ballon) : l'écran
-    l'affiche « eau totale » (25/10).
-    puissance = tore de l'Ecocompteur (relevé toutes les 10 s), arrondie à 50 W.
-    Pas de republication périodique : queued max 2 garantit une publication APRÈS le dernier changement.
-  mode: queued
-  max: 2
-  max_exceeded: silent
-  triggers:
-    - trigger: state
-      entity_id:
-        - sensor.ballon_eau_chaude_temperature
-        - input_number.ballon_consigne
-        - switch.tableau_electrique_chauffe_eau
-        - input_select.ballon_mode
-        - input_select.ballon_regime
-        - sensor.ballon_eau_chaude_eau_chaude_journalier
-        - sensor.arrivee_eau_journalier
-        - sensor.jour_chauffe_eau
-        - sensor.ballon_eau_chaude_eau_chaude_debit
-        - sensor.ecocompteur_chauffe_eau
-        - sensor.ballon_eau_chaude_combles_temperature
-    - trigger: homeassistant
-      event: start
-  conditions:
-    - condition: template            # sonde pas encore lue : on garde le dernier message retenu
-      value_template: "{{ states('sensor.ballon_eau_chaude_temperature') | float(0) != 0 }}"
-  actions:
-    - action: mqtt.publish
-      data:
-        topic: dashboard_guition/ballon/etat
-        retain: true
-        payload: >-
-          {{ {'temp': states('sensor.ballon_eau_chaude_temperature') | float(0) | round(1),
-              'consigne': states('input_number.ballon_consigne') | float(0) | round(0) | int,
-              'mode': {'OFF': 'arret', 'AUTO': 'auto', 'FORCE': 'force'}.get(states('input_select.ballon_mode'), 'arret'),
-              'eco': 1 if is_state('input_select.ballon_regime', 'ECO') else 0,
-              'chauffe': 1 if is_state('switch.tableau_electrique_chauffe_eau', 'on') else 0,
-              'chaude_jour': states('sensor.ballon_eau_chaude_eau_chaude_journalier') | float(0) | round(0) | int,
-              'froide_jour': states('sensor.arrivee_eau_journalier') | float(0) | round(0) | int,
-              'kwh_jour': states('sensor.jour_chauffe_eau') | float(0) | round(1),
-              'debit': states('sensor.ballon_eau_chaude_eau_chaude_debit') | float(0) | round(0) | int,
-              'puissance': ((states('sensor.ecocompteur_chauffe_eau') | float(0)) / 50) | round(0) | int * 50,
-              'combles': states('sensor.ballon_eau_chaude_combles_temperature') | float(0) | round(0) | int} | tojson }}
+#   C. (13/11/2026) : la version de 1792200000004 qui REMPLACE celle du 22/10 est désormais dans
+#      ballon_dashboard_guition.yaml, pour que chaque id n'apparaisse qu'une fois dans le dépôt.
 
 # ---------------------------------------------------------------------------------------------------------------- D
 - id: '1792200000033'

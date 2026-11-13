@@ -1,4 +1,5 @@
-# 22/10/2026 : PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour l'eau chaude.
+# 22/10/2026, état mis à jour le 25/10/2026 (version « 3 onglets », cf. ballon_historique.yaml A/B/D) :
+# PROPOSITION (pas encore dans HA) — automatisations du contrat dashboard_guition pour l'eau chaude.
 # À ajouter à la fin de votre automations.yaml (sauvegardez avant, vérifiez que les id sont libres,
 # puis automation.reload ; vérifier le message retenu en lecture seule). Aucune commande de test sur …/set.
 # Les anciennes 1791000000179 / 173 (dashboard/ballon/…) restent en place pour l'ancien firmware.
@@ -7,10 +8,12 @@
   alias: Écran · eau chaude · état
   description: >-
     Contrat dashboard_guition (CONTRAT_MQTT.md) : état retenu du chauffe-eau sur dashboard_guition/ballon/etat
-    {temp, consigne, mode arret|auto|force, eco 0|1, chauffe 0|1}. chauffe = relais du tableau électrique
-    (switch.tableau_electrique_chauffe_eau), comme l'ancien relay_state.
-    Pas de republication périodique : queued max 2 garantit une publication APRÈS le dernier changement
-    (single perdrait un changement arrivé pendant l'exécution, et le retenu resterait faux).
+    {temp, consigne, mode arret|auto|force, eco 0|1, chauffe 0|1, chaude_jour L, froide_jour L, kwh_jour, debit L/min,
+    puissance W, combles °C}. chauffe = relais du tableau électrique (switch.tableau_electrique_chauffe_eau).
+    froide_jour = compteur d'ARRIVÉE de la maison (toute l'eau entrée, y compris celle qui remplit le ballon) : l'écran
+    l'affiche « eau totale » (25/10).
+    puissance = tore de l'Ecocompteur (relevé toutes les 10 s), arrondie à 50 W.
+    Pas de republication périodique : queued max 2 garantit une publication APRÈS le dernier changement.
   mode: queued
   max: 2
   max_exceeded: silent
@@ -22,6 +25,12 @@
         - switch.tableau_electrique_chauffe_eau
         - input_select.ballon_mode
         - input_select.ballon_regime
+        - sensor.ballon_eau_chaude_eau_chaude_journalier
+        - sensor.arrivee_eau_journalier
+        - sensor.jour_chauffe_eau
+        - sensor.ballon_eau_chaude_eau_chaude_debit
+        - sensor.ecocompteur_chauffe_eau
+        - sensor.ballon_eau_chaude_combles_temperature
     - trigger: homeassistant
       event: start
   conditions:
@@ -37,7 +46,13 @@
               'consigne': states('input_number.ballon_consigne') | float(0) | round(0) | int,
               'mode': {'OFF': 'arret', 'AUTO': 'auto', 'FORCE': 'force'}.get(states('input_select.ballon_mode'), 'arret'),
               'eco': 1 if is_state('input_select.ballon_regime', 'ECO') else 0,
-              'chauffe': 1 if is_state('switch.tableau_electrique_chauffe_eau', 'on') else 0} | tojson }}
+              'chauffe': 1 if is_state('switch.tableau_electrique_chauffe_eau', 'on') else 0,
+              'chaude_jour': states('sensor.ballon_eau_chaude_eau_chaude_journalier') | float(0) | round(0) | int,
+              'froide_jour': states('sensor.arrivee_eau_journalier') | float(0) | round(0) | int,
+              'kwh_jour': states('sensor.jour_chauffe_eau') | float(0) | round(1),
+              'debit': states('sensor.ballon_eau_chaude_eau_chaude_debit') | float(0) | round(0) | int,
+              'puissance': ((states('sensor.ecocompteur_chauffe_eau') | float(0)) / 50) | round(0) | int * 50,
+              'combles': states('sensor.ballon_eau_chaude_combles_temperature') | float(0) | round(0) | int} | tojson }}
 
 - id: '1792200000005'
   alias: Écran · eau chaude · commandes
