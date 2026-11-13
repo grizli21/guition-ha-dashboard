@@ -93,6 +93,8 @@ la lune porte sa vraie phase, l'aube et le crépuscule teintent le ciel, les nua
 tombe, la neige blanchit le sol et le brouillard estompe le buisson. Toutes les images sont des
 dessins pixel régénérés par [tools/gen_scene_ia.py](tools/gen_scene_ia.py).
 
+<img src="docs/images/page-ia-pluie.png" width="234" alt="Page IA sous l'averse"> <img src="docs/images/page-ia-neige.png" width="234" alt="Page IA sous la neige">
+
 > Cette page est un **projet de fan non officiel, non affilié à Anthropic**. « Claude » et « Clawd »
 > sont des marques d'Anthropic. Les dessins de Clawd sont des dessins originaux, **exclus de la
 > licence MIT** ([lib/icones/NOTICE_CLAWD.md](lib/icones/NOTICE_CLAWD.md)). La page est inspirée de
