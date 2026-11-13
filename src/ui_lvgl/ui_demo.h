@@ -8,8 +8,9 @@
 // ui_ma_requete) : ui_demo_ma() répond à ces commandes avec des réponses embarquées, même interface, même parseurs.
 // Pochettes, logos de radios et caméras : vides en démo (pas de serveur d'images ; ui_ma_serveur reste vide).
 //
-// Heure : sans HA ni NTP, l'horloge est fixée par le champ « maj » de maison/etat (epoch 1794342600 =
-// 10/11/2026 21:30 CET, lu par ui_appareil_heure) ; les « fin » des historiques portent 1290 = 21:30 en minutes du jour.
+// Heure : sans HA ni NTP, l'horloge est fixée par le champ « maj » de maison/etat (epoch 1794925800 =
+// 17/11/2026 15:30 CET, lu par ui_appareil_heure) ; les « fin » des historiques portent 930 = 15:30 en minutes du
+// jour (recalées en journée le 13/11/2026 pour que le ciel de la page IA tourne en jour).
 #pragma once
 
 #ifdef MODE_DEMO

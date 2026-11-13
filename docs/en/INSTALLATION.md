@@ -71,7 +71,7 @@ Copy the three secrets templates (step 1) **without filling them in**, uncomment
 `platformio.ini` and flash over cable (`ecran-usb`): no screen to declare. The screen looks for neither
 Wi-Fi nor MQTT; at startup, it replays an embedded set of MQTT
 messages ([src/ui_lvgl/ui_demo.cpp](../../src/ui_lvgl/ui_demo.cpp)) through the same reading code as with
-Home Assistant, and every page fills up (time fixed at 21:30). The heating, ventilation, lights, covers,
+Home Assistant, and every page fills up (time fixed at 15:30). The heating, ventilation, lights, covers,
 hot water, stove and coffee buttons respond as if Home Assistant returned the state; music responds to a
 fake Music Assistant. Still empty: cameras, album art and radio logos (they arrive over the network). In
 the simulator: `make -C simu MODE_DEMO=1`.

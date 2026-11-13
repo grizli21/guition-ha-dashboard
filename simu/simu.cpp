@@ -760,9 +760,12 @@ int main()
     // --- scénario de démo : rejou de la table, une capture par page, puis quelques appuis (avant/après) ---
     ui_demo_lancer();
     avancer(600);
-    // heure courante des pages (café, croquettes) : 21:30, l'heure fixe de la démo. Et la page Informations,
+    // Ciel et page IA : la démo calcule ses horodatages à l'allumage, en relatif par rapport à l'horloge
+    // de l'écran — ici celle du PC : tout est cohérent sans rien imposer (sur l'écran réel, maison/etat
+    // règle l'horloge sur le 17/11/2026 15:30 de la démo, cf. ui_demo.cpp).
+    // heure courante des pages (café, croquettes) : 15:30, l'heure fixe de la démo. Et la page Informations,
     // comme sur l'écran réel où ui_appareil la remplit elle-même (ici : valeurs neutres, aucune donnée personnelle)
-    cf_maintenant = 21 * 60 + 30;
+    cf_maintenant = 15 * 60 + 30;
     {
         const char *sys[] = {TXT("0 j 00 h", "0 d 00 h"), TXT("mise sous tension", "power-on"), TXT("218 Ko", "218 KB"),
                              TXT("6" SEP_DEC "1 Mo", "6" SEP_DEC "1 MB"), "44 °C", "240 MHz", "300 ms",
@@ -776,7 +779,7 @@ int main()
     }
     static const char *const DEMO_PAGES[] = {"Chauffage", "Graphes", "Qualité de l'air", "Ouvrants", "Croquettes",
                                              "Café", "Eau chaude", "VMC", "Poêle", "Musique", "Lumières", "Panneau LED",
-                                             "Imprimante 3D", "PC", "Réglages", "Informations"};
+                                             "Imprimante 3D", "PC", "IA", "Réglages", "Informations"};
     for (int i = 0; i < (int)(sizeof(DEMO_PAGES) / sizeof(DEMO_PAGES[0])); i++)
     {
         aller(DEMO_PAGES[i]);
@@ -1085,7 +1088,7 @@ int main()
     capture("19_ouvrants_seance");
 
     // --- Café : à 21h30 ; programmé pour 6h45 (donc demain) ; bouilloire en chauffe à 80 ° ---
-    cf_maintenant = 21 * 60 + 30;
+    cf_maintenant = 15 * 60 + 30;
     cf_commande = [](int app, cf_action_t a)
     {
         printf("[cafe] appareil %d action %d\n", app, (int)a);
@@ -1716,7 +1719,7 @@ int main()
     capture("72_mqtt_croquettes_semaine");
     // Café : automatisations pas encore dans HA ; format du rendu HA du 23/10 (cafetière et bouilloire hors ligne),
     // avec un café programmé à 6h45 et deux heures récentes pour l'essai
-    cf_maintenant = 21 * 60 + 30;
+    cf_maintenant = 15 * 60 + 30;
     recevoir("dashboard_guition/cafe/etat", "{\"bouilloire\": {\"chauffe\": 0, \"en_ligne\": 1, \"h\": 420, \"prog\": 0, \"temp\": 70}, "
                                            "\"cafe\": {\"allumee\": 0, \"en_ligne\": 1, \"h\": 405, \"marche\": 0, \"prog\": 1}, \"recentes\": [405, 435]}");
     aller("VMC");

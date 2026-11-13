@@ -72,7 +72,7 @@ Copiez les trois gabarits de secrets (étape 1) **sans les remplir**, décomment
 `platformio.ini` et flashez par câble (`ecran-usb`) : pas d'écran à déclarer. L'écran ne cherche ni Wi-Fi
 ni MQTT ; au démarrage, il rejoue un jeu de
 messages MQTT embarqué ([src/ui_lvgl/ui_demo.cpp](../src/ui_lvgl/ui_demo.cpp)) par le même code de lecture
-qu'avec Home Assistant, et toutes les pages se remplissent (heure fixée à 21:30). Les boutons du chauffage,
+qu'avec Home Assistant, et toutes les pages se remplissent (heure fixée à 15:30). Les boutons du chauffage,
 de la VMC, des lumières, des ouvrants, de l'eau chaude, du poêle et du café répondent comme si Home
 Assistant renvoyait l'état ; la musique répond à un faux Music Assistant. Restent vides : caméras,
 pochettes et logos de radios (ils arrivent par le réseau). Au simulateur : `make -C simu MODE_DEMO=1`.

@@ -3,7 +3,9 @@
 //
 // Les messages ci-dessous sont le relevé d'un vrai broker (simu/donnees/releve_broker_22-10.tsv, contrats de
 // CONTRAT_MQTT.md) réécrit avec des DONNÉES NEUTRES : pièces génériques, aucun nom de personne, IP d'exemple.
-// Les tableaux des historiques (288 points de 5 min, calés à droite, « fin » = 1290 = 21:30) ont été générés hors
+// Les tableaux des historiques (288 points de 5 min, calés à droite, « fin » = 930 = 15:30 — l'horloge de la
+// démo a été calée en journée le 13/11/2026 pour que le ciel animé de la page IA tourne en jour, cf. maison/ciel ;
+// les courbes étant calées à droite, ce recalage ne change que leurs étiquettes) ont été générés hors
 // ligne par courbes sinusoïdales déterministes, puis embarqués en littéraux — ils cheminent ensuite par le VRAI
 // parseur ui_mqtt_recevoir, comme les messages retenus de Home Assistant.
 
@@ -48,7 +50,7 @@
     ",56,56,56,55,55,55,54,54,54,54,53,53,53,53,52,52,52,52,52,52,52,52,52,52,52,52,52,52,52,52,52,52,52,52,52,52,5" \
     "3,53,53,52,52,52,52,52,52,52,52,51,51,51,51,50,50,50,49,49,49,48,48,48,47,47,47,46,46,46,45,45,45,45,45,44,44," \
     "44,44,44,44,44,44,44,44,44,44,45,45,45,45,45,45],\"c\":[[0,190],[5,160],[101,190]],\"ch\":\"0000000000e0fffffffffff" \
-    "fffffffffffffffffffffffffffffffffffffffffffffffff\",\"fin\":1290}"
+    "fffffffffffffffffffffffffffffffffffffffffffffffff\",\"fin\":930}"
 
 #define HIST_PIECE1 \
     "{\"t\":[200,199,199,198,198,196,194,193,191,189,188,186,185,184,183,181,181,180,179,178,177,176,175,174,173,171," \
@@ -70,7 +72,7 @@
     ",58,57,57,57,57,57,57,56,56,56,56,56,56,56,56,56,56,56,56,56,57,57,57,57,57,57,57,57,57,57,57,57,57,57,56,56,5" \
     "6,56,56,56,55,55,55,54,54,54,53,53,53,52,52,52,51,51,50,50,50,50,49,49,49,49,49,48,48,48,48,48,48,48,48,48,48," \
     "48,48,48,49,49,49,49,49,49,49,49,50,50,50,50,50],\"c\":[[0,200],[5,160],[101,200]],\"ch\":\"000000000000f8fffffffff" \
-    "fffffffffffffffffffffffffffffffffffffffffffffffff\",\"fin\":1290}"
+    "fffffffffffffffffffffffffffffffffffffffffffffffff\",\"fin\":930}"
 
 #define HIST_PIECE2 \
     "{\"t\":[160,159,159,158,157,157,157,156,156,156,156,156,156,156,156,156,156,156,155,155,154,154,154,153,154,154," \
@@ -92,7 +94,7 @@
     ",60,60,60,60,60,60,60,60,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,60,60,60,60,59,59,59,58,5" \
     "8,58,57,57,57,56,56,55,55,55,54,54,54,54,53,53,53,53,53,52,52,52,52,52,52,52,52,52,52,52,52,53,53,53,53,53,53," \
     "53,53,53,53,53,54,54,54,53,53,53,53,53,53,53,53],\"c\":[[0,160],[29,185],[125,160]],\"ch\":\"e0ffffffffffffffffffff" \
-    "ffffffff1f000000ffffffffffffffffffffffffffffffffff\",\"fin\":1290}"
+    "ffffffff1f000000ffffffffffffffffffffffffffffffffff\",\"fin\":930}"
 
 #define HIST_PIECE3 \
     "{\"t\":[159,159,158,158,158,158,157,157,157,157,157,157,156,156,156,156,156,155,155,154,154,154,154,154,154,154," \
@@ -114,7 +116,7 @@
     ",61,61,61,61,61,61,61,61,61,61,62,62,61,61,61,61,61,61,61,61,60,60,60,60,59,59,59,58,58,58,57,57,57,56,56,55,5" \
     "5,55,54,54,54,54,53,53,53,53,53,53,52,52,52,52,52,52,52,52,53,53,53,53,53,53,53,53,53,53,53,53,53,53,53,53,53," \
     "53,53,53,53,53,53,52,52,52,52,51,51,51,51,50,50],\"c\":[[0,160],[29,180],[125,160]],\"ch\":\"00fcffffffffffffffffff" \
-    "ffffffff1f00e0ffffffffffffffffffffffffffffffffffff\",\"fin\":1290}"
+    "ffffffff1f00e0ffffffffffffffffffffffffffffffffffff\",\"fin\":930}"
 
 #define HIST_PIECE4 \
     "{\"t\":[219,219,219,218,218,217,217,216,216,215,214,215,214,214,213,213,212,212,212,212,211,212,212,212,211,211," \
@@ -136,7 +138,7 @@
     ",68,68,68,68,68,68,67,67,67,67,67,67,66,66,66,66,65,65,65,64,64,64,63,63,63,62,62,61,61,61,61,60,60,60,60,59,5" \
     "9,59,59,59,59,59,59,59,59,59,59,59,59,59,59,59,59,59,59,59,59,59,60,60,59,59,59,59,59,59,59,59,59,58,58,58,58," \
     "57,57,57,57,56,56,56,55,55,55,54,54,54,54,54,53],\"c\":[[0,220],[29,180],[257,220]],\"ch\":\"c0ffff1f00000080ffffff" \
-    "ffffffffffffffffffffffffffffffffffffffffffffffffff\",\"fin\":1290}"
+    "ffffffffffffffffffffffffffffffffffffffffffffffffff\",\"fin\":930}"
 
 #define HIST_EXT \
     "{\"ext\":[61,61,62,62,61,61,60,60,58,57,56,55,54,52,52,51,51,50,50,51,51,51,51,52,52,51,51,50,49,48,47,46,45,44," \
@@ -161,7 +163,7 @@
     "600,600,600,600,600,600,600,600,600,600,600,600,600,600,600,600,600,583,583,583,583,583,583,583,583,583,583,58" \
     "3,583,583,583,583,583,583,583,583,582,582,582,582,582,582],\"c\":[[0,55]],\"l\":[[113,40],[179,15],[263,45]],\"ch\":" \
     "\"00000000fcffffffff0f0000000000000000000000000000000000000000000000000000\",\"hc\":\"00000000fcffffffffffff3f00000" \
-    "0000000000000000000f0ffffffff00000000000000\",\"fin\":1290}"
+    "0000000000000000000f0ffffffff00000000000000\",\"fin\":930}"
 
 #define HIST_AIR0 \
     "{\"points\":[5,6,6,6,6,6,5,4,4,4,4,4,5,5,6,6,6,6,6,5,4,4,4,4,4,5,6,6,6,6,6,5,5,4,4,4,4,4,22,34,39,35,23,6,5,4,4," \
@@ -183,7 +185,7 @@
     "0,39,39,39,39,40,41,42,43,45,45,46,46,46,45,44,42,41,40,39,38,37,37,38,39,40,41,42,43,44,45,45,44,44,43,41,40," \
     "39,37,37,36,36,36,37,38,39,41,42,43,43,43,43,42,41,40,39,37,36,35,35,35,35,36,37,38,39,40,41,42,42,42,41,40,39" \
     ",37,36,35,34,33,33,34,34,36,37,38,39,40,41,41,40,40,39,37,36,35,33,33,32,32,32,33,34,35,37,38,39,39,39,39,38,3" \
-    "7,36,35],\"fin\":1290}"
+    "7,36,35],\"fin\":930}"
 
 // --- La table rejouée par ui_mqtt_recevoir, dans l'ordre de la rafale de Home Assistant à la connexion ---
 struct message_demo_t
@@ -191,9 +193,9 @@ struct message_demo_t
     const char *sujet, *message;
 };
 static const message_demo_t MESSAGES[] = {
-    // La maison : l'heure de la démo est là (« maj » = 1794342600 = 10/11/2026 21:30 CET, lu par ui_appareil_heure)
+    // La maison : l'heure de la démo est là (« maj » = 1794925800 = 17/11/2026 15:30 CET, lu par ui_appareil_heure)
     {UI_MQTT_PREFIXE "maison/etat",
-     "{\"ext_temp\":6.2,\"ext_hum\":72,\"maj\":1794342600,\"phase\":\"soir\",\"presence\":1}"},
+     "{\"ext_temp\":6.2,\"ext_hum\":72,\"maj\":1794925800,\"phase\":\"jour\",\"presence\":1}"},
     // Chauffage : 5 pièces, modes variés, deux en chauffe
     {UI_MQTT_PREFIXE "thermostats/cuisine/etat",
      "{\"batterie\":74,\"chauffe\":0,\"consigne\":19.0,\"hum\":52.4,\"mode\":\"confort\",\"signal\":172,\"temp\":18.9}"},
@@ -298,15 +300,12 @@ static const message_demo_t MESSAGES[] = {
      "\"cache\":18.2,\"ram_total\":32.0,\"swap\":0,\"gpus\":[{\"nom\":\"3060\",\"charge\":38,\"temp\":57,\"w\":110,\"vram\":8.2,"
      "\"vram_total\":12.0,\"ps\":\"P0\",\"f\":1800,\"fm\":1900,\"blocs\":[{\"n\":\"llama-3.1-8B-Q4_K_M\",\"mo\":5100,"
      "\"c\":\"22d3ee\"},{\"n\":\"whisper-large-v3\",\"mo\":3100,\"c\":\"35c46a\"}]}],\"net_bas\":1.2,\"net_haut\":0.4,"
-     "\"disque_l\":2.0,\"disque_e\":0.0,\"depuis\":\"1 j 04 h\",\"heure\":\"21:30\"}"},
+     "\"disque_l\":2.0,\"disque_e\":0.0,\"depuis\":\"1 j 04 h\",\"heure\":\"15:30\"}"},
     {UI_MQTT_PREFIXE "pc/processus",
      "[{\"nom\":\"firefox\",\"role\":\"\",\"cpu\":8.4,\"mem\":1.6,\"vram\":0.0},{\"nom\":\"code\",\"role\":\"\",\"cpu\":4.1,"
      "\"mem\":0.9,\"vram\":0.0},{\"nom\":\"llama-server\",\"role\":\"llama-local\",\"cpu\":0.0,\"mem\":1.8,\"vram\":8.0},"
      "{\"nom\":\"mpd\",\"role\":\"\",\"cpu\":0.1,\"mem\":0.1,\"vram\":0.0},{\"nom\":\"kwin_wayland\",\"role\":\"plasma\",\"cpu\":"
      "1.4,\"mem\":0.3,\"vram\":0.0},{\"nom\":\"python\",\"role\":\"assistant\",\"cpu\":0.3,\"mem\":0.2,\"vram\":0.0}]"},
-    {UI_MQTT_PREFIXE "pc/ia",
-     "{\"comptes\":[{\"nom\":\"Pro\",\"h5\":18,\"semaine\":31,\"h5_reset\":1794348000,\"semaine_reset\":1794693600,"
-     "\"maj\":1794342300}]}"},
     // Réglages de la maison (carillon, terrasse) et appareils vus par HA (noms génériques, un hors ligne)
     {UI_MQTT_PREFIXE "maison/reglages",
      "{\"melodie\":\"Simpsons\",\"melodies\":[\"Mario\",\"Simpsons\",\"Halloween\",\"No\\u00ebl\"],\"volume\":40,"
@@ -333,6 +332,31 @@ void ui_demo_lancer()
 {
     for (const message_demo_t &m : MESSAGES)
         ui_mqtt_recevoir(m.sujet, (const uint8_t *)m.message, (unsigned)strlen(m.message));
+
+    // 13/11 : page IA et ciel animé. Ces trois-là sont calculés à l'allumage, en RELATIF par rapport à
+    // l'horloge de l'écran — réglée juste avant par le « maj » de maison/etat ci-dessus (au simulateur :
+    // l'horloge du PC). Le firmware déduit la phase du ciel de l'ORDRE des prochains événements (coucher
+    // avant lever = jour, comme les capteurs soleil de HA) et exige des horodatages de moins d'un jour :
+    // en figeant ces horodatages, la page retomberait sur le ciel de repli et les compte à rebours
+    // (« dans 2 h 13 ») seraient faux. Calculé : coucher 1 h 50 après l'allumage, lever le lendemain
+    // (soleil bas à l'ouest, 82 % de l'arc), réinitialisations 2 h 13 et 6 j 14 h plus tard, messages IA
+    // vieux de 5 min et 1 min (sous les péremptions : 10 min et 2 min).
+    // Lune : premier quartier cohérent (âge 7,9 j -> 56 % avec la formule de
+    // ha_propositions/ciel_dashboard_guition.yaml) ; le firmware ne la montre qu'hors du plein jour :
+    // en démo (jour) elle est cachée, mais les valeurs publiées restent cohérentes entre elles.
+    const uint32_t t = (uint32_t)time(nullptr);
+    char b[512];
+    snprintf(b, sizeof b, "{\"aube\":%u,\"lever\":%u,\"coucher\":%u,\"crepuscule\":%u,"
+             "\"lune_age\":7.9,\"lune_pct\":56,\"meteo\":\"partlycloudy\",\"nuages\":45,\"pluie\":0,\"neige\":0}",
+             t + 56700u, t + 58740u, t + 6600u, t + 8640u);
+    ui_mqtt_recevoir(UI_MQTT_PREFIXE "maison/ciel", (const uint8_t *)b, (unsigned)strlen(b));
+    snprintf(b, sizeof b, "{\"comptes\":[{\"nom\":\"compte-un@exemple.invalid\",\"h5\":42,\"semaine\":66,"
+             "\"h5_reset\":%u,\"semaine_reset\":%u,\"maj\":%u}]}", t + 7980u, t + 568800u, t - 300u);
+    ui_mqtt_recevoir(UI_MQTT_PREFIXE "pc/ia", (const uint8_t *)b, (unsigned)strlen(b));
+    snprintf(b, sizeof b, "{\"etat\":\"reflechit\",\"alerte\":\"\",\"tokens\":51700,\"outils\":96,"
+             "\"prompts\":7,\"sessions\":1,\"histo\":[0,0,0,0,0,0,0,0,0,0,0,0,1200,3400,5600,4200,3100,0,0,0,"
+             "2400,4800,6100,5200,4400,3800,2900,2100,1600,900],\"maj\":%u}", t - 60u);
+    ui_mqtt_recevoir(UI_MQTT_PREFIXE "pc/ia_activite", (const uint8_t *)b, (unsigned)strlen(b));
 }
 
 // --- Écho des commandes : ce que Home Assistant publierait en retour ---
