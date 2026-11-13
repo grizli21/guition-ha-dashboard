@@ -1,0 +1,87 @@
+name: Compilation
+
+# 13/11/2026 — atelier de compilation : à chaque push et pull request sur main.
+#   - le firmware (env « ecran ») compile sur Linux ET Windows ; la variante MODE_DEMO au moins sur Linux ;
+#   - le simulateur (make -C simu) tourne sur Linux.
+# Les secrets sont recopiés DES GABARITS *.exemple (valeurs factices) : cet atelier n'utilise AUCUN
+# secret GitHub. Compilation seule : jamais « -t upload » — l'upload_port d'exemple (192.168.1.43) ne
+# sert qu'à satisfaire PlatformIO (sans port OTA déclaré, l'env « ecran » refuse déjà de compiler).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  firmware:
+    name: firmware (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            demo: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Chemins longs (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # La plateforme recompile les bibliothèques ESP-IDF (custom_sdkconfig de platformio.ini) avec
+          # des chemins très longs ; Windows est limité à 260 caractères (MAX_PATH) par défaut.
+          # Clé LongPathsEnabled + core.longpaths, comme le recommandent Microsoft et le outillage
+          # ESP-IDF (voir docs/INSTALLATION.md, section Windows). À confirmer au premier run.
+          Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' `
+            -Name 'LongPathsEnabled' -Value 1 -Type DWord -Force
+          git config --system core.longpaths true
+
+      - name: PlatformIO Core
+        run: pip install platformio
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-v1-${{ hashFiles('platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-v1-
+
+      - name: Secrets factices (gabarits du dépôt, aucun secret GitHub)
+        shell: bash
+        run: |
+          cp src/secrets_mqtt.h.exemple src/secrets_mqtt.h
+          cp src/secrets_ma.h.exemple src/secrets_ma.h
+          cp src/ecran/secrets_wifi.h.exemple src/ecran/secrets_wifi.h
+
+      - name: Compilation (env ecran)
+        shell: bash
+        run: pio run -e ecran
+
+      - name: Compilation (env ecran, MODE_DEMO)
+        if: matrix.demo
+        shell: bash
+        env:
+          PLATFORMIO_BUILD_FLAGS: -DMODE_DEMO
+        run: pio run -e ecran
+
+  simulateur:
+    name: simulateur (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dépendances (g++ est déjà sur l'exécuteur ; il manque zlib)
+        run: sudo apt-get update && sudo apt-get install -y zlib1g-dev
+
+      - name: make -C simu (compile le vrai code des pages, joue le scénario, écrit les captures)
+        run: make -C simu
