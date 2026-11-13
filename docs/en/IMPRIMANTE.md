@@ -115,6 +115,11 @@ overridable with `-D` at compile time): adapt host, port and `src=`, then rebuil
 a wrong URL), the corner button still cycles STL → enclosure → bed views; the zone simply stays empty
 (`[camera]` traces go to serial/telnet, nothing is displayed).
 
+The real screen, with its three views — file thumbnail, enclosure, bed (interface from an earlier
+version; images taken by the author's camera, published with his consent):
+
+<img src="../images/ecran-reel-piece.png" width="234" alt="Real screen, STL file view"> <img src="../images/ecran-reel-caisson.png" width="234" alt="Real screen, enclosure view"> <img src="../images/ecran-reel-plateau.png" width="234" alt="Real screen, bed view">
+
 ## 5. How a command travels
 
 The screen publishes to `dashboard_guition/imprimante/set`; HA validates the action against the known

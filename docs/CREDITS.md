@@ -39,10 +39,12 @@ mires générées, libres de droit — sauf deux médias pris sur Wikimedia Comm
 
 - la pochette d'album de la page Musique : **« CommoNasm »** (mashup de TenDJiz, 2012), visuel publié
   par le producteur lui-même —
-  [File:Commonasm mashup album artwork.jpg](https://commons.wikimedia.org/wiki/File:Commonasm_mashup_album_artwork.jpg) ;
-- la courte séquence d'impression 3D du GIF « navigation » (rail) : images tirées de
-  **« 3D printing time-lapse 2026.webm »** (imprimante FDM en gros plan, personne à l'image) —
-  [File:3D printing time-lapse 2026.webm](https://commons.wikimedia.org/wiki/File:3D_printing_time-lapse_2026.webm).
+  [File:Commonasm mashup album artwork.jpg](https://commons.wikimedia.org/wiki/File:Commonasm_mashup_album_artwork.jpg).
+
+Les images de la caméra du caisson qui animent le GIF « navigation » et la vignette Imprimante
+(`simu/donnees/cameras/park_caisson/`) et les trois photos d'écran réel de
+[docs/IMPRIMANTE.md](IMPRIMANTE.md) sont des prises de l'auteur, sur sa propre imprimante, publiées
+avec son accord explicite (13/11/2026).
 
 La page « IA » est inspirée de [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) : l'idée
 d'afficher à l'écran l'activité d'un agent Claude. **Aucune ligne de code ni aucun fichier de ce projet

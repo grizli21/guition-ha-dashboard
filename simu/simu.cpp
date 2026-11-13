@@ -657,20 +657,22 @@ int main()
                           : strstr(url, "src=plateau_ecran") ? "plateau" : nullptr;
         if (!cam)
             return false;
-        // 13/11 (GIF « navigation » du README) : g_seq_cam = dossier de la séquence servie image par image
-        // (donnees/cameras/<dossier>/NNN.jpg), vide = image fixe. La séquence de l'imprimante vient d'une
-        // vidéo libre de droit (CC0, Wikimedia Commons — source et auteur dans docs/CREDITS.md).
+        // 13/11 (GIF « navigation » + vignette du README) : g_seq_cam = dossier de la séquence servie
+        // image par image (donnees/cameras/<dossier>/NNN.jpg), vide = image fixe. Les images de la
+        // séquence de l'imprimante sont de la VRAIE caméra du caisson de l'auteur (publiées avec son
+        // accord), prises pendant un « park » à 20 images/s : le flux simulé, tiré ~2 fois par pas de
+        // 10 ms, consomme une frame toutes les 10 tirages (g_seq_i/10) pour tenir la cadence réelle.
         if (g_seq_cam[0])
         {
             char seq[128];
-            snprintf(seq, sizeof seq, "donnees/cameras/%s/%03d.jpg", g_seq_cam, g_seq_i++ % 12);
+            snprintf(seq, sizeof seq, "donnees/cameras/%s/%03d.jpg", g_seq_cam, g_seq_i++ / 10 % 10);
             FILE *fs = fopen(seq, "rb");
             if (fs)
             {
                 *n = fread(buf, 1, max, fs);
                 fclose(fs);
                 if (*n > 0)
-                    return true; // séquence épuisée ? on retombe sur l'image fixe ci-dessous, mais elle boucle (% 12)
+                    return true; // la séquence boucle (% 10) ; si le fichier manque, on retombe sur l'image fixe ci-dessous
             }
         }
         FILE *f = fopen((std::string("donnees/cameras/") + cam + ".jpg").c_str(), "rb");
@@ -1448,10 +1450,15 @@ int main()
     aller("Imprimante 3D");
     avancer(600);
     capture("45_imprimante");
+    // 13/11 (vignette de la galerie) : la vue caisson montre de vraies images de la caméra du caisson
+    // (donnees/cameras/park_caisson/, publiées avec l'accord de l'auteur) ; retirée juste après la capture.
+    snprintf(g_seq_cam, sizeof g_seq_cam, "park_caisson");
+    g_seq_i = 0;
     toucher(359, 71); // 26/10 : bouton « Caméra » : les images de motionEye (ui_camera)
     lacher();
     avancer(300);
     capture("45b_imprimante_camera");
+    g_seq_cam[0] = 0; // la suite (plateau puis anneau) garde les images de test habituelles
     // 08/11/2026 : le bouton a TROIS vues depuis la page Imprimante en 9.6 (STL -> caisson -> plateau).
     // Le scénario s'arrétait au caisson ; on pousse le cycle complet, capture du plateau comprise.
     toucher(359, 71); // 2e appui : le PLATEAU (bouton « Plateau » -> vue plateau)
@@ -2945,9 +2952,10 @@ int main()
             printf("[anim-rail] clic icône : « %s » -> « %s »\n", ui_shell_nom(page_avant), ui_shell_nom(ui_shell_page()));
         }
         // 13/11 : petite animation caméra en bout de course : bouton « Caméra » de la page Imprimante
-        // (vue caisson, la caméra au-dessus de l'imprimante), puis une frame de la séquence libre de droit
-        // par capture — le flux simulé sert l'image suivante dès que la précédente est posée
-        // (CAM_PERIODE_MS = 0, src/ui_lvgl/ui_camera.cpp:20), comme le vrai flux MJPEG de go2rtc.
+        // (vue caisson), puis les vraies images de la caméra du caisson (l'auteur, accord explicite)
+        // pendant un park : 10 frames prises à 20 images/s, servies à leur cadence réelle — une capture
+        // tous les 50 ms (le flux simulé est tiré ~2 fois par pas de 10 ms, la séquence avance d'une
+        // frame tous les 10 tirages).
         if (cible && ui_shell_nom(ui_shell_page()) && !strcmp(ui_shell_nom(ui_shell_page()), "Imprimante 3D"))
         {
             toucher(359, 71); // bouton « Caméra »
@@ -2956,11 +2964,12 @@ int main()
             t += 300;
             snprintf(nom, sizeof nom, "anim_rail_%03d", t);
             capture(nom);
-            snprintf(g_seq_cam, sizeof g_seq_cam, "imprimante_seq"); // donnees/cameras/imprimante_seq/NNN.jpg (CC0, voir CREDITS)
-            for (int i = 0; i < 12; i++)
+            snprintf(g_seq_cam, sizeof g_seq_cam, "park_caisson"); // donnees/cameras/park_caisson/NNN.jpg (vraie caméra, frames f116..f125)
+            g_seq_i = 0;
+            for (int i = 0; i < 10; i++)
             {
-                avancer(10);
-                t += 10;
+                avancer(50);
+                t += 50;
                 snprintf(nom, sizeof nom, "anim_rail_%03d", t);
                 capture(nom);
             }

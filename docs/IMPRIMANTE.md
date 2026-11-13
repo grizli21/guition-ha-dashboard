@@ -121,6 +121,11 @@ Sans caméra (ou avec une URL fausse), le bouton d'angle continue de tourner les
 plateau ; la zone reste simplement vide (des traces `[camera]` passent en série/telnet, rien
 d'affiché).
 
+L'écran réel, avec ses trois vues — miniature du fichier, caisson, plateau (interface d'une version
+antérieure ; images prises par la caméra de l'auteur, publiées avec son accord) :
+
+<img src="images/ecran-reel-piece.png" width="234" alt="Écran réel, vue du fichier STL"> <img src="images/ecran-reel-caisson.png" width="234" alt="Écran réel, vue caisson"> <img src="images/ecran-reel-plateau.png" width="234" alt="Écran réel, vue plateau">
+
 ## 5. Comment part une commande
 
 L'écran publie sur `dashboard_guition/imprimante/set`, HA valide la liste des actions connues et

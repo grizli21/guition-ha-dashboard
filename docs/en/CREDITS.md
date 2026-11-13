@@ -39,10 +39,12 @@ patterns, free of rights — except two media taken from Wikimedia Commons under
 
 - the album cover on the Music page: **“CommoNasm”** (a TenDJiz mashup, 2012), artwork published by
   the producer himself —
-  [File:Commonasm mashup album artwork.jpg](https://commons.wikimedia.org/wiki/File:Commonasm_mashup_album_artwork.jpg) ;
-- the short 3D-printing sequence in the “navigation” GIF (rail): frames from
-  **“3D printing time-lapse 2026.webm”** (an FDM printer close-up, nobody in shot) —
-  [File:3D printing time-lapse 2026.webm](https://commons.wikimedia.org/wiki/File:3D_printing_time-lapse_2026.webm).
+  [File:Commonasm mashup album artwork.jpg](https://commons.wikimedia.org/wiki/File:Commonasm_mashup_album_artwork.jpg).
+
+The enclosure-camera images animating the “navigation” GIF and the Printer vignette
+(`simu/donnees/cameras/park_caisson/`) and the three real-screen photos in
+[docs/en/IMPRIMANTE.md](IMPRIMANTE.md) were taken by the author, on his own printer, published with
+his explicit consent (13/11/2026).
 
 The "AI" page was inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter): the idea of
 showing a Claude agent's activity on a screen. **No line of code and no file from that project is
