@@ -813,6 +813,37 @@ void ui_radar_tache()
     // 26/10 : les trames « PC » reçues, pas le mode noté par la bibliothèque (réglé seulement en relisant la configuration,
     // donc faux après un démarrage court : le capteur, lui, garde son mode)
     rd_etat.pc = ld2410s.hasEngineeringData();
+    // 13/11 (retour d'usage, « chien de garde ») : le séjour ne dormait plus depuis 4h49 (présence permanente à 7,1 m, broche
+    // haute) ; une relecture de la configuration (/radar/config) l'a débloqué. Présence ininterrompue depuis 1 h ET aucun
+    // toucher depuis 1 h -> relecture (bloque la boucle ~1,6 s ; personne ne touche l'écran), au plus une par heure ;
+    // une ligne au journal de HA avant, une 15 s après (présence encore là = vraie présence, partie = blocage).
+    {
+        const uint32_t CHIEN_MS = 3600000UL;
+        static uint32_t presence_depuis = 0, derniere_relance = 0, verif_ms = 0;
+        const uint32_t t = millis();
+        if (!mouvement)
+            presence_depuis = 0;
+        else if (!presence_depuis)
+            presence_depuis = t | 1;
+        if (verif_ms && t - verif_ms >= 15000)
+        {
+            verif_ms = 0;
+            if (mouvement)
+                ui_journal(false, "Radar relu : présence toujours là (%u cm)", (unsigned)distance);
+            else
+                ui_journal(true, "Radar relu : plus de présence (il était bloqué)");
+        }
+        if (presence_depuis && t - presence_depuis >= CHIEN_MS && lv_disp_get_inactive_time(NULL) >= CHIEN_MS &&
+            (!derniere_relance || t - derniere_relance >= CHIEN_MS) && !ld2410s.isAutoThresholdRunning() && !g_auto_a_finir &&
+            !rd_etat.diag)
+        {
+            derniere_relance = t | 1;
+            ui_journal(true, "Radar : présence ininterrompue depuis %lu min sans toucher (%u cm) : relecture",
+                       (unsigned long)((t - presence_depuis) / 60000), (unsigned)distance);
+            lire_config();
+            verif_ms = millis() | 1;
+        }
+    }
     rd_etat.auto_en_cours = ld2410s.isAutoThresholdRunning() || g_auto_a_finir; // pas le compte à rebours : la page montre la présence
     rd_etat.progression = ld2410s.autoThresholdProgress();
     depart_tache();
