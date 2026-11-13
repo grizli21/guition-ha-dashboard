@@ -190,7 +190,7 @@ static bool g_economie = false;
 static bool g_touche = false;       // touché depuis le réveil
 static bool g_wifi_coupe = false;   // radio arrêtée exprès
 static bool g_rallumer = false;     // demandé par un toucher, fait dans la boucle
-static bool g_wifi_rallume = false; // rallumée par un toucher : PS_MIN jusqu'à la veille
+static bool g_wifi_rallume = false; // rallumée par un toucher (12/11 : plus de PS_MIN forcé, économie normale)
 static uint32_t g_rallume_ms = 0;
 
 // ---- 26/10 : démarrage court (production : setup_fast_v3), au réveil par le radar et après un redémarrage logiciel :
@@ -400,7 +400,7 @@ static void energie_tache()
     {
         g_economie = false;
         setCpuFrequencyMhz(240);
-        esp_wifi_set_ps(g_wifi_rallume ? WIFI_PS_MIN_MODEM : WIFI_PS_NONE);
+        esp_wifi_set_ps(WIFI_PS_NONE); // 12/11 : aussi après un rallumage au toucher (PS_MIN y coûtait la réactivité pour ~50 mA)
     }
     const int veille_s = ui_appareil_veille_s();
     ui_appareil_extinction_ms = ui_radar_diag_actif() ? (uint32_t)veille_s * 1000 : 0; // diag radar : écran noir, ESP éveillé
@@ -1143,8 +1143,8 @@ static void wifi_surveiller()
         {
             wifi_ps_type_t ps = WIFI_PS_NONE;
             esp_wifi_get_ps(&ps);
-            esp_wifi_set_ps(g_wifi_rallume ? WIFI_PS_MIN_MODEM : WIFI_PS_NONE); // 31/10 : rallumé au toucher : PS_MIN
-            ui_trace("[wifi] connecté ; économie d'énergie trouvée : %d (0 = aucune), %s\n", (int)ps, g_wifi_rallume ? "PS_MIN" : "coupée");
+            esp_wifi_set_ps(WIFI_PS_NONE); // 12/11 : aussi après un rallumage au toucher ; l'économie (PS_MIN) vient à 10 s sans toucher
+            ui_trace("[wifi] connecté ; économie d'énergie trouvée : %d (0 = aucune), coupée\n", (int)ps);
             if (g_ecran && g_ecran->batterie)
                 emission_appliquer(); // 31/10 : 7 dBm si réglé
             // 26/10 : la borne du réveil suivant (écran sur batterie)
