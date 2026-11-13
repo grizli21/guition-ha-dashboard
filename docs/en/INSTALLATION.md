@@ -70,8 +70,11 @@ been run on Windows yet: to be validated in real conditions.**
 2. [Python 3](https://www.python.org/downloads/windows/) (3.11 or newer) — the installer defaults are fine.
 3. PlatformIO, your choice:
    - **VS Code**: the “PlatformIO IDE” extension (ant logo in the status bar, then its terminal);
-   - **command line**: `pip install platformio`, then `pio` wherever this page says `pio`
-     (that is what the CI workflow does).
+   - **command line**: `pip install platformio==6.2.0`, then `pio` wherever this page says `pio`
+     (that is what the CI workflow does). Keep **6.2.0**: the `6.2.0.post1` that pip installs without a
+     version is rejected by the platform (“depends on PlatformIO Core >=6.2.0”, seen by the CI on 13 Nov 2026).
+4. **The terminal**: run `pio` from **PowerShell** or the VS Code terminal, **never from Git Bash** (MSYS):
+   the ESP-IDF tooling stops there with “MSys/Mingw is not supported” (seen by the CI on 13 Nov 2026).
 
 ### Long paths — pitfall no. 1
 

@@ -71,8 +71,11 @@ Windows : à valider en conditions réelles.**
    défaut de l'installeur conviennent.
 3. PlatformIO, au choix :
    - **VS Code** : extension « PlatformIO IDE » (logo fourmi en bas à gauche, puis son terminal) ;
-   - **ligne de commande** : `pip install platformio`, puis `pio` partout où cette page écrit `pio`
-     (c'est ce que fait l'atelier CI).
+   - **ligne de commande** : `pip install platformio==6.2.0`, puis `pio` partout où cette page écrit `pio`
+     (c'est ce que fait l'atelier CI). Gardez la **6.2.0** : la `6.2.0.post1` que pip installe sans version
+     est refusée par la plateforme (« depends on PlatformIO Core >=6.2.0 », constaté par l'atelier CI le 13/11).
+4. **Le terminal** : lancez `pio` depuis **PowerShell** ou le terminal de VS Code, **jamais depuis Git Bash**
+   (MSYS) : l'outillage ESP-IDF s'y arrête sur « MSys/Mingw is not supported » (constaté par l'atelier CI le 13/11).
 
 ### Chemins longs — le piège n° 1
 

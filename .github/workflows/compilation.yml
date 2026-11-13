@@ -46,7 +46,9 @@ jobs:
           git config --system core.longpaths true
 
       - name: PlatformIO Core
-        run: pip install platformio
+        # 13/11 (1er run) : « pip install platformio » donnait 6.2.0.post1, refusé par la plateforme (« depends on
+        # PlatformIO Core >=6.2.0 » : le suffixe post compte comme préversion). Version figée, celle qui compile chez nous.
+        run: pip install platformio==6.2.0
 
       - name: Cache PlatformIO
         uses: actions/cache@v4
@@ -62,13 +64,15 @@ jobs:
           cp src/secrets_ma.h.exemple src/secrets_ma.h
           cp src/ecran/secrets_wifi.h.exemple src/ecran/secrets_wifi.h
 
+      # 13/11 (1er run) : sous Windows, PAS de « shell: bash » (Git Bash = MSYS) : l'outillage ESP-IDF refuse
+      # « MSys/Mingw is not supported ». PowerShell partout (présent aussi sur ubuntu-latest).
       - name: Compilation (env ecran)
-        shell: bash
+        shell: pwsh
         run: pio run -e ecran
 
       - name: Compilation (env ecran, MODE_DEMO)
         if: matrix.demo
-        shell: bash
+        shell: pwsh
         env:
           PLATFORMIO_BUILD_FLAGS: -DMODE_DEMO
         run: pio run -e ecran
