@@ -11,8 +11,8 @@
 #define UI_CAM_IMPRIMANTE "http://192.168.1.12:1984/api/stream.mjpeg?src=imprimante_ecran"
 #endif
 // 08/11/2026 (retour d'usage) : la seconde caméra de l'imprimante, la face du PLATEAU (caméra USB « bed » de Klipper, recadrée
-// au centre par go2rtc sur le NAS). 384 x 304, ~14 Ko par image, ≈ 14,4 images/s mesurées sur un écran
-// (13/11, 433 images en 30 s, décodage 39 ms, source autour de 14-15/s) : même taille et même format que
+// au centre par go2rtc sur le NAS). 384 x 304, 14 à 29 Ko par image selon la scène et l'éclairage,
+// ≈ 14,4 images/s mesurées sur un écran (13/11, 430 et 433 images en 30 s, décodage 39 ms, source autour de 14-15/s) : même taille et même format que
 // imprimante_ecran, préchargée. Mêmes remarques que ci-dessus : le recadrage de la page (375 x 300) prend 4 px de chaque
 // côté et 2 px en haut et en bas, sans mise à l'échelle (ui_camera.cpp:434).
 #ifndef UI_CAM_PLATEAU // remplaçable à la compilation, comme la caméra du caisson (banc : source fixe rejouée)

@@ -108,14 +108,14 @@ Without thumbnails at those sizes, the list and the ring show “no thumbnail”
 The two views (enclosure, bed) are **MJPEG streams** — at the author’s, go2rtc on the NAS (cropping
 and sub-streams prepared there, ~384×304). Measured on a screen (13/11): enclosure ≈ 18.7 frames/s
 (558 and 561 frames in 30 s, 30 KB frames, 52 ms decode — the source is set to 20/s and the screen
-keeps up); bed ≈ 14.4 frames/s (433 frames in 30 s, 14 KB frames, 39 ms decode — source around
-14-15/s). The rate depends on each setup — measure yours. The URLs live in
+keeps up); bed ≈ 14.4 frames/s (430 and 433 frames in 30 s, 14 to 29 KB per frame depending on the
+scene and lighting, 39 ms decode — source around 14-15/s). The rate depends on each setup — measure yours. The URLs live in
 [src/ui_lvgl/ui_camera.h](../../src/ui_lvgl/ui_camera.h) (`UI_CAM_IMPRIMANTE`, `UI_CAM_PLATEAU`,
 overridable with `-D` at compile time): adapt host, port and `src=`, then rebuild. With no camera (or
 a wrong URL), the corner button still cycles STL → enclosure → bed views; the zone simply stays empty
 (`[camera]` traces go to serial/telnet, nothing is displayed).
 
-The real screen, with its three views — file thumbnail, enclosure, bed (interface from an earlier
+The real screen, with its three views — slicer thumbnail (not a camera), enclosure, bed (interface from an earlier
 version; images taken by the author's camera, published with his consent):
 
 <img src="../images/ecran-reel-piece.png" width="234" alt="Real screen, STL file view"> <img src="../images/ecran-reel-caisson.png" width="234" alt="Real screen, enclosure view"> <img src="../images/ecran-reel-plateau.png" width="234" alt="Real screen, bed view">
