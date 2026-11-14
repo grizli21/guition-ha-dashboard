@@ -136,13 +136,15 @@ reste du temps. C'est le même firmware que les écrans muraux : l'écran se rec
 - **Carte modifiée** pour libérer des broches et ne rien laisser consommer en veille ; **boîtier dessiné
   de A à Z**, fichiers STL fournis.
 
-Il a deux pages à lui :
+Il a une page à lui, épinglée en bas du rail, en trois onglets :
 
-<img src="docs/images/page-batterie.png" width="300" alt="Page Batterie"> <img src="docs/images/page-radar.png" width="300" alt="Page Radar">
+<img src="docs/images/page-batterie.png" width="260" alt="Page Batterie, onglet Batterie"> <img src="docs/images/page-radar.png" width="260" alt="Page Batterie, onglet Radar"> <img src="docs/images/page-batterie-reglages.png" width="260" alt="Page Batterie, onglet Réglages">
 
-*À gauche, **Batterie** : charge, réveils sur 24 h, détail du dernier réveil en millisecondes, comptées
-depuis le lancement du programme, environ 0,5 s après le réveil de la puce (capture de l'écran réel du séjour,
-réveil par le radar à 22h33). À droite, **Radar** : zones, sensibilité, réglage automatique, test sur place.*
+**Batterie** : charge, réveils sur 24 h, détail du dernier réveil en millisecondes, comptées depuis le lancement
+du programme, environ 0,5 s après le réveil de la puce (capture de l'écran réel du séjour, réveil par le radar à
+13h55). **Radar** : zones, sensibilité, réglage automatique, test sur place (simulateur). **Réglages** : gestion
+de l'énergie — coupure du Wi-Fi après la synchro, délai de l'économie, puissance Wi-Fi, marge du réglage auto
+(écran réel).
 
 Câblage, modifications de la carte, mesures et boîtier : [materiel/ecran-batterie/](materiel/ecran-batterie/).
 

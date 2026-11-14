@@ -3000,8 +3000,13 @@ int main()
             t += 400;
             toucher(348, 442); // Confort
             doigt_pose = false; // relâché : le clic part, l'anneau balaie
-            for (int k = 0; k <= 450; k += 50)
+            for (int k = 0; k <= 1200; k += 50)
             {
+                if (k == 300) // 14/11 : HA confirme le préréglage et la chaudière démarre : la lueur de chauffe s'allume
+                {
+                    tp.mode = TH_CONFORT, tp.consigne = 20, tp.chauffe = true;
+                    page_thermostat_maj();
+                }
                 avancer(k == 0 ? 10 : 50);
                 t += k == 0 ? 10 : 50;
                 snprintf(nom, sizeof nom, "anim_rail_%03d", t);

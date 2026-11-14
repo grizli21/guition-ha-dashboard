@@ -136,13 +136,14 @@ It runs the same firmware as the wall displays: the display recognizes itself by
 - **Modified board** to free pins and leave nothing drawing current in sleep; **case designed from
   scratch**, STL files included.
 
-It has two pages of its own:
+It has a page of its own, pinned at the bottom of the rail, with three tabs:
 
-<img src="docs/images/page-batterie.png" width="300" alt="Battery page"> <img src="docs/images/page-radar.png" width="300" alt="Radar page">
+<img src="docs/images/page-batterie.png" width="260" alt="Battery page, Battery tab"> <img src="docs/images/page-radar.png" width="260" alt="Battery page, Radar tab"> <img src="docs/images/page-batterie-reglages.png" width="260" alt="Battery page, Settings tab">
 
-*Left, **Battery**: charge, wake-ups over 24 h, breakdown of the last wake-up in milliseconds, counted
-from the program start, about 0.5 s after the chip wakes up (capture from the real living-room display, radar
-wake-up at 22:33). Right, **Radar**: zones, sensitivity, automatic tuning, on-the-spot test.*
+**Battery**: charge, wake-ups over 24 h, breakdown of the last wake-up in milliseconds, counted from the program
+start, about 0.5 s after the chip wakes up (capture from the real living-room display, radar wake-up at 13:55).
+**Radar**: zones, sensitivity, automatic tuning, on-the-spot test (simulator). **Settings**: power management —
+Wi-Fi off after the sync, economy delay, Wi-Fi power, automatic tuning margin (real display).
 
 Wiring, board modifications, measurements and case: [materiel/ecran-batterie/README.en.md](materiel/ecran-batterie/README.en.md).
 
