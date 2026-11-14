@@ -134,8 +134,9 @@ quelqu'un. Placez-le là où l'on passe plutôt que là où l'on reste assis, ou
 - **Veille profonde** dès que personne n'est là, après le délai de veille réglé : la dalle passe en veille
   profonde (commande DSTB du ST7701), et le radar la réveille (GPIO 2).
 - **Démarrage court** au réveil : pas d'écran de démarrage, borne Wi-Fi et canal gardés en mémoire RTC
-  pour se reconnecter sans balayage. Mesuré : **0,69 à 0,76 s** jusqu'à l'écran allumé, contre 1,39 s
-  avec l'ancien firmware (sous Arduino 2) ; les données de Home Assistant sont à jour 1,3 à 1,8 s après le réveil.
+  pour se reconnecter sans balayage. Mesuré sur un réveil (13/11/2026), depuis le réveil de la puce : programme
+  lancé à **0,49 s** (démarrage, lecture du programme et copie en PSRAM), écran éclairé à **1,77 s**, données de
+  Home Assistant à jour à **2,74 s**. Le délai propre du radar n'est pas compté.
 - **Bibliothèque musicale à la demande** : elle n'est pas chargée au démarrage, seulement à l'ouverture
   de la liste.
 - **Mode économie** après 10 s sans toucher : luminosité de repos, processeur à 80 MHz, Wi-Fi en
@@ -147,7 +148,8 @@ quelqu'un. Placez-le là où l'on passe plutôt que là où l'on reste assis, ou
 - Essayé sans gain : `WIFI_PS_MAX_MODEM` (tout le trafic est rattrapé d'un coup au réveil de la radio).
 
 La page **Batterie et capteur** montre la charge, l'historique des réveils sur 24 h (radar, toucher,
-minuterie) et le détail du dernier réveil, en millisecondes : Wi-Fi, MQTT, synchronisation, coupure.
+minuterie) et le détail du dernier réveil, en millisecondes comptées depuis le lancement du programme : Wi-Fi, MQTT,
+synchronisation, coupure.
 La tension est lissée sur 64 lectures (les 4 extrêmes écartés) ; la charge est déduite de la tension
 (au-dessus de 4,15 V).
 

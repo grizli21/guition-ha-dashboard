@@ -640,6 +640,11 @@ static bool servir_images_locale(const char *url, uint8_t **donnees, size_t *tai
 // donnees/cameras/<dossier>/NNN.jpg, vide = image fixe ; compteur d'image, bouclé sur 12.
 static char g_seq_cam[64] = "";
 static int g_seq_i = 0;
+// 13/11 soir (README, paragraphe « Caméra en direct ») : enregistrements image par image d'un park
+// (fichiers fNNN.jpg), un dossier par vue, hors du dépôt (SIMU_FLUX_CAISSON / SIMU_FLUX_PLATEAU).
+// g_flux_n >= 0 : la caméra simulée sert l'image n de la vue affichée.
+static const char *g_flux_c = nullptr, *g_flux_p = nullptr;
+static int g_flux_n = -1;
 
 int main()
 {
@@ -662,6 +667,23 @@ int main()
         // séquence de l'imprimante sont de la VRAIE caméra du caisson de l'auteur (publiées avec son
         // accord), prises pendant un « park » à 20 images/s : le flux simulé, tiré ~2 fois par pas de
         // 10 ms, consomme une frame toutes les 10 tirages (g_seq_i/10) pour tenir la cadence réelle.
+        if (g_flux_n >= 0)
+        {
+            const char *dir = !strcmp(cam, "3") ? g_flux_c : !strcmp(cam, "plateau") ? g_flux_p : nullptr;
+            if (dir)
+            {
+                char img[512];
+                snprintf(img, sizeof img, "%s/f%03d.jpg", dir, g_flux_n);
+                FILE *ff = fopen(img, "rb");
+                if (ff)
+                {
+                    *n = fread(buf, 1, max, ff);
+                    fclose(ff);
+                    if (*n > 0)
+                        return true;
+                }
+            }
+        }
         if (g_seq_cam[0])
         {
             char seq[128];
@@ -2899,16 +2921,26 @@ int main()
     // L'état est reconstitué à la fin (rail en haut, page Informations) pour que la capture 147 reste
     // identique, octet à octet.
     {
+        // 13/11 soir (Nicolas) : départ de la page Informations, rail en bas ; le glissé le ramène en haut,
+        // appui sur Chauffage, puis sur Confort : l'anneau balaie de l'arrêt à 20° (pièce à 16,4°), comme 01g.
+        th_piece_t &tp = th_pieces[th_piece_affichee];
+        const th_piece_t tp_garde = tp;
+        tp.mode = TH_ARRET, tp.consigne = 20, tp.temp = 16.4f, tp.chauffe = false;
+        aller("Informations");
+        avancer(300);
+        glisser(440, 380, 440, 40); // rail amené en bas (non filmé)
+        lacher();
+        avancer(1500);
         char nom[48];
         int t = 0;
         snprintf(nom, sizeof nom, "anim_rail_%03d", t);
         capture(nom);
-        doigt_x = 440; doigt_y = 380; doigt_pose = true;
+        doigt_x = 440; doigt_y = 40; doigt_pose = true;
         avancer(80);
         t += 80;
-        for (int i = 1; i <= 12; i++) // le geste de glisser(), pas à pas : 12 pas de 30 ms
+        for (int i = 1; i <= 12; i++) // le geste de glisser(), pas à pas : 12 pas de 30 ms, vers le bas
         {
-            doigt_y = 380 + (40 - 380) * i / 12;
+            doigt_y = 40 + (380 - 40) * i / 12;
             avancer(30);
             t += 30;
             snprintf(nom, sizeof nom, "anim_rail_%03d", t);
@@ -2933,49 +2965,34 @@ int main()
             if (lv_obj_get_x(c) == UI_ZONE_L && lv_obj_get_width(c) == UI_RAIL_L && lv_obj_get_y(c) == 0)
                 rail = c;
         }
-        lv_obj_t *cible = rail ? lv_obj_get_child(rail, 12) : nullptr;
+        lv_obj_t *cible = rail ? lv_obj_get_child(rail, 0) : nullptr; // pages[0] « Chauffage »
         lv_area_t ac;
         if (cible)
             lv_obj_get_coords(cible, &ac);
         const int page_avant = ui_shell_page();
         if (cible)
         {
-            printf("[anim-rail] icône Imprimante : x %d..%d y %d..%d\n", ac.x1, ac.x2, ac.y1, ac.y2);
+            printf("[anim-rail] icône Chauffage : x %d..%d y %d..%d\n", ac.x1, ac.x2, ac.y1, ac.y2);
             toucher((ac.x1 + ac.x2) / 2, (ac.y1 + ac.y2) / 2);
             lacher();
-            t += 180;
-            snprintf(nom, sizeof nom, "anim_rail_%03d", t);
-            capture(nom);
-            avancer(200);
-            t += 200;
+            avancer(200); // 13/11 soir : une seule image, miniature chargée (plus d'état « pas de miniature »)
+            t += 380;
             snprintf(nom, sizeof nom, "anim_rail_%03d", t);
             capture(nom);
             printf("[anim-rail] clic icône : « %s » -> « %s »\n", ui_shell_nom(page_avant), ui_shell_nom(ui_shell_page()));
-        }
-        // 13/11 : petite animation caméra en bout de course : bouton « Caméra » de la page Imprimante
-        // (vue caisson), puis les vraies images de la caméra du caisson (l'auteur, accord explicite)
-        // pendant un park : 10 frames prises à 20 images/s, servies à leur cadence réelle — une capture
-        // tous les 50 ms (le flux simulé est tiré ~2 fois par pas de 10 ms, la séquence avance d'une
-        // frame tous les 10 tirages).
-        if (cible && ui_shell_nom(ui_shell_page()) && !strcmp(ui_shell_nom(ui_shell_page()), "Imprimante 3D"))
-        {
-            toucher(359, 71); // bouton « Caméra »
-            lacher();
-            avancer(300);
-            t += 300;
-            snprintf(nom, sizeof nom, "anim_rail_%03d", t);
-            capture(nom);
-            snprintf(g_seq_cam, sizeof g_seq_cam, "park_caisson"); // donnees/cameras/park_caisson/NNN.jpg (vraie caméra, frames f116..f125)
-            g_seq_i = 0;
-            for (int i = 0; i < 10; i++)
+            avancer(400);
+            t += 400;
+            toucher(348, 442); // Confort
+            doigt_pose = false; // relâché : le clic part, l'anneau balaie
+            for (int k = 0; k <= 450; k += 50)
             {
-                avancer(50);
-                t += 50;
+                avancer(k == 0 ? 10 : 50);
+                t += k == 0 ? 10 : 50;
                 snprintf(nom, sizeof nom, "anim_rail_%03d", t);
                 capture(nom);
             }
-            g_seq_cam[0] = 0;
         }
+        tp = tp_garde;
         // état reconstitué : rail en haut (geste inverse, sans élastique il cale exactement en haut),
         // page Informations comme avant ce bloc
         glisser(440, 60, 440, 430);
@@ -2983,6 +3000,60 @@ int main()
         avancer(600);
         if (rail)
             printf("[anim-rail] remonté : scroll_y = %d\n", (int)lv_obj_get_scroll_y(rail));
+        aller("Informations");
+        avancer(300);
+    }
+
+    // 13/11 soir : animation « Caméra en direct » du README (anim_flux_c_NNN puis anim_flux_p_NNN), séparée du
+    // rail. Page Imprimante, vue caisson puis vue plateau : chaque image enregistrée pendant un park de
+    // l'auteur (publiées avec son accord), le park ENTIER, une capture par image ; la cadence (mesurée sur
+    // l'écran : 18,7 i/s caisson, 14,4 i/s plateau) est donnée au moment d'assembler l'animation.
+    g_flux_c = getenv("SIMU_FLUX_CAISSON");
+    g_flux_p = getenv("SIMU_FLUX_PLATEAU");
+    if (g_flux_c && g_flux_p)
+    {
+        auto nb = [](const char *dir)
+        {
+            int k = 0;
+            char f[512];
+            for (;; k++)
+            {
+                snprintf(f, sizeof f, "%s/f%03d.jpg", dir, k);
+                FILE *x = fopen(f, "rb");
+                if (!x)
+                    return k;
+                fclose(x);
+            }
+        };
+        char nom[48];
+        aller("Imprimante 3D");
+        avancer(600);
+        g_flux_n = 0;
+        toucher(359, 71); // vue caisson
+        lacher();
+        avancer(400);
+        for (int k = 0, n = nb(g_flux_c); k < n; k++)
+        {
+            g_flux_n = k;
+            avancer(53);
+            snprintf(nom, sizeof nom, "anim_flux_c_%03d", k);
+            capture(nom);
+        }
+        g_flux_n = 0;
+        toucher(359, 71); // vue plateau
+        lacher();
+        avancer(400);
+        for (int k = 0, n = nb(g_flux_p); k < n; k++)
+        {
+            g_flux_n = k;
+            avancer(69);
+            snprintf(nom, sizeof nom, "anim_flux_p_%03d", k);
+            capture(nom);
+        }
+        g_flux_n = -1;
+        toucher(359, 71); // retour à la miniature
+        lacher();
+        avancer(300);
         aller("Informations");
         avancer(300);
     }

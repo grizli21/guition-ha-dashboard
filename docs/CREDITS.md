@@ -41,8 +41,9 @@ mires générées, libres de droit — sauf deux médias pris sur Wikimedia Comm
   par le producteur lui-même —
   [File:Commonasm mashup album artwork.jpg](https://commons.wikimedia.org/wiki/File:Commonasm_mashup_album_artwork.jpg).
 
-Les images de la caméra du caisson qui animent le GIF « navigation » et la vignette Imprimante
-(`simu/donnees/cameras/park_caisson/`) et les trois photos d'écran réel de
+Les images des caméras du caisson et du plateau de l'animation « Caméra en direct »
+(`docs/images/camera-direct.webp`), celles de la vignette Imprimante (`simu/donnees/cameras/park_caisson/`)
+et les trois photos d'écran réel de
 [docs/IMPRIMANTE.md](IMPRIMANTE.md) sont des prises de l'auteur, sur sa propre imprimante, publiées
 avec son accord explicite (13/11/2026).
 

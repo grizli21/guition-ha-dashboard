@@ -41,8 +41,9 @@ patterns, free of rights — except two media taken from Wikimedia Commons under
   the producer himself —
   [File:Commonasm mashup album artwork.jpg](https://commons.wikimedia.org/wiki/File:Commonasm_mashup_album_artwork.jpg).
 
-The enclosure-camera images animating the “navigation” GIF and the Printer vignette
-(`simu/donnees/cameras/park_caisson/`) and the three real-screen photos in
+The enclosure- and bed-camera images of the “Live camera” animation
+(`docs/images/camera-direct.webp`), those of the Printer vignette (`simu/donnees/cameras/park_caisson/`)
+and the three real-screen photos in
 [docs/en/IMPRIMANTE.md](IMPRIMANTE.md) were taken by the author, on his own printer, published with
 his explicit consent (13/11/2026).
 

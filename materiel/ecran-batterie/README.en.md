@@ -133,8 +133,9 @@ tab of the Battery page).
 - **Deep sleep** as soon as nobody is around, after the configured sleep delay: the panel goes into
   deep sleep (the ST7701's DSTB command), and the radar wakes it (GPIO 2).
 - **Short boot** on wake: no startup screen, Wi-Fi endpoint and channel kept in RTC memory to
-  reconnect without scanning. Measured: **0.69 to 0.76 s** until the screen is on, against 1.39 s
-  with the old firmware (on Arduino 2); Home Assistant data is up to date 1.3 to 1.8 s after wake-up.
+  reconnect without scanning. Measured on one wake-up (13 Nov 2026), from the chip waking up: program
+  started at **0.49 s** (boot, program load and copy to PSRAM), screen lit at **1.77 s**, Home Assistant data up
+  to date at **2.74 s**. The radar's own delay is not counted.
 - **Music library on demand**: it is not loaded at startup, only when the list is opened.
 - **Economy mode** after 10 s without touching: idle brightness, processor at 80 MHz, Wi-Fi in
   light power save (`WIFI_PS_MIN_MODEM`).
@@ -145,7 +146,8 @@ tab of the Battery page).
 - Tried without gain: `WIFI_PS_MAX_MODEM` (all the traffic is caught up at once on the radio's wake).
 
 The **Battery & Sensor** page shows the charge, the wake-up history over 24 h (radar, touch,
-timer) and the detail of the last wake-up, in milliseconds: Wi-Fi, MQTT, synchronization, cut-off.
+timer) and the detail of the last wake-up, in milliseconds counted from the program start: Wi-Fi, MQTT,
+synchronization, cut-off.
 The voltage is smoothed over 64 readings (the 4 extremes discarded); the charge is inferred from
 the voltage (above 4.15 V).
 

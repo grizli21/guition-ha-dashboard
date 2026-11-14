@@ -2,14 +2,16 @@
 
 **English** | [Français](README.fr.md)
 
+<img src="docs/images/ecran-batterie-pivot.jpg" width="640" alt="The battery-powered display on its pivot, next to a display on its desk stand">
+
 Wall-mounted dashboard for **Guition ESP32-S3-4848S040** screens: LVGL 9.6 firmware, driven by
 **Home Assistant over MQTT**, with a **PC simulator** that compiles the actual page code and outputs
-480 × 480 captures. Nineteen touch pages designed for the home: heating, 24 h charts, air quality,
-covers, feeder, coffee, hot water, ventilation, wood stove, music, lights, LED panel, 3D printer,
-PC, AI, settings, info, battery — plus the radar page for battery-powered screens.
+480 × 480 captures. Nineteen touch pages for the home: heating, 24 h charts, air quality, covers,
+feeder, coffee, hot water, ventilation, wood stove, music, lights, LED panel, 3D printer, PC, AI,
+settings, info, battery and radar.
 
-It also comes in a **wireless version**: battery, presence radar, 2 mA deep sleep, screen on 0.7 s after wake-up —
-see [Battery-powered display](#battery-powered-display).
+It also comes in a **wireless version** (on the right in the photo, on its pivot): battery, presence
+radar, 2 mA deep sleep — see [Battery-powered display](#battery-powered-display).
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4b714f)](LICENSE)
 [![LVGL 9.6.0](https://img.shields.io/badge/LVGL-9.6.0-41c17c)](lib/lvgl-9.6.0)
@@ -21,13 +23,39 @@ see [Battery-powered display](#battery-powered-display).
 
 ## Contents
 
-- [Gallery](#gallery) · [Battery-powered display](#battery-powered-display) · [Navigation](#navigation) · [Hardware](#hardware) · [Architecture](#architecture) · [Under the hood](#under-the-hood)
-- [Quick start](#quick-start) · [Going further](#going-further) · [Known limitations](#known-limitations) · [License and credits](#license-and-credits)
+- [Navigation](#navigation) · [Live camera](#live-camera) · [Gallery](#gallery) · [The "AI" page](#the-ai-page) · [Battery-powered display](#battery-powered-display)
+- [Hardware](#hardware) · [Architecture](#architecture) · [Under the hood](#under-the-hood) · [Quick start](#quick-start) · [Going further](#going-further) · [Known limitations](#known-limitations) · [License and credits](#license-and-credits)
 - Detailed pages: [Installation](docs/en/INSTALLATION.md) · [Under the hood](docs/en/SOUS_LE_CAPOT.md) · [3D Printer](docs/en/IMPRIMANTE.md) · [Development](docs/en/DEVELOPPEMENT.md) · [Credits](docs/en/CREDITS.md) · [Battery-powered display](materiel/ecran-batterie/README.en.md) · [3D stand](materiel/support-bureau/README.en.md)
 
-The heating ring during the heat-up (9 simulator frames, animated):
+## Navigation
 
-<img src="docs/images/vitrine-chauffage.gif" width="360" alt="The thermostat ring during heating">
+<img src="docs/images/rail-anime.gif" width="360" alt="From the Info page to the thermostat through the rail, then a tap on Comfort">
+
+The right-hand rail is a swipeable **carousel of icons**: 17 icons of 64 px, with no snapping and no
+rubber-banding — it stops exactly on the first and the last icon. Tapping an icon switches the page
+instantly; the pinned page (here the battery) stays fixed at the bottom.
+
+The animation comes from the simulator, at the real timings of the gesture: from the Info page, the
+rail slides and stops at the top, a tap opens the heating page, then a tap on Comfort sweeps the ring up
+to the 20° setpoint.
+
+## Live camera
+
+<img src="docs/images/camera-direct.webp" width="360" alt="3D Printer page: live view from the enclosure camera, then from the bed camera, during a park">
+
+The 3D Printer page shows the printer cameras **live, frame after frame** (MJPEG via go2rtc). Here, a
+complete park of the print head, seen by the enclosure camera and then by the bed camera; the frames are
+the real ones, recorded during the park, replayed in the simulator at the rate **measured on the
+screen**:
+
+| Camera | Measured on the screen | Source setting |
+|---|---|---|
+| Enclosure (thingino, 640 × 360 sub-stream) | ≈ 18.7 frames/s | 20 frames/s |
+| Bed (crowsnest) | ≈ 14.4 frames/s | 15 frames/s |
+
+The screen follows what the source sends: the camera setting sets the rate. While the rail moves, the
+stream pauses and resumes 300 ms after it stops (otherwise the camera would chop up the gesture).
+Setting up a Klipper/Moonraker printer: [docs/en/IMPRIMANTE.md](docs/en/IMPRIMANTE.md).
 
 ## Gallery
 
@@ -37,20 +65,19 @@ Montserrat Bold — see [tools/fonts/README.en.md](tools/fonts/README.en.md#opti
 
 <table>
   <tr>
-    <td><img src="docs/images/page-chauffage.png" width="234" alt="Heating page"><br><b>Heating</b> — 16.4° measured, setpoint 20° on the ring, heating glow, off / frost / eco / comfort modes</td>
-    <td><img src="docs/images/page-eau-chaude.png" width="234" alt="Hot Water page"><br><b>Hot Water</b> — tank, setpoint on the ring, boost, 24 h curve</td>
-    <td><img src="docs/images/helices-vmc.gif" width="234" alt="Ventilation page, animated propellers"><br><b>Ventilation</b> — low / high speed per zone, live humidity, animated propellers (GIF: one full turn of the high speed, 900 ms)</td>
-    <td><img src="docs/images/page-poele.png" width="234" alt="Wood Stove page"><br><b>Wood Stove</b> — draft regulated by a PID on the flue gas temperature, refill alert, curves</td>
+    <td width="33%" valign="top"><img src="docs/images/page-chauffage.png" width="234" alt="Heating page"><br><b>Heating</b> — measured temperature, setpoint on the ring, heating glow, modes</td>
+    <td width="33%" valign="top"><img src="docs/images/page-eau-chaude.png" width="234" alt="Hot water page"><br><b>Hot water</b> — tank, setpoint on the ring, forced heating, 24 h curve</td>
+    <td width="33%" valign="top"><img src="docs/images/helices-vmc.gif" width="234" alt="Ventilation page, animated fans"><br><b>Ventilation</b> — speed per zone, live humidity, animated fans</td>
   </tr>
   <tr>
-    <td><img src="docs/images/page-musique.png" width="234" alt="Music page"><br><b>Music</b> — Music Assistant: playback (free-license album cover, see <a href="docs/en/CREDITS.md">docs/CREDITS.md</a>), library, albums, radios, output</td>
-    <td><img src="docs/images/page-lumieres.png" width="234" alt="Lights page, cursor set on a color of the wheel"><br><b>Lights</b> — one lamp selected, cursor set on a color of the chromatic wheel, brightness by finger</td>
-    <td><img src="docs/images/page-imprimante.png" width="234" alt="3D Printer page"><br><b>3D Printer</b> — STL files and print thumbnails, tracking of the current layer, and live from the enclosure camera, frame after frame (≈ 18.7 frames/s measured on a screen, for a source set to 20/s)<br><small>Setting up a Klipper/Moonraker printer: <a href="docs/en/IMPRIMANTE.md">docs/en/IMPRIMANTE.md</a></small></td>
-    <td><img src="docs/images/page-pc.png" width="234" alt="PC page"><br><b>PC</b> — system, GPU, processes, local AI, sleep</td>
+    <td width="33%" valign="top"><img src="docs/images/page-poele.png" width="234" alt="Wood stove page"><br><b>Wood stove</b> — draft regulated on the flue gas temperature, reload alert, curves</td>
+    <td width="33%" valign="top"><img src="docs/images/page-musique.png" width="234" alt="Music page"><br><b>Music</b> — Music Assistant: playback, library, albums, radios, output</td>
+    <td width="33%" valign="top"><img src="docs/images/page-lumieres.png" width="234" alt="Lights page, cursor on a color of the wheel"><br><b>Lights</b> — one lamp selected, color picked on the wheel, brightness by finger</td>
   </tr>
   <tr>
-    <td><img src="docs/images/page-ia-jour.png" width="234" alt="AI page, daytime scene"><br><b>AI</b> — Clawd and the Claude agent on your PC: state, tokens, sessions, histogram. The sky follows the Home Assistant weather</td>
-    <td><img src="docs/images/page-batterie.png" width="234" alt="Battery page, last wake-up broken down in milliseconds"><br><b>Battery</b> — the last wake-up (radar) broken down in milliseconds, simulator capture. That wake-up speed is what makes the wireless display practical: measured on the real screen, screen on in 0.7 s, data up to date in 1.3 to 1.8 s</td>
+    <td width="33%" valign="top"><img src="docs/images/page-imprimante.png" width="234" alt="3D Printer page"><br><b>3D Printer</b> — files and thumbnails, current layer tracking, live cameras</td>
+    <td width="33%" valign="top"><img src="docs/images/page-pc.png" width="234" alt="PC page"><br><b>PC</b> — system, GPU, processes, local AI, sleep</td>
+    <td width="33%" valign="top"><img src="docs/images/page-ia-jour.png" width="234" alt="AI page, daytime scene"><br><b>AI</b> — activity of the Claude agent on your PC, under a sky that follows the weather</td>
   </tr>
 </table>
 
@@ -58,20 +85,16 @@ Montserrat Bold — see [tools/fonts/README.en.md](tools/fonts/README.en.md#opti
 <summary>The other pages (click to expand)</summary>
 <table>
   <tr>
-    <td><img src="docs/images/page-graphe.png" width="234" alt="Charts page"><br><b>Charts</b> — scrolling 24 h, finger reading, today's value in amber</td>
-    <td><img src="docs/images/page-air.png" width="234" alt="Air Quality page"><br><b>Air Quality</b> — two air purifiers, PM1/PM2.5/PM10 color-coded by level</td>
-    <td><img src="docs/images/page-ouvrants.png" width="234" alt="Covers page"><br><b>Covers</b> — blind, shutter, projection screen, finger adjustment</td>
-    <td><img src="docs/images/page-croquettes.png" width="234" alt="Feeder page"><br><b>Feeder</b> — dispenser: bowl, stock, 4 meals, week</td>
+    <td width="25%" valign="top"><img src="docs/images/page-graphe.png" width="170" alt="Charts page"><br><b>Charts</b> — scrolling 24 h, finger reading, today's value in amber</td>
+    <td width="25%" valign="top"><img src="docs/images/page-air.png" width="170" alt="Air Quality page"><br><b>Air Quality</b> — two air purifiers, PM1/PM2.5/PM10 color-coded by level</td>
+    <td width="25%" valign="top"><img src="docs/images/page-ouvrants.png" width="170" alt="Covers page"><br><b>Covers</b> — blind, shutter, projection screen, finger adjustment</td>
+    <td width="25%" valign="top"><img src="docs/images/page-croquettes.png" width="170" alt="Feeder page"><br><b>Feeder</b> — dispenser: bowl, stock, 4 meals, week</td>
   </tr>
   <tr>
-    <td><img src="docs/images/page-cafe.png" width="234" alt="Coffee page"><br><b>Coffee</b> — machine and kettle: scheduling, temperatures</td>
-    <td><img src="docs/images/page-panneau-led.png" width="234" alt="LED Panel page"><br><b>LED Panel</b> — light sessions: intensity levels, wavelengths, timer</td>
-    <td><img src="docs/images/page-reglages.png" width="234" alt="Settings page"><br><b>Settings</b> — day/night brightness, sleep, room of the display, Wi-Fi</td>
-    <td><img src="docs/images/page-infos.png" width="234" alt="Info page"><br><b>Info</b> — screen health, links green or red, log</td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/page-radar.png" width="234" alt="Radar page"><br><b>Radar</b> — LD2410S microwave sensor: zones, sensitivity, on-the-spot test</td>
-    <td></td>
+    <td width="25%" valign="top"><img src="docs/images/page-cafe.png" width="170" alt="Coffee page"><br><b>Coffee</b> — machine and kettle: scheduling, temperatures</td>
+    <td width="25%" valign="top"><img src="docs/images/page-panneau-led.png" width="170" alt="LED Panel page"><br><b>LED Panel</b> — light sessions: intensity levels, wavelengths, timer</td>
+    <td width="25%" valign="top"><img src="docs/images/page-reglages.png" width="170" alt="Settings page"><br><b>Settings</b> — day/night brightness, sleep, room of the display, Wi-Fi</td>
+    <td width="25%" valign="top"><img src="docs/images/page-infos.png" width="170" alt="Info page"><br><b>Info</b> — screen health, links green or red, log</td>
   </tr>
 </table>
 
@@ -79,21 +102,19 @@ Montserrat Bold — see [tools/fonts/README.en.md](tools/fonts/README.en.md#opti
 
 ## The "AI" page
 
+<img src="docs/images/ia-orage-anime.gif" width="360" alt="AI page in a storm: animated rain and lightning">
+
 Right after PC in the rail, a page shows the Claude agent running on your PC: state (thinking,
 waiting, idle), tokens produced, tool calls, prompts, sessions, and a 5 h histogram in 10-min
 slices. The data arrives over two retained MQTT topics (`pc/ia`, `pc/ia_activite` —
 [contract details](CONTRAT_MQTT.en.md)). To publish them from your own PC: [tools/claude_ia/](tools/claude_ia/)
-(Claude Code hook + small Python agent, step-by-step install in its README).
+(Claude Code hook and small Python agent, step-by-step install in its README).
 
 The scene has an **animated sky**: sun and moon travel along their arcs, driven by the real times
 published by Home Assistant (`maison/ciel`, a ready-made automation in
 [ha_propositions/](ha_propositions/)); the moon carries its true phase; dawn and dusk tint the sky;
-clouds drift, rain falls, snow whitens the ground and fog fades the bush. Every image is a pixel
-drawing regenerated by [tools/gen_scene_ia.py](tools/gen_scene_ia.py).
-
-<img src="docs/images/ia-orage-anime.gif" width="234" alt="AI page in a storm: animated rain and lightning">
-
-*Storm: rain falls and a lightning flash whitens the sky (simulator animation, about 15 frames per second).*
+clouds drift, rain falls, storms light up the sky (above, simulator animation), snow whitens the
+ground and fog veils the scene. Every pixel drawing is regenerated by [tools/gen_scene_ia.py](tools/gen_scene_ia.py).
 
 > This page is an **unofficial fan project, not affiliated with Anthropic**. "Claude" and "Clawd" are
 > trademarks of Anthropic. The Clawd drawings are original artwork, **excluded from the MIT license**
@@ -102,38 +123,28 @@ drawing regenerated by [tools/gen_scene_ia.py](tools/gen_scene_ia.py).
 
 ## Battery-powered display
 
-<img src="docs/images/ecran-batterie-pivot.jpg" width="640" alt="The battery-powered display on its pivot, next to a display on its desk stand">
-
-A **wireless** version of the same display, in a 3D-printed case: four 18650 cells, a presence radar that
-wakes it when someone comes near, and deep sleep the rest of the time. It runs the same firmware as the wall
-displays: the display recognizes itself by its MAC address.
+A **wireless** version of the same display, in a 3D-printed case (photo at the top of the page): four
+18650 cells, a presence radar that wakes it when someone comes near, and deep sleep the rest of the time.
+It runs the same firmware as the wall displays: the display recognizes itself by its MAC address.
 
 - **2 mA in deep sleep**, woken by the HLK-LD2410S radar, no touch needed.
-- **Screen on in about 0.7 s** on wake (the Wi-Fi access point is kept in memory, no scan), data up to date in 1.3 to 1.8 s.
+- **Measured wake-up** (one wake-up, 13 Nov 2026): screen lit **1.8 s** after the chip wakes up, Home
+  Assistant data up to date at **2.7 s**. The Wi-Fi access point is kept in memory (no scan). The radar's own
+  delay, between someone walking by and the chip waking up, is not counted.
 - **Estimated battery life** on 16,000 mAh: about 200 days for 20 walk-bys a day, about a month if someone
   stays in the radar's field 3 h a day.
-- **Two pages of its own**: Battery (charge, wake-ups over 24 h, breakdown of the last wake-up in
-  milliseconds) and Radar (zones, sensitivity, automatic tuning).
 - **Modified board** to free pins and leave nothing drawing current in sleep; **case designed from
   scratch**, STL files included.
 
+It has two pages of its own:
+
+<img src="docs/images/page-batterie.png" width="300" alt="Battery page"> <img src="docs/images/page-radar.png" width="300" alt="Radar page">
+
+*Left, **Battery**: charge, wake-ups over 24 h, breakdown of the last wake-up in milliseconds, counted
+from the program start, about 0.5 s after the chip wakes up (capture from the real living-room display, radar
+wake-up at 22:33). Right, **Radar**: zones, sensitivity, automatic tuning, on-the-spot test.*
+
 Wiring, board modifications, measurements and case: [materiel/ecran-batterie/README.en.md](materiel/ecran-batterie/README.en.md).
-
-## Navigation
-
-The right-hand rail is a swipeable **carousel of icons**: 17 icons of 64 px in a 76 px column,
-with no snapping and no rubber-banding — it stops exactly on the first and the last icon.
-This GIF, produced by the simulator at the real timings of the gesture (30 ms per drag step, then
-50 ms during the fling — some intermediate fling frames were dropped to keep the GIF light), shows the drag, the fling dying out, the tap on the 3D Printer icon — the
-page changes instantly, the rail does not move — then a short animation live from the enclosure
-camera — up to ~18 frames/s measured on a screen: the enclosure camera sends 20/s, the screen shows what the source sends, it is not the limit. The pinned page (here the battery, at 12 %) stays fixed at the bottom, below the carousel.
-
-<img src="docs/images/rail-anime.gif" width="360" alt="The icon rail: drag, fling, page change">
-
-While the rail moves, the **camera stream is paused** and only resumes 300 ms after it stops
-(`RAIL_REPRISE_MS`, [src/ui_lvgl/ui_shell.cpp](src/ui_lvgl/ui_shell.cpp)): measured on the display, a
-restart between two fling steps spread the steps apart (47 → 135-300 ms) and stretched the fling from
-0.4-0.8 s to 1.4-3 s — the camera was chopping up the gesture.
 
 ## Hardware
 
@@ -176,12 +187,9 @@ flowchart LR
   and traversal pruning `lvgl_9.6.0_elagage_parcours.patch`; the two other LVGL patches in
   `docs/patches/` are guarded by compile flags and not applied.
 - **Hybrid pioarduino build**: pinned platform `55.03.312-1` (Arduino 3.3.12 / ESP-IDF 5.5.5).
-- **Recompiled Wi-Fi for the camera** (`custom_sdkconfig`): the precompiled version throttled the video stream.
-  With a larger TCP window and a few stream tweaks, the camera throughput increases noticeably: measured on
-  a screen (13/11), ≈ 18.7 frames/s from the printer enclosure camera (MJPEG stream via go2rtc, 30 KB frames,
-  52 ms decode). The screen shows what the source sends, it is not the limit: that camera (IP, under
-  thingino, 640×360 sub-stream) is set to 20/s.
-  In exchange, Wi-Fi takes up more internal RAM.
+- **Recompiled Wi-Fi for the camera** (`custom_sdkconfig`): the precompiled version throttled the video
+  stream. A larger TCP window and a few stream tweaks give the rates shown in [Live camera](#live-camera);
+  in exchange, Wi-Fi takes up more internal RAM.
 - **Program in PSRAM (XIP)**: without it, the 17 MHz screen jumps as soon as the flash is busy (Wi-Fi,
   settings). It costs 2.55 MB of PSRAM ([details](docs/en/SOUS_LE_CAPOT.md)).
 - **`upload_port` is required** in `platformio.ini`, even just to build: without an address, the
@@ -189,7 +197,6 @@ flowchart LR
 - The `include/version_git.h` file (commit shown on the Info page) is written by `version_git.py` before
   each build.
 - The code is written in **C++ with French identifiers**: the project's choice, deliberate and consistent.
-  The interface itself is available in **English** (`-D UI_LANG_EN`).
 
 ## Under the hood
 
@@ -213,7 +220,7 @@ make -C simu                                                # PC simulator: capt
 ```
 
 You then declare your screens by MAC address (`ECRANS[]` table) and connect Home Assistant
-(23 ready-made automations in [ha_propositions/](ha_propositions/)). The interface is also available in
+(24 ready-made automations in [ha_propositions/](ha_propositions/)). The interface is also available in
 **English** (`-D UI_LANG_EN`). The full step-by-step guide: **[docs/en/INSTALLATION.md](docs/en/INSTALLATION.md)**.
 
 **Just want to see?** **Demo mode** (`-D MODE_DEMO`) fills every page without Home Assistant, without an
@@ -232,7 +239,6 @@ MQTT broker and without Wi-Fi, and the main buttons respond ([see how](docs/en/I
 - [materiel/ecran-batterie/README.en.md](materiel/ecran-batterie/README.en.md) — the battery-powered display: radar, measured consumption, firmware savings, 3D case (CC BY-NC 4.0 license).
 - [materiel/support-bureau/README.en.md](materiel/support-bureau/README.en.md) — printable 3D desk stand, adapted to rotation 0 (CC BY-NC-SA 4.0 license).
 
-
 ## Known limitations
 
 - **Designed for a trusted local network**: MQTT on 1883 without TLS, OTA without a password,
@@ -242,8 +248,8 @@ MQTT broker and without Wi-Fi, and the main buttons respond ([see how](docs/en/I
   tiles limited to the useful area, traversal pruning).
 - Flash locked to DIO by eFuse on these N16R8V modules (see platformio.ini).
 - The simulator captures use demo images: synthetic test patterns (cameras, test album art, logos),
-  one free-license CC0 album cover (“CommoNasm”) and real images from the author's own enclosure
-  camera, published with his consent
+  one free-license CC0 album cover (“CommoNasm”) and real images from the author's own printer
+  cameras, published with his consent
   (details in [docs/en/CREDITS.md](docs/en/CREDITS.md)): replace
   `simu/donnees/cameras|pochettes|logos` with your own images for your own tests.
 - The “PC” automation assumes a small agent publishing `dashboard_guition/pc/*` (documented

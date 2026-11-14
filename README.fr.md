@@ -2,17 +2,16 @@
 
 [English](README.md) | **Français**
 
+<img src="docs/images/ecran-batterie-pivot.jpg" width="640" alt="L'écran sur batterie sur son pivot, à côté d'un écran sur son support de bureau">
+
 Tableau de bord mural pour écrans **Guition ESP32-S3-4848S040** : firmware LVGL 9.6, piloté par
-**Home Assistant via MQTT**, avec un **simulateur PC** qui compile le vrai code des pages et sort des
-captures 480 × 480. Dix-neuf pages tactiles pensées pour la maison : chauffage, graphes 24 h,
-qualité de l'air, ouvrants, croquettes, café, eau chaude, VMC, poêle à bois, musique, lumières,
-panneau LED, imprimante 3D, PC, IA, réglages, informations, batterie — plus la page radar des écrans
-sur batterie.
+**Home Assistant via MQTT**, avec un **simulateur PC** qui compile le vrai code des pages et produit des
+captures 480 × 480. Dix-neuf pages tactiles pour la maison : chauffage, graphes 24 h, qualité de l'air,
+ouvrants, croquettes, café, eau chaude, VMC, poêle à bois, musique, lumières, panneau LED, imprimante 3D,
+PC, IA, réglages, informations, batterie et radar.
 
-Il existe aussi en **version sans fil** : batterie, radar de présence, veille profonde à 2 mA, écran
-allumé en 0,7 s au réveil — voir [Écran sur batterie](#écran-sur-batterie).
-
-English version of this page: **[README.md](README.md)**.
+Il existe aussi en **version sans fil** (à droite sur la photo, sur son pivot) : batterie, radar de présence, veille
+profonde à 2 mA — voir [Écran sur batterie](#écran-sur-batterie).
 
 [![Licence : MIT](https://img.shields.io/badge/licence-MIT-4b714f)](LICENSE)
 [![LVGL 9.6.0](https://img.shields.io/badge/LVGL-9.6.0-41c17c)](lib/lvgl-9.6.0)
@@ -24,36 +23,61 @@ English version of this page: **[README.md](README.md)**.
 
 ## Sommaire
 
-- [Galerie](#galerie) · [Écran sur batterie](#écran-sur-batterie) · [Navigation](#navigation) · [Matériel](#matériel) · [Architecture](#architecture) · [Sous le capot](#sous-le-capot)
-- [Démarrage rapide](#démarrage-rapide) · [Aller plus loin](#aller-plus-loin) · [Limites connues](#limites-connues) · [Licence et crédits](#licence-et-crédits)
+- [Navigation](#navigation) · [Caméra en direct](#caméra-en-direct) · [Galerie](#galerie) · [Page « IA »](#page--ia-) · [Écran sur batterie](#écran-sur-batterie)
+- [Matériel](#matériel) · [Architecture](#architecture) · [Sous le capot](#sous-le-capot) · [Démarrage rapide](#démarrage-rapide) · [Aller plus loin](#aller-plus-loin) · [Limites connues](#limites-connues) · [Licence et crédits](#licence-et-crédits)
 - Pages détaillées : [Installation](docs/INSTALLATION.md) · [Sous le capot](docs/SOUS_LE_CAPOT.md) · [Imprimante 3D](docs/IMPRIMANTE.md) · [Développement](docs/DEVELOPPEMENT.md) · [Crédits](docs/CREDITS.md) · [Écran sur batterie](materiel/ecran-batterie/) · [Support 3D](materiel/support-bureau/)
 
-L'anneau du chauffage pendant la montée en température (9 images du simulateur, animées) :
+## Navigation
 
-<img src="docs/images/vitrine-chauffage.gif" width="360" alt="L'anneau du thermostat pendant la chauffe">
+<img src="docs/images/rail-anime.gif" width="360" alt="De la page Informations au thermostat par le rail, puis appui sur Confort">
+
+Le rail de droite est un **carrousel d'icônes** qui défile au doigt : 17 icônes de 64 px, sans
+aimantation ni élastique, il s'arrête pile sur la première et la dernière. Un appui sur une icône
+change la page d'un coup ; la page épinglée (ici la batterie) reste fixe en bas.
+
+L'animation sort du simulateur, aux instants réels du geste : depuis la page Informations, le rail
+glisse et s'arrête en haut, un appui ouvre le chauffage, puis un appui sur Confort fait balayer l'anneau
+jusqu'à la consigne de 20°.
+
+## Caméra en direct
+
+<img src="docs/images/camera-direct.webp" width="360" alt="Page Imprimante 3D : direct de la caméra du caisson, puis de celle du plateau, pendant un park">
+
+La page Imprimante 3D affiche les caméras de l'imprimante **en direct, image après image** (MJPEG via
+go2rtc). Ici, un park complet de la tête, filmé par la caméra du caisson puis par celle du plateau ; les
+images sont les vraies, enregistrées pendant le park, rejouées dans le simulateur à la cadence
+**mesurée sur l'écran** :
+
+| Caméra | Mesuré sur l'écran | Réglage de la source |
+|---|---|---|
+| Caisson (thingino, sous-flux 640 × 360) | ≈ 18,7 images/s | 20 images/s |
+| Plateau (crowsnest) | ≈ 14,4 images/s | 15 images/s |
+
+L'écran suit ce que la source envoie : c'est le réglage de la caméra qui fixe la cadence. Pendant que
+le rail bouge, le flux se met en pause et repart 300 ms après l'arrêt (sinon la caméra hacherait le
+geste). Configurer une imprimante Klipper/Moonraker : [docs/IMPRIMANTE.md](docs/IMPRIMANTE.md).
 
 ## Galerie
 
-Rendu réel du code, capturé par le simulateur (`make -C simu`). Les valeurs chiffrées y sont dans la police pixel
-« 3x5 » de K-Type, une **option** à télécharger soi-même (usage personnel) ; par défaut, le firmware les affiche en
-Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--la-police-pixel--3x5--des-captures).
+Rendu réel du code, capturé par le simulateur (`make -C simu`). Les valeurs chiffrées y sont dans la
+police pixel « 3x5 » de K-Type, une **option** à télécharger soi-même (usage personnel) ; par défaut, le
+firmware les affiche en Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--la-police-pixel--3x5--des-captures).
 
 <table>
   <tr>
-    <td><img src="docs/images/page-chauffage.png" width="234" alt="Page Chauffage"><br><b>Chauffage</b> — 16,4° mesurés, consigne 20° à l'anneau, lueur de chauffe, modes arrêt / hors-gel / éco / confort</td>
-    <td><img src="docs/images/page-eau-chaude.png" width="234" alt="Page Eau chaude"><br><b>Eau chaude</b> — ballon, consigne à l'anneau, chauffe forcée, courbe 24 h</td>
-    <td><img src="docs/images/helices-vmc.gif" width="234" alt="Page VMC, hélices animées"><br><b>VMC</b> — petite / grande vitesse par zone, hygro en direct, hélices animées (GIF : un tour complet de la grande vitesse, 900 ms)</td>
-    <td><img src="docs/images/page-poele.png" width="234" alt="Page Poêle"><br><b>Poêle à bois</b> — régulation du tirage au PID sur la température des fumées, alerte recharge, courbes</td>
+    <td width="33%" valign="top"><img src="docs/images/page-chauffage.png" width="234" alt="Page Chauffage"><br><b>Chauffage</b> — température mesurée, consigne à l'anneau, lueur de chauffe, modes</td>
+    <td width="33%" valign="top"><img src="docs/images/page-eau-chaude.png" width="234" alt="Page Eau chaude"><br><b>Eau chaude</b> — ballon, consigne à l'anneau, chauffe forcée, courbe 24 h</td>
+    <td width="33%" valign="top"><img src="docs/images/helices-vmc.gif" width="234" alt="Page VMC, hélices animées"><br><b>VMC</b> — vitesse par zone, hygrométrie en direct, hélices animées</td>
   </tr>
   <tr>
-    <td><img src="docs/images/page-musique.png" width="234" alt="Page Musique"><br><b>Musique</b> — Music Assistant : lecture (pochette d'album libre de droit, voir <a href="docs/CREDITS.md">docs/CREDITS.md</a>), bibliothèque, albums, radios, sortie</td>
-    <td><img src="docs/images/page-lumieres.png" width="234" alt="Page Lumières, curseur posé sur une couleur du disque"><br><b>Lumières</b> — une lampe sélectionnée, le curseur posé sur une couleur du disque chromatique, luminance au doigt</td>
-    <td><img src="docs/images/page-imprimante.png" width="234" alt="Page Imprimante 3D"><br><b>Imprimante 3D</b> — fichiers STL et vignettes d'impression, suivi de la couche en cours et direct de la caméra du caisson, image après image (≈ 18,7 images/s mesurées sur un écran, pour une source réglée à 20/s)<br><small>Configurer une imprimante Klipper/Moonraker : <a href="docs/IMPRIMANTE.md">docs/IMPRIMANTE.md</a></small></td>
-    <td><img src="docs/images/page-pc.png" width="234" alt="Page PC"><br><b>PC</b> — système, GPU, processus, IA locale, mise en veille</td>
+    <td width="33%" valign="top"><img src="docs/images/page-poele.png" width="234" alt="Page Poêle"><br><b>Poêle à bois</b> — tirage régulé sur la température des fumées, alerte recharge, courbes</td>
+    <td width="33%" valign="top"><img src="docs/images/page-musique.png" width="234" alt="Page Musique"><br><b>Musique</b> — Music Assistant : lecture, bibliothèque, albums, radios, sortie</td>
+    <td width="33%" valign="top"><img src="docs/images/page-lumieres.png" width="234" alt="Page Lumières, curseur posé sur une couleur du disque"><br><b>Lumières</b> — une lampe sélectionnée, couleur choisie sur le disque, luminosité au doigt</td>
   </tr>
   <tr>
-    <td><img src="docs/images/page-ia-jour.png" width="234" alt="Page IA, scène de jour"><br><b>IA</b> — Clawd et l'activité de l'agent Claude du PC : état, jetons, sessions, histogramme. Le ciel suit la météo de Home Assistant</td>
-    <td><img src="docs/images/page-batterie.png" width="234" alt="Page Batterie, détail du dernier réveil en millisecondes"><br><b>Batterie</b> — le dernier réveil (radar) décomposé en millisecondes, capture du simulateur. C'est la vitesse de ce réveil qui rend l'écran sans fil utilisable : mesuré sur l'écran réel, écran allumé en 0,7 s, données à jour en 1,3 à 1,8 s</td>
+    <td width="33%" valign="top"><img src="docs/images/page-imprimante.png" width="234" alt="Page Imprimante 3D"><br><b>Imprimante 3D</b> — fichiers et miniatures, suivi de la couche en cours, caméras en direct</td>
+    <td width="33%" valign="top"><img src="docs/images/page-pc.png" width="234" alt="Page PC"><br><b>PC</b> — système, GPU, processus, IA locale, mise en veille</td>
+    <td width="33%" valign="top"><img src="docs/images/page-ia-jour.png" width="234" alt="Page IA, scène de jour"><br><b>IA</b> — l'activité de l'agent Claude du PC, sous un ciel qui suit la météo</td>
   </tr>
 </table>
 
@@ -61,20 +85,16 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
 <summary>Les autres pages (cliquer pour déplier)</summary>
 <table>
   <tr>
-    <td><img src="docs/images/page-graphe.png" width="234" alt="Page Graphes"><br><b>Graphes</b> — 24 h glissantes, lecture au doigt, valeur du jour en ambre</td>
-    <td><img src="docs/images/page-air.png" width="234" alt="Page Qualité de l'air"><br><b>Qualité de l'air</b> — deux purificateurs, PM1/PM2,5/PM10 colorés selon le niveau</td>
-    <td><img src="docs/images/page-ouvrants.png" width="234" alt="Page Ouvrants"><br><b>Ouvrants</b> — store, volet, toile de projection, réglage au doigt</td>
-    <td><img src="docs/images/page-croquettes.png" width="234" alt="Page Croquettes"><br><b>Croquettes</b> — distributeur : bol, stock, 4 repas, semaine</td>
+    <td width="25%" valign="top"><img src="docs/images/page-graphe.png" width="170" alt="Page Graphes"><br><b>Graphes</b> — 24 h glissantes, lecture au doigt, valeur du jour en ambre</td>
+    <td width="25%" valign="top"><img src="docs/images/page-air.png" width="170" alt="Page Qualité de l'air"><br><b>Qualité de l'air</b> — deux purificateurs, PM1/PM2,5/PM10 colorés selon le niveau</td>
+    <td width="25%" valign="top"><img src="docs/images/page-ouvrants.png" width="170" alt="Page Ouvrants"><br><b>Ouvrants</b> — store, volet, toile de projection, réglage au doigt</td>
+    <td width="25%" valign="top"><img src="docs/images/page-croquettes.png" width="170" alt="Page Croquettes"><br><b>Croquettes</b> — distributeur : bol, stock, 4 repas, semaine</td>
   </tr>
   <tr>
-    <td><img src="docs/images/page-cafe.png" width="234" alt="Page Café"><br><b>Café</b> — machine et bouilloire : programmation, températures</td>
-    <td><img src="docs/images/page-panneau-led.png" width="234" alt="Page Panneau LED"><br><b>Panneau LED</b> — séances lumineuses : intensités, longueurs d'onde, minuterie</td>
-    <td><img src="docs/images/page-reglages.png" width="234" alt="Page Réglages"><br><b>Réglages</b> — luminosité jour/nuit, veille, pièce de l'écran, Wi-Fi</td>
-    <td><img src="docs/images/page-infos.png" width="234" alt="Page Informations"><br><b>Informations</b> — santé de l'écran, liaisons au vert ou au rouge, journal</td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/page-radar.png" width="234" alt="Page Radar"><br><b>Radar</b> — capteur micro-ondes LD2410S : zones, sensibilité, test sur place</td>
-    <td></td>
+    <td width="25%" valign="top"><img src="docs/images/page-cafe.png" width="170" alt="Page Café"><br><b>Café</b> — machine et bouilloire : programmation, températures</td>
+    <td width="25%" valign="top"><img src="docs/images/page-panneau-led.png" width="170" alt="Page Panneau LED"><br><b>Panneau LED</b> — séances lumineuses : intensités, longueurs d'onde, minuterie</td>
+    <td width="25%" valign="top"><img src="docs/images/page-reglages.png" width="170" alt="Page Réglages"><br><b>Réglages</b> — luminosité jour/nuit, veille, pièce de l'écran, Wi-Fi</td>
+    <td width="25%" valign="top"><img src="docs/images/page-infos.png" width="170" alt="Page Informations"><br><b>Informations</b> — santé de l'écran, liaisons au vert ou au rouge, journal</td>
   </tr>
 </table>
 
@@ -82,21 +102,19 @@ Montserrat Bold — voir [tools/fonts/README.md](tools/fonts/README.md#option--l
 
 ## Page « IA »
 
+<img src="docs/images/ia-orage-anime.gif" width="360" alt="Page IA sous l'orage : pluie et éclair animés">
+
 Juste après PC dans le rail, une page montre l'agent Claude qui tourne sur le PC : état (réfléchit,
 en attente, au repos), jetons produits, outils, prompts, sessions, et un histogramme 5 h par
 tranches de 10 min. Les données arrivent par deux sujets MQTT retenus (`pc/ia`, `pc/ia_activite` —
 [détail du contrat](CONTRAT_MQTT.md)). Pour les publier depuis votre PC : [tools/claude_ia/](tools/claude_ia/)
-(hook Claude Code + petit agent Python, installation pas à pas dans son README).
+(hook Claude Code et petit agent Python, installation pas à pas dans son README).
 
-La scène a un **ciel animé** : soleil et lune parcourent leur arc d'après les heures réelles publiées
+La scène a un **ciel animé** : soleil et lune suivent leur arc d'après les heures réelles publiées
 par Home Assistant (`maison/ciel`, automatisation fournie dans [ha_propositions/](ha_propositions/)),
-la lune porte sa vraie phase, l'aube et le crépuscule teintent le ciel, les nuages dérivent, la pluie
-tombe, la neige blanchit le sol et le brouillard estompe le buisson. Toutes les images sont des
-dessins pixel régénérés par [tools/gen_scene_ia.py](tools/gen_scene_ia.py).
-
-<img src="docs/images/ia-orage-anime.gif" width="234" alt="Page IA sous l'orage : pluie et éclair animés">
-
-*Orage : la pluie tombe et un éclair blanchit le ciel (animation du simulateur, environ 15 images par seconde).*
+la lune a sa vraie phase, l'aube et le crépuscule teintent le ciel, les nuages dérivent, la pluie
+tombe, l'orage éclaire le ciel (ci-dessus, animation du simulateur), la neige blanchit le sol et le
+brouillard voile la scène. Tous les dessins pixel sont régénérés par [tools/gen_scene_ia.py](tools/gen_scene_ia.py).
 
 > Cette page est un **projet de fan non officiel, non affilié à Anthropic**. « Claude » et « Clawd »
 > sont des marques d'Anthropic. Les dessins de Clawd sont des dessins originaux, **exclus de la
@@ -105,39 +123,28 @@ dessins pixel régénérés par [tools/gen_scene_ia.py](tools/gen_scene_ia.py).
 
 ## Écran sur batterie
 
-<img src="docs/images/ecran-batterie-pivot.jpg" width="640" alt="L'écran sur batterie sur son pivot, à côté d'un écran sur son support de bureau">
-
-Une variante **sans fil** du même écran, dans un boîtier imprimé en 3D : quatre cellules 18650, un radar
-de présence qui le réveille quand quelqu'un approche, et la veille profonde le reste du temps. C'est le même
-firmware que les écrans muraux : l'écran se reconnaît à son adresse MAC.
+Une variante **sans fil** du même écran, dans un boîtier imprimé en 3D (photo en haut de page) : quatre
+cellules 18650, un radar de présence qui le réveille quand quelqu'un approche, et la veille profonde le
+reste du temps. C'est le même firmware que les écrans muraux : l'écran se reconnaît à son adresse MAC.
 
 - **2 mA en veille profonde**, réveillé par le radar HLK-LD2410S, sans avoir à le toucher.
-- **Écran allumé en 0,7 s environ** au réveil (la borne Wi-Fi est gardée en mémoire, pas de balayage), données à jour en 1,3 à 1,8 s.
+- **Réveil mesuré** (un réveil, 13/11/2026) : écran éclairé **1,8 s** après le réveil de la puce, données de
+  Home Assistant à jour à **2,7 s**. La borne Wi-Fi est gardée en mémoire (pas de balayage). Le délai propre
+  du radar, entre le passage et le réveil de la puce, n'est pas compté.
 - **Autonomie estimée** sur 16 000 mAh : environ 200 jours pour 20 passages par jour, un mois environ si
   quelqu'un reste 3 h par jour dans le champ du radar.
-- **Deux pages à lui** : Batterie (charge, réveils sur 24 h, détail du dernier réveil en millisecondes) et
-  Radar (zones, sensibilité, réglage automatique).
-- **Carte modifiée** pour libérer des broches et ne rien laisser consommer en veille ; **boîtier dessiné de
-  A à Z**, fichiers STL fournis.
+- **Carte modifiée** pour libérer des broches et ne rien laisser consommer en veille ; **boîtier dessiné
+  de A à Z**, fichiers STL fournis.
+
+Il a deux pages à lui :
+
+<img src="docs/images/page-batterie.png" width="300" alt="Page Batterie"> <img src="docs/images/page-radar.png" width="300" alt="Page Radar">
+
+*À gauche, **Batterie** : charge, réveils sur 24 h, détail du dernier réveil en millisecondes, comptées
+depuis le lancement du programme, environ 0,5 s après le réveil de la puce (capture de l'écran réel du séjour,
+réveil par le radar à 22h33). À droite, **Radar** : zones, sensibilité, réglage automatique, test sur place.*
 
 Câblage, modifications de la carte, mesures et boîtier : [materiel/ecran-batterie/](materiel/ecran-batterie/).
-
-## Navigation
-
-Le rail de droite est un **carrousel d'icônes** défilable au doigt : 17 icônes de 64 px dans une
-colonne de 76 px, sans aimantation ni élastique — il s'arrête pile sur la première et la dernière.
-Ce GIF, fabriqué par le simulateur aux instants réels du geste (30 ms par pas du glissé, puis 50 ms
-pendant l'élan ; quelques images intermédiaires de l'élan ont été retirées pour tenir le poids du
-GIF), montre le glissé, l'élan qui s'éteint, l'appui sur l'icône Imprimante 3D — la page
-change d'un coup, le rail ne bouge pas — puis une courte animation du direct de la caméra du caisson, jusqu'à ~18 images/s mesurées sur un écran — la caméra du caisson en envoie 20/s : l'écran affiche ce que la source envoie, ce n'est pas lui la limite.
-La page épinglée (ici la batterie, à 12 %) reste fixe en bas, sous le carrousel.
-
-<img src="docs/images/rail-anime.gif" width="360" alt="Le rail d'icônes : glissé, élan, changement de page">
-
-Pendant que le rail bouge, le **flux caméra se met en pause** et ne repart que 300 ms après l'arrêt
-(`RAIL_REPRISE_MS`, [src/ui_lvgl/ui_shell.cpp](src/ui_lvgl/ui_shell.cpp)) : mesuré sur l'écran, une
-relance entre deux pas de l'élan espaçait les pas (47 → 135-300 ms) et étirait l'élan de 0,4-0,8 s
-à 1,4-3 s — la caméra hachait le geste.
 
 ## Matériel
 
@@ -181,15 +188,12 @@ flowchart LR
   `docs/patches/` sont protégés par des drapeaux de compilation et non appliqués.
 - **Build hybride pioarduino** : plateforme figée `55.03.312-1` (Arduino 3.3.12 / ESP-IDF 5.5.5).
 - **Wi-Fi recompilé pour la caméra** (`custom_sdkconfig`) : la version précompilée bridait le flux vidéo.
-  Avec une fenêtre TCP plus grande et quelques réglages du flux, le débit de la caméra augmente nettement :
-  mesuré sur un écran (13/11), ≈ 18,7 images/s pour la caméra du caisson de l'imprimante (flux MJPEG via
-  go2rtc, images de 30 Ko, décodage 52 ms). L'écran affiche ce que la source envoie, il n'est pas la
-  limite : cette caméra (IP, sous thingino, sous-flux 640×360) est réglée à 20/s. En échange,
-  le Wi-Fi occupe plus de RAM interne.
+  Une fenêtre TCP plus grande et quelques réglages du flux donnent les cadences de
+  [Caméra en direct](#caméra-en-direct) ; en échange, le Wi-Fi occupe plus de RAM interne.
 - **Programme en PSRAM (XIP)** : sans lui, l'écran à 17 MHz saute dès que la flash travaille (Wi-Fi,
   réglages). Il coûte 2,55 Mo de PSRAM ([détails](docs/SOUS_LE_CAPOT.md)).
 - **`upload_port` obligatoire** dans `platformio.ini`, même pour compiler : sans adresse, la
-  recompilation des bibliothèques s'arrête en silence à mi-chemin. Mets l'IP de ton écran.
+  recompilation des bibliothèques s'arrête en silence à mi-chemin. Indiquez l'IP de votre écran.
 - Le fichier `include/version_git.h` (commit affiché page Infos) est écrit par `version_git.py` avant
   chaque compilation.
 - Codage en **C++ avec identifiants français** : c'est le choix du projet, assumé et homogène.
@@ -230,11 +234,10 @@ broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](
 - [docs/INSTALLATION.md](docs/INSTALLATION.md) — installation pas à pas : secrets, écrans par MAC, flash USB puis OTA, Home Assistant, langue, simulateur, **mode d'emploi Windows**.
 - [docs/SOUS_LE_CAPOT.md](docs/SOUS_LE_CAPOT.md) — tous les points techniques, avec leurs mesures.
 - [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md) — outillage, ajouter une page, diagnostics, simulateur en détail, arborescence.
-- [docs/IMPRIMANTE.md](docs/IMPRIMANTE.md) — page Imprimante 3D : ce qu'il faut (Klipper + Moonraker, miniatures du slicer, caméra), quoi activer, ce qui est propre à ta machine.
+- [docs/IMPRIMANTE.md](docs/IMPRIMANTE.md) — page Imprimante 3D : ce qu'il faut (Klipper + Moonraker, miniatures du slicer, caméra), quoi activer, ce qui est propre à votre machine.
 - [docs/CREDITS.md](docs/CREDITS.md) — licence, bibliothèques, polices et icônes, avec leurs licences.
 - [materiel/ecran-batterie/](materiel/ecran-batterie/) — l'écran sur batterie : radar, consommation mesurée, économies du firmware, boîtier 3D (licence CC BY-NC 4.0).
 - [materiel/support-bureau/](materiel/support-bureau/) — support de bureau imprimable en 3D, adapté à la rotation 0 (licence CC BY-NC-SA 4.0).
-
 
 ## Limites connues
 
@@ -246,10 +249,10 @@ broker MQTT et sans Wi-Fi, et les boutons principaux répondent ([voir comment](
 - Flash verrouillée en DIO par eFuse sur ces modules N16R8V (voir platformio.ini).
 - Les captures du simulateur utilisent des images de démonstration : mires synthétiques (caméras,
   pochettes de test, logos), une pochette libre de droit sous licence CC0 (« CommoNasm ») et de vraies
-  images de la caméra du caisson de l'auteur, publiées avec son accord
+  images des caméras de l'imprimante de l'auteur, publiées avec son accord
   (détails dans [docs/CREDITS.md](docs/CREDITS.md)) : remplacez
   `simu/donnees/cameras|pochettes|logos` par vos propres images pour vos essais.
-- L'automatisation « PC » suppose un petit agent publiant `dashboard_guition/pc/*` (contract
+- L'automatisation « PC » suppose un petit agent publiant `dashboard_guition/pc/*` (contrat
   documenté, agent non fourni).
 
 ## Licence et crédits
