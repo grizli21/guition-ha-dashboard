@@ -128,8 +128,8 @@ cellules 18650, un radar de présence qui le réveille quand quelqu'un approche,
 reste du temps. C'est le même firmware que les écrans muraux : l'écran se reconnaît à son adresse MAC.
 
 - **2 mA en veille profonde**, réveillé par le radar HLK-LD2410S, sans avoir à le toucher.
-- **Réveil mesuré** (un réveil, 13/11/2026) : écran éclairé **1,8 s** après le réveil de la puce, données de
-  Home Assistant à jour à **2,7 s**. La borne Wi-Fi est gardée en mémoire (pas de balayage). Le délai propre
+- **Réveil mesuré** (5 réveils, 14/11/2026) : écran éclairé **1,25 à 1,28 s** après le réveil de la puce, données
+  de Home Assistant à jour à **2,2 s** environ. La borne Wi-Fi est gardée en mémoire (pas de balayage). Le délai propre
   du radar, entre le passage et le réveil de la puce, n'est pas compté.
 - **Autonomie estimée** sur 16 000 mAh : environ 200 jours pour 20 passages par jour, un mois environ si
   quelqu'un reste 3 h par jour dans le champ du radar.
@@ -159,8 +159,8 @@ Câblage, modifications de la carte, mesures et boîtier : [materiel/ecran-batte
 - Sur ces puces, les eFuses verrouillent la flash en **DIO** (2 fils) : les tentatives QIO/QOUT retombent
   en DIO au démarrage — documenté dans les commentaires de [platformio.ini](platformio.ini).
 
-Mesuré sur cette branche (8/11/2026) : **Flash 56,0 %** (2 641 031 o / 4 718 592 o), **RAM interne 25,1 %**
-(82 160 o / 327 680 o), image finale 2 677 199 o.
+Mesuré sur cette branche (14/11/2026) : **Flash 75,9 %** (3 581 831 o / 4 718 592 o, dont 614 Ko d'anneaux du thermostat
+pré-rendus), **RAM interne 27,4 %** (89 872 o / 327 680 o), image finale 3 619 664 o.
 
 ## Architecture
 

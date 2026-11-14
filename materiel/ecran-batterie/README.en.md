@@ -133,9 +133,10 @@ tab of the Battery page).
 - **Deep sleep** as soon as nobody is around, after the configured sleep delay: the panel goes into
   deep sleep (the ST7701's DSTB command), and the radar wakes it (GPIO 2).
 - **Short boot** on wake: no startup screen, Wi-Fi endpoint and channel kept in RTC memory to
-  reconnect without scanning. Measured on one wake-up (13 Nov 2026), from the chip waking up: program
-  started at **0.49 s** (boot, program load and copy to PSRAM), screen lit at **1.77 s**, Home Assistant data up
-  to date at **2.74 s**. The radar's own delay is not counted.
+  reconnect without scanning. Measured on 5 wake-ups (14 Nov 2026), from the chip waking up: program
+  started at **0.51 s** (boot, program load and copy to PSRAM), screen lit at **1.25 to 1.28 s**, Home Assistant
+  data up to date at about **2.2 s** (the thermostat rings are pre-rendered at build time: computed at boot, they
+  cost 0.57 s more). The radar's own delay is not counted.
 - **Music library on demand**: it is not loaded at startup, only when the list is opened.
 - **Economy mode** after 10 s without touching: idle brightness, processor at 80 MHz, Wi-Fi in
   light power save (`WIFI_PS_MIN_MODEM`).

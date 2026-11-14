@@ -60,6 +60,7 @@ static cam_px_t *g_px[2] = {nullptr, nullptr};
 static lv_img_dsc_t g_dsc[2];
 static int g_affichee = -1;
 static uint32_t g_derniere = 0;
+static uint32_t g_reessai = 0; // 14/11 : pas de nouvel essai avant cette heure (0 = tout de suite)
 static uint32_t g_images = 0, g_compte_depuis = 0;
 #ifndef ARDUINO
 static JPEGDEC *g_jpeg = nullptr; // simulateur : décodeur de la chaîne principale
@@ -734,6 +735,7 @@ void ui_camera_afficher(lv_obj_t *zone, const char *url)
         snprintf(g_url, sizeof g_url, "%s", url);
         g_affichee = -1;
         g_derniere = 0;
+        g_reessai = 0;
         g_images = 0;
         g_compte_depuis = lv_tick_get();
     }
@@ -1040,7 +1042,8 @@ void ui_camera_tache()
                 ui_trace("[camera] 1re image : téléchargée en %u ms, décodée en %u ms\n", (unsigned)g_job.t_tele, (unsigned)g_job.t_deco);
         }
         else if (g_zone && !g_job.ok)
-            g_derniere = lv_tick_get() + CAM_REESSAI_MS - CAM_PERIODE_MS; // caméra muette : on attend avant de réessayer
+            g_reessai = lv_tick_get() + CAM_REESSAI_MS; // caméra muette : on attend avant de réessayer (14/11 : l'ancienne
+                                                         // écriture dans g_derniere, une heure future, n'était jamais attendue)
     }
     // 29/10 : caméra quittée et plus rien en route : on coupe les flux (ui_camera_couper)
     if (!g_zone && !g_job.en_cours && !g_flux.en_route && ui_camera_couper)
@@ -1112,7 +1115,8 @@ void ui_camera_tache()
     }
     // g_rendu_demande : pas de travail neuf tant que les tâches de fond ne se sont pas rendues et que les tampons n'ont
     // pas été rendus (sinon on confierait un décodage à une tâche qui va se détruire, ou un tampon qui va être libéré)
-    if (!g_zone || g_job.en_cours || g_rendu_demande || !g_px[0] || !g_px[1] || !g_jpg[0] || !g_jpg[1] || !g_jpg[2] || (g_derniere && lv_tick_elaps(g_derniere) < CAM_PERIODE_MS))
+    if (!g_zone || g_job.en_cours || g_rendu_demande || !g_px[0] || !g_px[1] || !g_jpg[0] || !g_jpg[1] || !g_jpg[2] || (g_derniere && lv_tick_elaps(g_derniere) < CAM_PERIODE_MS) ||
+        (g_reessai && (int32_t)(lv_tick_get() - g_reessai) < 0))
         return;
     const int w = lv_obj_get_content_width(g_zone), h = lv_obj_get_content_height(g_zone);
     if (w <= 0 || h <= 0 || w * h > CAM_MAX_PX)

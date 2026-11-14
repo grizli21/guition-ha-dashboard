@@ -174,59 +174,21 @@ static const void *lueur_image()
 // 13/11 (retour d'usage : « l'anneau intermédiaire est aussi impacté ») : même chose pour le niveau ATTÉNUÉ (MIX_ATTENUE), en
 // texture des arcs atténués (lv_draw_arc img_src : l'image est centrée sur l'arc) : 2 x 300 Ko de PSRAM.
 // niveau 0 = sombre (sous les segments), 1 = atténué (texture des segments atténués)
+// 14/11 (ANNEAUX_PISTES, piste-flash) : anneaux PRÉ-RENDUS À LA COMPILATION par tools/anneaux_gen.c :
+// données const en flash (comme les icônes), copiées en PSRAM au démarrage (XIP) — ni calcul ni allocation
+// au réveil. Le calcul de référence (celui de a953dc0) est conservé dans page_thermostat_verifier_anneaux(),
+// build « verif » (PISTE_VERIF, voir page_thermostat.h), pour le contrôle d'identité OCTET à OCTET sur l'écran.
+extern const uint8_t anneau_sombre_dat[];  // 307200 o : RGB565 (2 o/px) puis alpha (1 o/px), comme avant
+extern const uint8_t anneau_attenue_dat[];
+
 static const void *anneau_image(int niveau)
 {
     static lv_image_dsc_t imgs[2];
-    static bool prets[2] = {false, false}, echecs[2] = {false, false};
+    static bool prets[2] = {false, false};
     lv_image_dsc_t &img = imgs[niveau];
     if (prets[niveau])
         return &img;
-    if (echecs[niveau])
-        return nullptr;
     const int total = ANNEAU_D * ANNEAU_D;
-    uint8_t *g_sombre_px = (uint8_t *)lv_malloc(total * 3);
-    if (!g_sombre_px)
-    {
-        echecs[niveau] = true;
-        ui_trace("[thermostat] allocation anneau %s ÉCHOUÉE (%d o) : segments en couleur unie\n", niveau ? "atténué" : "sombre", total * 3);
-        return nullptr;
-    }
-    static const uint8_t bayer[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};
-    float fr, fg, fb, cr[3], cg[3], cb[3];
-    {
-        uint8_t r, g, b;
-        lueur_canaux(ui_c(UI_FOND), &r, &g, &b), fr = r, fg = g, fb = b;
-        const uint32_t cs[3] = {UI_FROID, UI_ACCENT, ROUGE_CHAUD};
-        for (int k = 0; k < 3; k++)
-            lueur_canaux(ui_c(cs[k]), &r, &g, &b), cr[k] = r, cg[k] = g, cb[k] = b;
-    }
-    const float RO = ANNEAU_D / 2.0f, RI = ANNEAU_D / 2.0f - ANNEAU_L, m = (niveau ? MIX_ATTENUE : MIX_SOMBRE) / 255.0f;
-    for (int y = 0; y < ANNEAU_D; y++)
-        for (int x = 0; x < ANNEAU_D; x++)
-        {
-            const int i = y * ANNEAU_D + x;
-            const float dx = x + 0.5f - RO, dy = y + 0.5f - RO, r = sqrtf(dx * dx + dy * dy);
-            float a = atan2f(dy, dx) * 180 / (float)M_PI; // 0° à droite, sens horaire (y vers le bas), comme les arcs
-            if (a < 0)
-                a += 360;
-            const float cov = LV_CLAMP(0.0f, RO - r + 0.5f, 1.0f) * LV_CLAMP(0.0f, r - RI + 0.5f, 1.0f); // bords lissés
-            if (cov <= 0 || (a > 45 && a < 135)) // hors de l'anneau, ou le bas (ses segments)
-            {
-                *(uint16_t *)(g_sombre_px + 2 * i) = 0;
-                g_sombre_px[2 * total + i] = LV_OPA_TRANSP;
-                continue;
-            }
-            const float t = fmodf(a - 135 + 360, 360) / 270; // 0 = bout froid (135°), 1 = bout chaud (45°)
-            const int k = t < 0.5f ? 0 : 1;                   // degrade() : froid -> accent -> chaud
-            const float u = t < 0.5f ? t * 2 : (t - 0.5f) * 2;
-            const float r0 = cr[k] + (cr[k + 1] - cr[k]) * u, g0 = cg[k] + (cg[k + 1] - cg[k]) * u, b0 = cb[k] + (cb[k + 1] - cb[k]) * u;
-            const float trame = (bayer[y & 3][x & 3] + 0.5f) / 16.0f;
-            auto canal = [&](float c, float f, int pas) { return (uint8_t)LV_MIN(255, (int)(c * m + f * (1 - m) + trame * pas)); };
-            const lv_color_t c = lv_color_make(canal(r0, fr, 8), canal(g0, fg, 4), canal(b0, fb, 8));
-            const uint16_t v = lv_color_to_u16(c);
-            memcpy(g_sombre_px + 2 * i, &v, sizeof v);
-            g_sombre_px[2 * total + i] = (uint8_t)lroundf(cov * 255);
-        }
     memset(&img, 0, sizeof img);
     img.header.magic = LV_IMAGE_HEADER_MAGIC;
     img.header.cf = LV_COLOR_FORMAT_RGB565A8;
@@ -234,11 +196,72 @@ static const void *anneau_image(int niveau)
     img.header.h = ANNEAU_D;
     img.header.stride = ANNEAU_D * 2;
     img.data_size = total * 3;
-    img.data = g_sombre_px;
+    img.data = niveau ? anneau_attenue_dat : anneau_sombre_dat;
     prets[niveau] = true;
     return &img;
 }
 static const void *sombre_image() { return anneau_image(0); }
+
+#if PISTE_VERIF
+// Contrôle d'identité (build « verif » seulement) : recalcule l'image exactement comme la production de
+// a953dc0 (copie conforme de la boucle ci-dessus, retirée du chemin mesuré) et compare octet à octet avec
+// la constante générée. Appelé une fois, APRÈS l'éclairage, pour ne pas fausser les temps du réveil.
+void page_thermostat_verifier_anneaux()
+{
+    const int total = ANNEAU_D * ANNEAU_D;
+    uint8_t *px = (uint8_t *)lv_malloc(total * 3);
+    if (!px)
+    {
+        ui_trace("[verif] allocation de contrôle ÉCHOUÉE\n");
+        return;
+    }
+    static const uint8_t bayer[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};
+    for (int niveau = 0; niveau < 2; niveau++)
+    {
+        float fr, fg, fb, cr[3], cg[3], cb[3];
+        {
+            uint8_t r, g, b;
+            lueur_canaux(ui_c(UI_FOND), &r, &g, &b), fr = r, fg = g, fb = b;
+            const uint32_t cs[3] = {UI_FROID, UI_ACCENT, ROUGE_CHAUD};
+            for (int k = 0; k < 3; k++)
+                lueur_canaux(ui_c(cs[k]), &r, &g, &b), cr[k] = r, cg[k] = g, cb[k] = b;
+        }
+        const float RO = ANNEAU_D / 2.0f, RI = ANNEAU_D / 2.0f - ANNEAU_L, m = (niveau ? MIX_ATTENUE : MIX_SOMBRE) / 255.0f;
+        for (int y = 0; y < ANNEAU_D; y++)
+            for (int x = 0; x < ANNEAU_D; x++)
+            {
+                const int i = y * ANNEAU_D + x;
+                const float dx = x + 0.5f - RO, dy = y + 0.5f - RO, r = sqrtf(dx * dx + dy * dy);
+                float a = atan2f(dy, dx) * 180 / (float)M_PI;
+                if (a < 0)
+                    a += 360;
+                const float cov = LV_CLAMP(0.0f, RO - r + 0.5f, 1.0f) * LV_CLAMP(0.0f, r - RI + 0.5f, 1.0f);
+                if (cov <= 0 || (a > 45 && a < 135))
+                {
+                    *(uint16_t *)(px + 2 * i) = 0;
+                    px[2 * total + i] = LV_OPA_TRANSP;
+                    continue;
+                }
+                const float t = fmodf(a - 135 + 360, 360) / 270;
+                const int k = t < 0.5f ? 0 : 1;
+                const float u = t < 0.5f ? t * 2 : (t - 0.5f) * 2;
+                const float r0 = cr[k] + (cr[k + 1] - cr[k]) * u, g0 = cg[k] + (cg[k + 1] - cg[k]) * u, b0 = cb[k] + (cb[k + 1] - cb[k]) * u;
+                const float trame = (bayer[y & 3][x & 3] + 0.5f) / 16.0f;
+                auto canal = [&](float c, float f, int pas) { return (uint8_t)LV_MIN(255, (int)(c * m + f * (1 - m) + trame * pas)); };
+                const lv_color_t c = lv_color_make(canal(r0, fr, 8), canal(g0, fg, 4), canal(b0, fb, 8));
+                const uint16_t v = lv_color_to_u16(c);
+                memcpy(px + 2 * i, &v, sizeof v);
+                px[2 * total + i] = (uint8_t)lroundf(cov * 255);
+            }
+        const uint8_t *attendu = niveau ? anneau_attenue_dat : anneau_sombre_dat;
+        int diff = 0;
+        for (int i = 0; i < total * 3; i++)
+            diff += px[i] != attendu[i];
+        ui_trace("[verif] anneau %s : %d octet(s) différent(s) sur %d\n", niveau ? "attenue" : "sombre", diff, total * 3);
+    }
+    lv_free(px);
+}
+#endif
 
 #define R_POINT (ANNEAU_D / 2 - ANNEAU_L / 2.0f) // rayon du milieu de l'épaisseur (bouts, point de la pièce)
 

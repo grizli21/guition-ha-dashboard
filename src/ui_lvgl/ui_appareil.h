@@ -19,6 +19,10 @@ struct ui_sante_t
     int rssi;
     int cpu_mhz;  // 31/10 : fréquence du processeur (80 en économie, 240 sinon)
     int tx_dbm4;  // 31/10 : puissance d'émission Wi-Fi en quarts de dBm (0 : Wi-Fi arrêté)
+    // 14/11 : mode d'économie Wi-Fi réel (esp_wifi_get_ps : -1 arrêté, 0 aucun, 1 min, 2 max) et
+    // place dans la partition d'application active (image en cours vs taille de la partition OTA, en octets)
+    int wifi_ps;
+    uint32_t app_octets, part_octets;
 };
 
 // Fournis par la plateforme (ESP32 : ui_appareil_esp.cpp et le programme ; simulateur : rien, la mémoire ne survit pas)

@@ -4,7 +4,7 @@
 #pragma once
 #include <lvgl.h>
 
-#define IF_NB_SYSTEME 10 // 25/10 : mémoire en deux cases (RAM, PSRAM) + adresse IP ; 31/10 : fréquence, émission Wi-Fi
+#define IF_NB_SYSTEME 12 // 25/10 : mémoire en deux cases (RAM, PSRAM) + adresse IP ; 31/10 : fréquence, émission Wi-Fi ; 14/11 : économie Wi-Fi, place libre flash
 #define IF_NB_LIAISONS 2 // ce que l'écran voit lui-même (Wi-Fi, HA) ; le reste : la liste des appareils de HA
 #define IF_NB_APPAREILS 96
 #define IF_NB_JOURNAL 12 // 24/10 (retour d'usage) : 12 lignes ; l’historique complet est dans le journal de bord de HA
@@ -27,7 +27,7 @@ struct if_ligne_t
     bool alerte; // en ambre
 };
 
-extern if_valeur_t if_systeme[IF_NB_SYSTEME];  // allumé depuis, redémarrage, RAM, PSRAM, processeur, fréquence, boucle la plus lente, émission Wi-Fi, version, IP
+extern if_valeur_t if_systeme[IF_NB_SYSTEME];  // allumé depuis, redémarrage, RAM, PSRAM, processeur, fréquence, boucle la plus lente, émission Wi-Fi, version, IP, économie Wi-Fi, place libre flash
 extern if_liaison_t if_liaisons[IF_NB_LIAISONS]; // Wi-Fi, Home Assistant
 
 // 24/10 : appareils de la maison, tenus par HA (dashboard_guition/maison/appareils : ESPHome + Zigbee, sauf l'étiquette

@@ -2,6 +2,7 @@
 // puis les images poussées par le serveur, une par partie), connexion gardée ouverte, Nagle coupé, 1,5 s au plus par image.
 // Appelée depuis la tâche de lecture continue de ui_camera, une image à la fois : pas d'accès concurrent à la connexion.
 #ifdef ARDUINO
+#include <errno.h> // 14/11 : EAGAIN (délai du socket)
 #include "ui_camera.h"
 #include "ui_diag.h"
 #include <Arduino.h>
@@ -95,16 +96,21 @@ static bool decouper(const char *url, char *hote, size_t nh, uint16_t &port, con
 }
 
 // en-têtes (réponse HTTP, ou partie du flux MJPEG) lus dans k.tete jusqu'à la ligne vide : leur longueur, 0 si échec
-static size_t lire_tete(cnx_t &k, uint32_t debut)
+// 14/11 : limite = 1,5 s en flux établi ; 10 s pour la 1re réponse : go2rtc démarre la caméra à la 1re connexion (6,5 s
+// mesurés à froid pour la caméra du caisson) ; abandonner à 1,5 s le faisait arrêter la caméra, et chaque essai
+// repartait à froid : l'image ne venait jamais (il fallait qu'un autre client tienne la connexion)
+static size_t lire_tete(cnx_t &k, uint32_t debut, uint32_t limite)
 {
     for (;;)
     {
         for (size_t i = 3; i < k.ntete; i++)
             if (k.tete[i - 3] == '\r' && k.tete[i - 2] == '\n' && k.tete[i - 1] == '\r' && k.tete[i] == '\n')
                 return i + 1;
-        if (k.ntete >= sizeof k.tete - 1 || millis() - debut >= 1500)
+        if (k.ntete >= sizeof k.tete - 1 || millis() - debut >= limite)
             return 0; // en-têtes trop longs ou réponse trop lente
         const int r = recv(k.fd, k.tete + k.ntete, sizeof k.tete - 1 - k.ntete, 0);
+        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+            continue; // délai du socket (1,5 s) écoulé : on attend jusqu'à la limite
         if (r <= 0)
             return 0;
         k.ntete += r;
@@ -160,7 +166,8 @@ static bool lire(int canal, const char *url, uint8_t *buf, size_t max, size_t *n
     // sa fin (Content-Length) : plus de recopie de 38 Ko dans la PSRAM après coup (14 à 17 ms par image mesurés, la PSRAM
     // étant partagée avec le décodeur et l'écran)
     char val[32];
-    size_t fin_tete = lire_tete(k, debut);
+    const uint32_t limite = k.flux_ouvert ? 1500 : 10000; // 14/11 : 1re réponse : la caméra démarre (voir lire_tete)
+    size_t fin_tete = lire_tete(k, debut, limite);
     if (fin_tete && !k.flux_ouvert) // l'en-tête HTTP du flux, une fois : 200 et multipart, puis la 1re partie
     {
         const bool ok = strncmp(k.tete, "HTTP/1.", 7) == 0 && strncmp(k.tete + 8, " 200", 4) == 0 &&
@@ -168,7 +175,7 @@ static bool lire(int canal, const char *url, uint8_t *buf, size_t max, size_t *n
         k.ntete -= fin_tete;
         memmove(k.tete, k.tete + fin_tete, k.ntete);
         k.flux_ouvert = ok;
-        fin_tete = ok ? lire_tete(k, debut) : 0;
+        fin_tete = ok ? lire_tete(k, debut, limite) : 0;
     }
     const size_t corps = fin_tete && chercher(k, fin_tete, "Content-Length:", val, sizeof val) ? (size_t)atol(val) : 0;
     if (!fin_tete || !corps || corps > max)

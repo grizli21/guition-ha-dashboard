@@ -341,6 +341,19 @@ static bool sante(bool vers_ha = true) // 13/11 : vers_ha = false -> affichage s
         snprintf(if_systeme[7].valeur, sizeof if_systeme[7].valeur, "%s", TXT("arrêté", "off"));
     snprintf(if_systeme[8].valeur, sizeof if_systeme[8].valeur, "%s", s.version);
     snprintf(if_systeme[9].valeur, sizeof if_systeme[9].valeur, "%s", s.ip);
+    // 14/11 : économie Wi-Fi réellement appliquée (lue par esp_wifi_get_ps) et place libre dans la partition d'application
+    static const char *PS_NOMS[3] = {TXT("aucune", "none"), TXT("minimum", "minimum"), TXT("maximum", "maximum")};
+    snprintf(if_systeme[10].valeur, sizeof if_systeme[10].valeur, "%s",
+             s.wifi_ps < 0 || s.wifi_ps > 2 ? TXT("arrêtée", "stopped") : PS_NOMS[s.wifi_ps]);
+    if (s.part_octets >= s.app_octets && s.part_octets)
+    {
+        const uint32_t libre_ko = (s.part_octets - s.app_octets) / 1024, utilises_pc = s.app_octets * 100 / s.part_octets;
+        // format court : la case fait 50 % de la page (« 1,6 Mo libres (63 % utilisés) » était tronqué)
+        snprintf(if_systeme[11].valeur, sizeof if_systeme[11].valeur, TXT("%u,%u Mo (%u %% utilisé)", "%u.%u MB (%u%% used)"),
+                 (unsigned)(libre_ko / 1024), (unsigned)(libre_ko % 1024 * 10 / 1024), (unsigned)utilises_pc);
+    }
+    else
+        snprintf(if_systeme[11].valeur, sizeof if_systeme[11].valeur, "%s", TXT("inconnue", "unknown"));
 
     if_liaisons[0].ok = s.wifi[0] != 0;
     if (s.wifi[0])

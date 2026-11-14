@@ -1887,6 +1887,15 @@ void loop()
     ui_radar_tache();
     ui_camera_tache(); // 26/10 : caméras (imprimante, sonnette)
     reveil_tache();
+#if PISTE_VERIF
+    // 14/11 (piste-flash) : contrôle d'identité des anneaux const, une fois, APRÈS l'éclairage
+    static bool verif_fait = false;
+    if (!verif_fait && g_pret)
+    {
+        verif_fait = true;
+        page_thermostat_verifier_anneaux();
+    }
+#endif
     energie_tache();
     synchro_tache();
     if (WiFi.isConnected())

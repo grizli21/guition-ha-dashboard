@@ -55,7 +55,8 @@ SAN ?=
 BIN ?= simu
 
 SRC_C   := $(shell find $(LVGL)/src -name '*.c') \
-           $(wildcard $(RACINE)/lib/icones/*.c) $(wildcard $(RACINE)/lib/ressources/*.c) $(wildcard donnees/*.c)
+           $(wildcard $(RACINE)/lib/icones/*.c) $(wildcard $(RACINE)/lib/ressources/*.c) $(wildcard donnees/*.c) \
+           $(wildcard $(RACINE)/src/ui_lvgl/*.c)
 SRC_CPP := $(wildcard $(RACINE)/src/ui_lvgl/*.cpp) $(RACINE)/lib/JPEGDEC-1.8.4/src/JPEGDEC.cpp simu.cpp
 
 OBJ := $(patsubst $(RACINE)/%,$(CONSTR)/%,$(SRC_C:.c=.o)) \

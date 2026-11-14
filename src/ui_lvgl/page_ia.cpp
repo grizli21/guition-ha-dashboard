@@ -52,6 +52,7 @@ static lv_obj_t *o_clawd, *o_pensee, *o_excl, *o_z, *o_histo[IA_HISTO];
 #define NUAGES 6
 #define COULOIRS 20
 static lv_obj_t *o_nuage[NUAGES], *o_scint[3], *o_lune_c, *o_etoiles_haut, *o_voile, *o_sol_neige, *o_neige_buisson;
+static lv_obj_t *o_brouillard = nullptr; // 13/11 : brume du sol, en dégradé (voir brume())
 static lv_obj_t *o_couloir[COULOIRS], *o_motif[COULOIRS];
 static lv_timer_t *g_precip_tic;
 
@@ -432,14 +433,25 @@ static void paysage_neige(bool oui)
     lv_obj_set_style_image_recolor_opa(o_touffes, oui ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
 }
 
-// brouillard : le buisson et Clawd (et ses marques) s'estompent (opacité d'image : pas de calque)
-static void brume(bool oui)
+// brouillard (13/11, retour d'usage : « il s'étend plus haut mais dégressif ») : une brume qui part du sol, épaisse sur l'herbe,
+// et s'éclaircit en montant jusqu'à disparaître sous les jauges ; posée DEVANT Clawd et le buisson (leurs pieds plus
+// voilés que leur tête). Claire le jour, sombre la nuit. Remplace l'estompage de Clawd et du buisson du 12/11.
+#define BRUME_BAS 190      // opacité au sol, le jour
+#define BRUME_BAS_NUIT 235 // la nuit
+static void brume(bool oui, bool nuit)
 {
-    if (oui == g_brume)
+    const int cle = oui ? 1 + nuit : 0;
+    if (cle == g_brume)
         return;
-    g_brume = oui;
-    for (lv_obj_t *o : {o_buisson, o_neige_buisson, o_clawd, o_pensee, o_excl, o_z})
-        lv_obj_set_style_image_opa(o, oui ? 110 : LV_OPA_COVER, 0);
+    g_brume = cle;
+    ui_cacher(o_brouillard, !oui);
+    if (!oui)
+        return;
+    // la nuit, plus dense et un peu plus claire que le ciel : les étoiles s'éteignent en descendant (13/11)
+    const lv_color_t c = ui_c(nuit ? 0x48526A : 0xD3D9E0);
+    ui_style_bg_color(o_brouillard, c, 0);
+    ui_style_bg_grad_color(o_brouillard, c, 0);
+    lv_obj_set_style_bg_grad_opa(o_brouillard, nuit ? BRUME_BAS_NUIT : BRUME_BAS, 0);
 }
 
 static void ciel_nuages(int nb, int teinte, bool gris)
@@ -494,7 +506,7 @@ static void ciel_repli()
     precip(0);
     voile(0);
     paysage_neige(false);
-    brume(false);
+    brume(false, false);
 }
 
 // pose tout le ciel d'après maison/ciel (appelé chaque seconde : seuls les changements redessinent)
@@ -563,7 +575,7 @@ static void ciel_maj()
     precip(neige ? 4 : !pluie ? 0 : forte ? 3 : c.pluie >= 1 ? 2 : 1);
     paysage_neige(neige);
     voile(orage ? 2 : forte ? 1 : 0);
-    brume(strstr(c.meteo, "fog") != nullptr);
+    brume(strstr(c.meteo, "fog") != nullptr, teinte == C_NUIT);
 }
 
 static void construire()
@@ -648,6 +660,15 @@ static void construire()
     o_z = lv_img_create(c);
     lv_img_set_src(o_z, &marque_ia_repos);
     lv_obj_set_pos(o_z, Z_X, Z_Y);
+    // brume du sol (brouillard) : devant Clawd, ses marques et le buisson, de la case 35 (transparente) à l'herbe comprise
+    o_brouillard = ui_conteneur(c);
+    lv_obj_set_size(o_brouillard, CARTE_L, Y0 - (SCENE_Y + CIEL_HAUT * 4));
+    lv_obj_set_pos(o_brouillard, 0, SCENE_Y + CIEL_HAUT * 4);
+    ui_style_bg_opa(o_brouillard, LV_OPA_COVER, 0);
+    ui_style_bg_grad_dir(o_brouillard, LV_GRAD_DIR_VER, 0);
+    lv_obj_set_style_bg_main_opa(o_brouillard, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_bg_grad_opa(o_brouillard, BRUME_BAS, 0);
+    ui_cacher(o_brouillard, true);
 
     // bande de terre = panneau d'activité (maquette du 10/11) : état et tokens à gauche,
     // sessions/prompts et outils à droite, histogramme 30 tranches et ses légendes dessous.

@@ -134,9 +134,10 @@ quelqu'un. Placez-le là où l'on passe plutôt que là où l'on reste assis, ou
 - **Veille profonde** dès que personne n'est là, après le délai de veille réglé : la dalle passe en veille
   profonde (commande DSTB du ST7701), et le radar la réveille (GPIO 2).
 - **Démarrage court** au réveil : pas d'écran de démarrage, borne Wi-Fi et canal gardés en mémoire RTC
-  pour se reconnecter sans balayage. Mesuré sur un réveil (13/11/2026), depuis le réveil de la puce : programme
-  lancé à **0,49 s** (démarrage, lecture du programme et copie en PSRAM), écran éclairé à **1,77 s**, données de
-  Home Assistant à jour à **2,74 s**. Le délai propre du radar n'est pas compté.
+  pour se reconnecter sans balayage. Mesuré sur 5 réveils (14/11/2026), depuis le réveil de la puce : programme
+  lancé à **0,51 s** (démarrage, lecture du programme et copie en PSRAM), écran éclairé à **1,25 à 1,28 s**,
+  données de Home Assistant à jour à **2,2 s** environ (les anneaux du thermostat sont pré-rendus à la compilation :
+  calculés au démarrage, ils coûtaient 0,57 s de plus). Le délai propre du radar n'est pas compté.
 - **Bibliothèque musicale à la demande** : elle n'est pas chargée au démarrage, seulement à l'ouverture
   de la liste.
 - **Mode économie** après 10 s sans toucher : luminosité de repos, processeur à 80 MHz, Wi-Fi en

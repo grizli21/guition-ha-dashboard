@@ -186,6 +186,8 @@ static void construire_suivi(lv_obj_t *z)
         lv_obj_set_pos(o_anneau, (UI_ZONE_L - ANNEAU) / 2, ANNEAU_Y);
         lv_obj_add_event_cb(o_anneau, anneau_cb, LV_EVENT_DRAW_MAIN, NULL);
         lv_obj_clear_flag(o_anneau, LV_OBJ_FLAG_CLICKABLE);
+        if (f && !f->vignette && p.etat != PR_ETEINTE)
+            ui_vignettes_voir((int)(f - pr_etat.fichiers), 1); // 14/11 : demandée seulement quand elle s'affiche
         if (f && f->vignette && p.etat != PR_ETEINTE)
         {
             // 27/10 (retour d'usage : « pas de remplissage ») : la miniature entière ; l'anneau seul donne l'avancement (le
@@ -565,6 +567,8 @@ static void construire_fichiers(lv_obj_t *z)
             ui_style_bg_color(b, ui_c(UI_ACCENT_FOND), 0);
             ui_style_border_color(b, ui_c(UI_ACCENT), 0);
         }
+        if (!f.mini)
+            ui_vignettes_voir(i, 0); // 14/11 : la liste demande ses petites miniatures, et seulement elle
         if (f.mini)
         {
             lv_obj_t *v = lv_img_create(b);
@@ -602,6 +606,8 @@ static void construire_apercu(lv_obj_t *z)
     ui_style_ajouter(c, &ui_st_carte, 0);
     lv_obj_set_size(c, VIG + 32, VIG + 32);
     lv_obj_set_pos(c, (UI_ZONE_L - VIG - 32) / 2, 102);
+    if (!f.vignette)
+        ui_vignettes_voir(g_apercu, 1); // 14/11 : la grande, seulement pour l'aperçu ouvert
     if (f.vignette)
     {
         lv_obj_t *v = lv_img_create(c);
@@ -719,7 +725,13 @@ static void cle_structure(char *b, size_t n)
     for (int i = 0; i < p.nb_fichiers; i++)
         minis += p.fichiers[i].mini != nullptr;
     if (g_vue == 0)
-        snprintf(b, n, "0 %d %d %d %p %p", p.etat, g_camera, g_confirme, (const void *)f, f ? (const void *)f->vignette : nullptr);
+    {
+        // 14/11 : la miniature n'est dans la clé que si elle est affichée (vue miniature, ou imprimante éteinte) : en vue
+        // caméra, son arrivée (ui_vignettes_renouer à chaque visite) reconstruisait la vue -> image, noir, image
+        const bool mini_visible = g_camera == VUE_STL || p.etat == PR_ETEINTE;
+        snprintf(b, n, "0 %d %d %d %p %p", p.etat, g_camera, g_confirme, (const void *)f,
+                 f && mini_visible ? (const void *)f->vignette : nullptr);
+    }
     else if (g_vue == 1)
         snprintf(b, n, "1 %d", p.etat == PR_ETEINTE); // 27/10 : consignes, préchauffes, interrupteurs : sur place (maj_reglages)
     else if (g_vue == 2)
@@ -794,10 +806,11 @@ void page_imprimante_creer(lv_obj_t *zone)
     g_zone = zone;
     g_vue = 0;
     g_apercu = -1;
-    g_camera = VUE_STL; // 08/11 : en arrivant sur la page, c'est la miniature du fichier (comme avant)
+    // 14/11 : la vue choisie (miniature, caisson, plateau) est GARDÉE d'une visite à l'autre : l'imprimante
+    // démarrée, l'onglet Suivi montre la vue en cours (le 08/11, on revenait toujours à la miniature)
     g_confirme = false;
     construire();
-    ui_vignettes_renouer(); // 11/11 : les emplacements ont été oubliés à la sortie ; on re-demande (en tâche de fond)
+    // 14/11 : plus de ui_vignettes_renouer() ici : construire() demande seulement les miniatures affichées
 }
 
 void page_imprimante_quitter()

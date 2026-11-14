@@ -128,8 +128,8 @@ A **wireless** version of the same display, in a 3D-printed case (photo at the t
 It runs the same firmware as the wall displays: the display recognizes itself by its MAC address.
 
 - **2 mA in deep sleep**, woken by the HLK-LD2410S radar, no touch needed.
-- **Measured wake-up** (one wake-up, 13 Nov 2026): screen lit **1.8 s** after the chip wakes up, Home
-  Assistant data up to date at **2.7 s**. The Wi-Fi access point is kept in memory (no scan). The radar's own
+- **Measured wake-up** (5 wake-ups, 14 Nov 2026): screen lit **1.25 to 1.28 s** after the chip wakes up, Home
+  Assistant data up to date at about **2.2 s**. The Wi-Fi access point is kept in memory (no scan). The radar's own
   delay, between someone walking by and the chip waking up, is not counted.
 - **Estimated battery life** on 16,000 mAh: about 200 days for 20 walk-bys a day, about a month if someone
   stays in the radar's field 3 h a day.
@@ -159,8 +159,8 @@ Wiring, board modifications, measurements and case: [materiel/ecran-batterie/REA
 - On these chips, the eFuses lock the flash to **DIO** (2 wires): QIO/QOUT attempts fall back
   to DIO at boot — documented in the comments of [platformio.ini](platformio.ini).
 
-Measured on this branch (8 Nov 2026): **Flash 56.0 %** (2,641,031 B / 4,718,592 B), **internal RAM 25.1 %**
-(82,160 B / 327,680 B), final image 2,677,199 B.
+Measured on this branch (14 Nov 2026): **Flash 75.9 %** (3,581,831 B / 4,718,592 B, including 614 KB of pre-rendered
+thermostat rings), **internal RAM 27.4 %** (89,872 B / 327,680 B), final image 3,619,664 B.
 
 ## Architecture
 

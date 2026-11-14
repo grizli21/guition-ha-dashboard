@@ -1127,8 +1127,10 @@ int main()
     capture("13_reglages_bas");
 
     // --- Informations : haut, bas, puis remise à zéro (confirmation sur place) ---
+    // 14/11 : deux valeurs d'exemple réalistes (économie Wi-Fi coupée à la connexion ; partition app de 4,5 Mo)
     const char *sys[] = {TXT("2 j 04 h", "2 d 04 h"), TXT("mise sous tension", "power-on"), TXT("221 Ko", "221 KB"), TXT("6" SEP_DEC "1 Mo", "6" SEP_DEC "1 MB"),
-                       "36 °C", "240 MHz", "312 ms", TXT("19" SEP_DEC "5 dBm", "19" SEP_DEC "5 dBm"), "94bbeaf (21/10)", "192.168.1.43"};
+                       "36 °C", "240 MHz", "312 ms", TXT("19" SEP_DEC "5 dBm", "19" SEP_DEC "5 dBm"), "94bbeaf (21/10)", "192.168.1.43",
+                       TXT("aucune", "none"), TXT("1" SEP_DEC "1 Mo (76 % utilisé)", "1" SEP_DEC "1 MB (76% used)")};
     for (int i = 0; i < IF_NB_SYSTEME; i++)
         snprintf(if_systeme[i].valeur, sizeof if_systeme[i].valeur, "%s", sys[i]);
     const char *det[] = {"Maison  -60 dBm", TXT("reçu il y a 2 s", "received 2 s ago"), "motionEye", TXT("hors ligne", "offline")};
@@ -1144,7 +1146,19 @@ int main()
     if_journal_ajouter("21:12", TXT("MQTT connecté en 2" SEP_DEC "3 s", "MQTT connected in 2" SEP_DEC "3 s"), false);
     aller("Informations");
     avancer(600);
+    for (int k = 0; k < 2; k++) // 14/11 : rail descendu jusqu'en bas, sur l'icône Informations (allumée), comme à l'usage
+    {
+        glisser(440, 380, 440, 40);
+        lacher();
+        avancer(1500);
+    }
     capture("14_infos");
+    for (int k = 0; k < 2; k++) // rail remonté en haut : les captures suivantes ne changent pas
+    {
+        glisser(440, 60, 440, 430);
+        lacher();
+        avancer(1500);
+    }
     glisser(200, 420, 200, 60, 16);
     lacher();
     avancer(800);
@@ -2415,6 +2429,8 @@ int main()
             capture("204_ciel_nuit_neige");
             ciel(L + 240 * 60, 2.9f, 9, "fog", 60, 0);
             capture("205_ciel_jour_brouillard");
+            ciel(C + 200 * 60, 2.9f, 9, "fog", 60, 0); // 13/11 : brume du sol, de nuit
+            capture("205b_ciel_nuit_brouillard");
             ciel(L + 260 * 60, 2.9f, 9, "lightning-rainy", 100, 3.0f);
             capture("206_ciel_orage");
             avancer(9000 + 250 + 60 - 300);

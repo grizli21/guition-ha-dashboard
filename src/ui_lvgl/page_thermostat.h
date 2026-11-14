@@ -16,6 +16,13 @@ void page_thermostat_creer(lv_obj_t *zone);
 void page_thermostat_quitter();
 void page_thermostat_maj(); // à appeler quand les données reçues changent (sans effet si la page n'est pas affichée)
 
+// 14/11 (piste-flash) : contrôle d'identité octet à octet des anneaux const contre le calcul de référence.
+// PISTE_VERIF 1 -> build « verif » (un seul réveil suffit : le re-calcul fausse sciemment les temps).
+#define PISTE_VERIF 0
+#if PISTE_VERIF
+void page_thermostat_verifier_anneaux();
+#endif
+
 // 04/11/2026 : bancs de mesure seulement (simulateur, écran) ; aucun effet si la page n'est pas affichée
 bool page_thermostat_centre_anneau(lv_point_t *c);
 void page_thermostat_banc_glisse(float consigne, bool fin); // un pas du doigt sur l'anneau, sans commande vers HA

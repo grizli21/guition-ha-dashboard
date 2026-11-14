@@ -11,6 +11,8 @@ if_valeur_t if_systeme[IF_NB_SYSTEME] = {
     {TXT("RAM libre", "Free RAM"), ""}, {TXT("PSRAM libre", "Free PSRAM"), ""},
     {TXT("Processeur", "Processor"), ""}, {TXT("Fréquence", "Clock"), ""}, {TXT("Boucle la plus lente", "Slowest loop"), ""},
     {TXT("Émission Wi-Fi", "Wi-Fi TX"), ""}, {TXT("Version", "Version"), ""}, {TXT("Adresse IP", "IP address"), ""},
+    // 14/11 : économie du Wi-Fi réellement appliquée, et place libre dans la partition d'application
+    {TXT("Économie Wi-Fi", "Wi-Fi power save"), ""}, {TXT("Place libre flash", "Free flash space"), ""},
 };
 if_liaison_t if_liaisons[IF_NB_LIAISONS] = {
     {"Wi-Fi", "", false},
