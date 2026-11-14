@@ -154,6 +154,19 @@ synchronisation, coupure.
 La tension est lissée sur 64 lectures (les 4 extrêmes écartés) ; la charge est déduite de la tension
 (au-dessus de 4,15 V).
 
+### La page web du radar
+
+L'écran sert aussi une page de réglage du radar, à ouvrir dans un navigateur : `http://<IP de l'écran>/radar`.
+
+- **État en direct** : distance détectée et énergie de chaque porte (portes de ≈ 0,7 m, de 0 à 15).
+- **Portée et délai** : portes min et max, délai d'absence, fréquences d'envoi, vitesse de réponse.
+- **Sensibilité par porte** : seuils de déclenchement et de maintien ; lire la configuration du radar, l'appliquer,
+  revenir aux valeurs d'usine.
+- **Auto-réglage** des seuils : durée du scan, marge ajoutée.
+- **Journaux de l'écran**, en mémoire RTC (perdus à une coupure de courant) : traces de la session et réveils des 24 h.
+
+Tant que la page est ouverte, et 60 s après sa dernière requête, l'écran ne se met pas en veille.
+
 ## La bibliothèque du radar, modifiée
 
 La bibliothèque [HLK-LD2410S](https://github.com/phuongnamzz/HLK-LD2410S) est incluse dans

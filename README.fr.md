@@ -135,6 +135,8 @@ reste du temps. C'est le même firmware que les écrans muraux : l'écran se rec
   quelqu'un reste 3 h par jour dans le champ du radar.
 - **Carte modifiée** pour libérer des broches et ne rien laisser consommer en veille ; **boîtier dessiné
   de A à Z**, fichiers STL fournis.
+- **Page web de réglage du radar**, servie par l'écran : `http://<IP de l'écran>/radar` (distance et énergie par
+  porte en direct, sensibilité, auto-réglage, journaux).
 
 Il a une page à lui, épinglée en bas du rail, en trois onglets :
 

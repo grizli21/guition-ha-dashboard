@@ -152,6 +152,19 @@ synchronization, cut-off.
 The voltage is smoothed over 64 readings (the 4 extremes discarded); the charge is inferred from
 the voltage (above 4.15 V).
 
+### The radar web page
+
+The display also serves a radar tuning page, to open in a browser: `http://<display IP>/radar`.
+
+- **Live state**: detected distance and the energy of each gate (gates of ≈ 0.7 m, 0 to 15).
+- **Range and delay**: min and max gates, absence delay, report rates, response speed.
+- **Sensitivity per gate**: trigger and hold thresholds; read the radar's configuration, apply it, restore the
+  factory values.
+- **Automatic tuning** of the thresholds: scan duration, added margin.
+- **Display logs**, in RTC memory (lost on a power cut): session traces and wake-ups over 24 h.
+
+While the page is open, and for 60 s after its last request, the display does not go to sleep.
+
 ## The radar library, modified
 
 The [HLK-LD2410S](https://github.com/phuongnamzz/HLK-LD2410S) library is included in

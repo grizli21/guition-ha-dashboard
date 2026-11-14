@@ -135,6 +135,8 @@ It runs the same firmware as the wall displays: the display recognizes itself by
   stays in the radar's field 3 h a day.
 - **Modified board** to free pins and leave nothing drawing current in sleep; **case designed from
   scratch**, STL files included.
+- **Radar tuning web page**, served by the display: `http://<display IP>/radar` (live distance and energy per
+  gate, sensitivity, automatic tuning, logs).
 
 It has a page of its own, pinned at the bottom of the rail, with three tabs:
 

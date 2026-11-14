@@ -116,7 +116,7 @@ pre.logbox{max-height:45vh;overflow:auto;font-size:12px;background:#0f1115;borde
 </div>
 
 <div id="tabpage-journal" class="tabpage">
-  <p class="sub">Journaux de démarrage — LittleFS</p>
+  <p class="sub">Journaux de l'écran — mémoire RTC (perdus à une coupure de courant)</p>
   <div class="card">
     <div class="btns" style="margin-top:0">
       <button onclick="loadJournal()" class="sec">Rafraîchir</button>
@@ -124,15 +124,14 @@ pre.logbox{max-height:45vh;overflow:auto;font-size:12px;background:#0f1115;borde
   </div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <b>Journal complet (une ligne par redémarrage)</b>
+      <b>Traces de la session</b>
       <button class="sec" style="background:var(--bad);color:#fff" onclick="clearJournal('complet')">Effacer</button>
     </div>
     <pre id="journalComplet" class="logbox" style="margin-top:8px">—</pre>
   </div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <b>Journal résumé (par jour)</b>
-      <button class="sec" style="background:var(--bad);color:#fff" onclick="clearJournal('resume')">Effacer</button>
+      <b>Réveils des 24 h</b>
     </div>
     <pre id="journalResume" class="logbox" style="margin-top:8px">—</pre>
   </div>
@@ -256,12 +255,11 @@ async function loadJournal(){
   scrollToEnd($('journalResume'));
 }
 async function clearJournal(which){
-  const label = which==='complet' ? 'le journal complet' : 'le journal resume';
-  if(!confirm('Effacer definitivement '+label+' ? Cette action est irreversible.')) return;
+  if(!confirm('Effacer les traces de la session ?')) return;
   const p=new URLSearchParams();p.set('which',which);
   const r=await fetch('/radar/journal/clear',{method:'POST',body:p});
   const j=await r.json();
-  toast(j.ok?'Journal efface':'Echec');
+  toast(j.ok?'Traces effacées':'Échec');
   loadJournal();
 }
 load();brancherFlux();fetch('/radar/status').then(r=>r.json()).then(afficher);
